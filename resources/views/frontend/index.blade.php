@@ -83,7 +83,9 @@
                             </div>
                         @endforeach
                     @else
-                        <h3 class="text-muted text-center mt-5">No hay propiedades para visualizar</h3>
+                        <center>
+                            <h3 class="text-muted text-center mt-5">No hay propiedades para visualizar</h3>
+                        </center>
                     @endif
                 </div>
             </div>
