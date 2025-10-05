@@ -4,60 +4,40 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-
     <title>Virtual Tour | Su propiedad en occidente</title>
 
-    {{-- Bootstrap --}}
-    <link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet" type="text/css" media="all">
-
+    {{-- Bootstrap CSS --}}
+    <link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet" media="all">
     {{-- Icon --}}
     <link rel="icon" href="{{ asset('img/UnsoedIcon.png') }}">
 
-    <!-- Fonts -->
-    <link href="//fonts.googleapis.com/css?family=Fahkwang:400,500,600,700" rel="stylesheet">
-    <link href="//fonts.googleapis.com/css?family=Open+Sans:400,600" rel="stylesheet">
+    {{-- Fonts --}}
+    <link href="https://fonts.googleapis.com/css?family=Fahkwang:400,500,600,700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans:400,600&display=swap" rel="stylesheet">
     <link href="{{ asset('css/font-awesome.min.css') }}" rel="stylesheet">
 
-    {{-- Css --}}
+    {{-- App CSS --}}
     <link rel="stylesheet" href="{{ asset('css/base.css') }}">
     <link rel="stylesheet" href="{{ asset('css/vendor.css') }}">
     <link rel="stylesheet" href="{{ asset('css/main.css') }}">
 
-    <!-- Jquery -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-    <!-- Bootstrap -->
-    <script src="{{ asset('js/bootstrap.min.js') }}"></script>
-
-    {{-- Script --}}
-    <script src="{{ asset('js/modernizr.js') }}"></script>
-
     {{-- Pannellum --}}
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css" />
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
-
-    <!-- Fading Out Overlay -->
-    <script>
-        $(document).ready(function() {
-            $("#hide").click(function() {
-                $(".home-content-table").fadeOut(1000);
-            });
-        });
-    </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css">
 </head>
 
 <body id="top">
-
     <header>
         <nav id="menu-nav-wrap">
             <h3>Virtual Tour</h3>
-
             <ul class="nav-list">
                 @foreach ($scenes as $scene)
                     <li>
-                        <a class="smoothscroll" onclick="loadScene({{ $scene->id }})">{{ $scene->title }}
+                        <a class="smoothscroll js-load-scene" href="#" data-scene-id="{{ $scene->id }}">
+                            {{ $scene->title }}
                             <center>
                                 <img class="circular text-center"
-                                    src= "{{ isset($scene->image_ref) ? route('file', $scene->image_ref) : url('images/producto-sin-imagen.PNG') }}" />
+                                    src="{{ isset($scene->image_ref) ? route('file', $scene->image_ref) : url('images/producto-sin-imagen.PNG') }}"
+                                    alt="{{ $scene->title }}">
                             </center>
                         </a>
                     </li>
@@ -66,11 +46,12 @@
         </nav>
     </header>
 
+    {{-- Modal Mapa --}}
     <div class="modal fade" id="denahModal" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
             <div class="modal-content">
                 <div class="modal-body">
-                    <img src="">
+                    <img src="" alt="mapa">
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
@@ -79,32 +60,30 @@
         </div>
     </div>
 
-    <!-- home-->
-
+    {{-- Overlay de inicio --}}
     <div class="home-content-table">
         <div class="home-content-tablecell">
             <div class="row">
                 <div class="col-twelve">
-                    <h1 class="animate-intro"> Virtual Tour | Descubre {{ $fscene->property_name }}</h1>
-
+                    <h1 class="animate-intro">Virtual Tour | Descubre {{ $fscene->property_name }}</h1>
                     <div class="more animate-intro">
-                        <a id="hide" class="button stroke"> Empezar Tour </a>
-                        <a id="hide" href="{{ url('/') }}" class="button stroke"> Más Propiedades </a>
+                        <a id="btn-start-tour" class="button stroke" href="#">Empezar Tour</a>
+                        <a class="button stroke" href="{{ url('/') }}">Más Propiedades</a>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-
-
+    {{-- Visor --}}
     <div id="pannellum">
         <div id="controls">
-            <div class="ctrl btn-tooltip" data-bs-toggle="tooltip" data-bs-placement="top" title="Menú"
-                data-container="body" data-animation="true" id="menu-trigger-ctrl"><i class="fa fa-cubes"></i></div>
-            <div data-bs-toggle="tooltip" data-bs-placement="top" title="Mapa" data-container="body"
-                data-animation="true" class="ctrl" onclick="showModal()" id="menu-trigger-ctrl-map"><i
-                    class="fa fa-map"></i></div>
+            <div class="ctrl btn-tooltip" id="menu-trigger-ctrl" title="Menú">
+                <i class="fa fa-cubes"></i>
+            </div>
+            <div class="ctrl" id="menu-trigger-ctrl-map" title="Mapa">
+                <i class="fa fa-map"></i>
+            </div>
         </div>
     </div>
 
@@ -112,83 +91,150 @@
         <div id="loader"></div>
     </div>
 
+    {{-- Scripts --}}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    {{-- Popper (requerido por Bootstrap tooltips/modals) --}}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.1/umd/popper.min.js"></script>
+    {{-- Bootstrap JS --}}
+    <script src="{{ asset('js/bootstrap.min.js') }}"></script>
 
-    <!-- Java Script -->
+    <script src="{{ asset('js/modernizr.js') }}"></script>
     <script src="{{ asset('js/plugins.js') }}"></script>
     <script src="{{ asset('js/main.js') }}"></script>
 
-    <script>
-        var viewer = pannellum.viewer('pannellum', {
-            "default": {
-                "firstScene": "{{ $fscene->id }}",
-                "hfov": -1000,
-                "autoLoad": true,
-                "sceneFadeDuration": 2000,
-                "autoRotate": -1,
-                "resolution": 4096,
-                "autoRotateInactivityDelay": 30000
-            },
+    {{-- Pannellum --}}
+    <script src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
 
-            "scenes": {
-                @foreach ($scenes as $scene)
+    @php
+        // 1) Opciones JSON pre-calculadas (evita usar "|" dentro de @json)
+        $jsonOptions = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE;
 
-                    "{{ $scene->id }}": {
-                        "title": "{{ $scene->title }}",
-                        "hfov": {{ $scene->hfov }},
-                        "pitch": {{ $scene->pitch }},
-                        "yaw": {{ $scene->yaw }},
-                        "type": "{{ $scene->type }}",
-                        "panorama": "{{ isset($scene->image) ? route('file', $scene->image) : url('images/producto-sin-imagen.PNG') }}",
+        // 2) Default Pannellum (ajusta si ya lo tienes)
+        $pannellumDefault = [
+            'firstScene' => (string) $fscene->id,
+            'hfov' => -1000,
+            'autoLoad' => true,
+            'sceneFadeDuration' => 2000,
+            'autoRotate' => -1,
+            'resolution' => 4096,
+            'autoRotateInactivityDelay' => 30000,
+        ];
 
-                        "hotSpots": [
-                            @foreach ($hotspots->where('sourceScene', $scene->id) as $hotspot)
-                                {
-                                    "pitch": "{{ $hotspot->pitch }}",
-                                    "yaw": "{{ $hotspot->yaw }}",
-                                    "cssClass": "circular-hotspot",
-                                    "type": "{{ $hotspot->type }}",
-                                    "createTooltipFunc": hotspotTooltipFunction,
-                                    "createTooltipArgs": "{{ isset($hotspot->image) ? route('file', $hotspot->image) : url('images/producto-sin-imagen.PNG') }}",
-                                    "text": "{{ $hotspot->info }}",
-                                    @if ($hotspot->type == 'scene')
-                                        "sceneId": "{{ $hotspot->targetScene }}"
-                                    @endif
-                                },
-                            @endforeach
-                        ]
-                    },
-                @endforeach
+        // 3) Scenes + hotspots (misma lógica tuya, sólo formateado)
+        $scenesConfig = [];
+        foreach ($scenes as $scene) {
+            $hotspotsForScene = [];
+            foreach ($hotspots->where('sourceScene', $scene->id) as $hotspot) {
+                $hs = [
+                    'pitch' => (float) $hotspot->pitch,
+                    'yaw' => (float) $hotspot->yaw,
+                    'cssClass' => 'circular-hotspot',
+                    'type' => $hotspot->type,
+                    'createTooltipFunc' => 'hotspotTooltipFunction', // será reconectada a función JS
+                    'createTooltipArgs' => isset($hotspot->image)
+                        ? route('file', $hotspot->image)
+                        : url('images/producto-sin-imagen.PNG'),
+                    'text' => $hotspot->info,
+                ];
+                if ($hotspot->type === 'scene') {
+                    $hs['sceneId'] = (string) $hotspot->targetScene;
+                }
+                $hotspotsForScene[] = $hs;
             }
-        });
 
-        document.getElementById('menu-trigger-ctrl').addEventListener('click', function(e) {
-
-        });
-
-        function loadScene(clicked_id) {
-            viewer.loadScene(clicked_id);
+            $scenesConfig[(string) $scene->id] = [
+                'title' => $scene->title,
+                'hfov' => (float) $scene->hfov,
+                'pitch' => (float) $scene->pitch,
+                'yaw' => (float) $scene->yaw,
+                'type' => $scene->type,
+                'panorama' => isset($scene->image)
+                    ? route('file', $scene->image)
+                    : url('images/producto-sin-imagen.PNG'),
+                'hotSpots' => $hotspotsForScene,
+            ];
         }
-
-        function hotspotTooltipFunction(hotSpotDiv, args) {
-            // Puedes personalizar el contenido aquí, por ejemplo, mostrar una imagen
-            var img = document.createElement('img');
-            img.classList.add('circular-hotspot-img');
-            img.src = args;
-            hotSpotDiv.appendChild(img);
-        }
-    </script>
+    @endphp
 
     <script>
-        function showModal() {
-            $('#denahModal').modal('show');
-        };
+        (function() {
+            'use strict';
+
+            // --- Tooltip: función real (global) ---
+            function hotspotTooltipFunction(hotSpotDiv, imgUrl) {
+                const img = document.createElement('img');
+                img.classList.add('circular-hotspot-img');
+                img.src = imgUrl;
+                img.alt = 'hotspot';
+                hotSpotDiv.appendChild(img);
+            }
+            window.hotspotTooltipFunction = hotspotTooltipFunction;
+
+            // --- Config generada en Blade (sin operadores "|")
+            const pannellumConfig = {
+                default: @json($pannellumDefault, $jsonOptions),
+                scenes: @json($scenesConfig, $jsonOptions)
+            };
+
+            // --- Reconectar strings -> funciones reales (evita TypeError) ---
+            Object.keys(pannellumConfig.scenes || {}).forEach(sceneId => {
+                const hs = pannellumConfig.scenes[sceneId].hotSpots || [];
+                hs.forEach(h => {
+                    if (typeof h.createTooltipFunc === 'string') {
+                        const fn = window[h.createTooltipFunc];
+                        if (typeof fn === 'function') {
+                            h.createTooltipFunc = fn;
+                        } else {
+                            console.warn('[VT] Tooltip function not found:', h.createTooltipFunc,
+                                'in scene', sceneId);
+                            delete h.createTooltipFunc;
+                        }
+                    }
+                });
+            });
+
+            // --- Inicializar visor ---
+            let viewer = null;
+            try {
+                viewer = pannellum.viewer('pannellum', pannellumConfig);
+            } catch (err) {
+                console.error('[VT] Error inicializando Pannellum:', err);
+                return;
+            }
+
+            // --- UI / Interacciones ---
+            // Cerrar overlay inicio
+            $(document).on('click', '#btn-start-tour', function(e) {
+                e.preventDefault();
+                $('.home-content-table').fadeOut(1000);
+            });
+
+            // Abrir modal de mapa
+            $(document).on('click', '#menu-trigger-ctrl-map', function() {
+                $('#denahModal').modal('show');
+            });
+
+            // Cambiar escena desde menú
+            $(document).on('click', '.js-load-scene', function(e) {
+                e.preventDefault();
+                const sceneId = this.dataset.sceneId;
+                if (sceneId) {
+                    try {
+                        viewer.loadScene(sceneId);
+                    } catch (err) {
+                        console.error('[VT] No se pudo cargar la escena', sceneId, err);
+                    }
+                }
+                $('.close-button').trigger('click'); // si usas este botón para cerrar menú lateral
+            });
+
+            // (Opcional) tooltips Bootstrap
+            if (typeof $().tooltip === 'function') {
+                $('[data-bs-toggle="tooltip"]').tooltip();
+            }
+        })();
     </script>
 
-    <script>
-        $("#menu-nav-wrap > ul > li > a").on('click', function() {
-            $(".close-button").click();
-        });
-    </script>
 </body>
 
 </html>
