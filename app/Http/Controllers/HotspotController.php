@@ -33,8 +33,8 @@ class HotspotController extends Controller
 
         Hotspot::create([
             'type' => $request['type'],
-            'yaw' => $request['yaw'],
-            'pitch' => $request['pitch'],
+            'yaw'   => (float) $request['yaw'],
+            'pitch' => (float) $request['pitch'],
             'info' => $request['text'],
             'sourceScene' => $request['sourceScene'],
             'targetScene' => $request['targetScene'],
@@ -56,7 +56,7 @@ class HotspotController extends Controller
     {
         $id = $request->id;
         $hotspot = Hotspot::find($id);
-       
+
         $image = null;
         $property_id = $request['property_id'];
         $request->validate([
@@ -67,11 +67,11 @@ class HotspotController extends Controller
             'pitch' => 'required',
             'text' => 'required'
         ]);
-      
+
         if ($request->hasFile('image')) {
-            if($hotspot->image != null){
+            if ($hotspot->image != null) {
                 Storage::delete('public/' . $hotspot->image);
-            }            
+            }
             $imageSave = $request->file('image')->store('uploads', 'public');
             $image = $imageSave;
         }

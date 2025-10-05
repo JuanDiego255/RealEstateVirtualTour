@@ -72,7 +72,7 @@
                         </div>
                         <div class="form-group col-md-12">
                            
-                            <img class="card-img-top img-fluid w-50" src="{{ asset('storage' . '/' . $property->image) }}">
+                            <img class="card-img-top img-fluid w-50" src="{{ isset($property->image) ? route('file', $property->image) : url('images/producto-sin-imagen.PNG') }}">
                             <div class="custom-file">
                                 <input type="file" class="form-control-file" id="image-upload" name="image"
                                     required onchange="previewImage()" accept="image/*">

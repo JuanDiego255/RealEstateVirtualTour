@@ -120,7 +120,7 @@
                 <div class="modal-body">
 
                     <img id="hotspot-image" class="card-img-top img-fluid"
-                        src="{{ asset('storage' . '/' . $item->image) }}">
+                        src="{{ isset($item->image) ? route('file', $item->image) : url('images/producto-sin-imagen.PNG') }}">
                     <br> <br>
                     <hr>
                     <h5>Información {{ $item->title }}</h5><br>
@@ -216,7 +216,7 @@
                         <div class="form-group">
                             <label for="image" class=" d-flex justify-content-left">Imagen</label>
                             <img class="card-img-top img-fluid w-25"
-                                src="{{ asset('storage' . '/' . $item->image) }}">
+                                src="{{ isset($item->image) ? route('file', $item->image) : url('images/producto-sin-imagen.PNG') }}">
                             <div class="custom-file">
                                 <input type="file" class="form-control-file" required name="image"
                                     accept="image/*">
@@ -225,7 +225,7 @@
                         <div class="form-group">
                             <label for="image" class=" d-flex justify-content-left">Imagen de referencia</label>
                             <img class="card-img-top img-fluid w-25"
-                                src="{{ asset('storage' . '/' . $item->image_ref) }}">
+                                src="{{ isset($item->image_ref) ? route('file', $item->image_ref) : url('images/producto-sin-imagen.PNG') }}">
                             <div class="custom-file">
                                 <input type="file" class="form-control-file" required name="image_ref"
                                     accept="image/*">

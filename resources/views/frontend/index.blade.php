@@ -59,7 +59,7 @@
                             <div class="col-md-4">
                                 <div class="property-wrap ftco-animate">
                                     <a href="#" class="img"
-                                        style="background-image: url('{{ asset('storage') . '/' . $property->image }}')"></a>
+                                        style="background-image: url('{{ isset($property->image) ? route('file', $property->image) : url('images/producto-sin-imagen.PNG') }}')"></a>
                                     <div class="text">
                                         <p class="price">
                                             <span class="old-price">₡{{ number_format($property->price) }}</span>

@@ -57,7 +57,7 @@
                         <a class="smoothscroll" onclick="loadScene({{ $scene->id }})">{{ $scene->title }}
                             <center>
                                 <img class="circular text-center"
-                                    src= "{{ asset('storage') . '/' . $scene->image_ref }}" />
+                                    src= "{{ isset($scene->image_ref) ? route('file', $scene->image_ref) : url('images/producto-sin-imagen.PNG') }}" />
                             </center>
                         </a>
                     </li>
@@ -138,7 +138,7 @@
                         "pitch": {{ $scene->pitch }},
                         "yaw": {{ $scene->yaw }},
                         "type": "{{ $scene->type }}",
-                        "panorama": "{{ asset('storage' . '/' . $scene->image) }}",
+                        "panorama": "{{ isset($scene->image) ? route('file', $scene->image) : url('images/producto-sin-imagen.PNG') }}",
 
                         "hotSpots": [
                             @foreach ($hotspots->where('sourceScene', $scene->id) as $hotspot)
@@ -148,7 +148,7 @@
                                     "cssClass": "circular-hotspot",
                                     "type": "{{ $hotspot->type }}",
                                     "createTooltipFunc": hotspotTooltipFunction,
-                                    "createTooltipArgs": "{{ asset('storage' . '/' . $hotspot->image) }}",
+                                    "createTooltipArgs": "{{ isset($hotspot->image) ? route('file', $hotspot->image) : url('images/producto-sin-imagen.PNG') }}",
                                     "text": "{{ $hotspot->info }}",
                                     @if ($hotspot->type == 'scene')
                                         "sceneId": "{{ $hotspot->targetScene }}"

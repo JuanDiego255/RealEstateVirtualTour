@@ -1,6 +1,6 @@
 @extends('admin.main')
 
-@section('title', 'Virtual Tour | Su Propiedad En Occidente')
+@section('title', 'Virtual Tour | La nueva era digital')
 
 @section('content')
     @if ($message = Session::get('success'))
@@ -100,9 +100,9 @@
                     },
                     {
                         data: 'image',
-                        "render": function(data, type, full, meta) {
-                            return "<img style='height:70px;' src= '{{ asset('storage') . '/' }}" +
-                                data + "' />";
+                        render: function(data, type, full, meta) {
+                            let defaultImage = "{{ url('images/producto-sin-imagen.PNG') }}";
+                            return `<img style="height:70px;" src="${data ? "{{ route('file', '') }}/" + data : defaultImage}" />`;
                         },
                         orderable: false,
                         searchable: false
@@ -151,14 +151,13 @@
                 },
                 columns: [{
                         data: 'image',
-                        "render": function(data, type, full, meta) {
+                        render: function(data, type, full, meta) {
+                            const routeBase = "{{ route('file', '') }}/";
                             if (data) {
-                                return "<img class='circular' src= '{{ asset('storage') . '/' }}" +
-                                    data + "' />";
+                                return `<img class='circular' src='${routeBase}${data}' />`;
                             } else {
-                                return "<p>N/A</p>"
+                                return "<p>N/A</p>";
                             }
-
                         },
                         orderable: false,
                         searchable: false

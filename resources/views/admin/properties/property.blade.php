@@ -26,7 +26,7 @@
                     <div class="item">
                         <div class="product-grid product_data">
                             <div class="product-image">
-                                <img src="{{ asset('storage') . '/' . $property->image }}">
+                                <img src="{{ isset($property->image) ? route('file', $property->image) : url('images/producto-sin-imagen.PNG') }}">
                                 <a onclick="if (confirm('¿Deseas borrar esta propiedad?')) {
                                     document.getElementById('deleteProperty' + {{ $property->id }}).submit();
                                 }"
