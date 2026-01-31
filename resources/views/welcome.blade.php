@@ -23,6 +23,62 @@
 
     {{-- Pannellum --}}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css">
+
+    {{-- Estilos personalizados para hotspots --}}
+    <style>
+        .hotspot-tooltip-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        .hotspot-label {
+            background-color: rgba(0, 0, 0, 0.75);
+            color: #fff;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 5px;
+            white-space: nowrap;
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .hotspot-label-info {
+            background-color: rgba(52, 152, 219, 0.9);
+            border: 1px solid #2980b9;
+        }
+
+        .hotspot-label-scene {
+            background-color: rgba(46, 204, 113, 0.9);
+            border: 1px solid #27ae60;
+        }
+
+        .circular-hotspot-img {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: 2px solid #fff;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            object-fit: cover;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .circular-hotspot-img:hover {
+            transform: scale(1.1);
+        }
+
+        .pnlm-hotspot.circular-hotspot {
+            background: transparent !important;
+            border: none !important;
+            width: auto !important;
+            height: auto !important;
+        }
+    </style>
 </head>
 
 <body id="top">
@@ -125,18 +181,30 @@
         foreach ($scenes as $scene) {
             $hotspotsForScene = [];
             foreach ($hotspots->where('sourceScene', $scene->id) as $hotspot) {
+                // Determinar el texto a mostrar arriba de la imagen
+                // Para tipo 'info': mostrar el campo info (ej: "Refrigeradora")
+                // Para tipo 'scene': mostrar el nombre de la escena destino
+                $displayText = $hotspot->type === 'info'
+                    ? $hotspot->info
+                    : ($hotspot->targetSceneName ?? $hotspot->info);
+
                 $hs = [
                     'pitch' => (float) $hotspot->pitch,
                     'yaw' => (float) $hotspot->yaw,
                     'cssClass' => 'circular-hotspot',
                     'type' => $hotspot->type,
-                    'createTooltipFunc' => 'hotspotTooltipFunction', // será reconectada a función JS
-                    'createTooltipArgs' => isset($hotspot->image)
-                        ? route('file', $hotspot->image)
-                        : url('images/producto-sin-imagen.PNG'),
+                    'createTooltipFunc' => 'hotspotTooltipFunction',
+                    'createTooltipArgs' => [
+                        'imageUrl' => isset($hotspot->image)
+                            ? route('file', $hotspot->image)
+                            : url('images/producto-sin-imagen.PNG'),
+                        'displayText' => $displayText,
+                        'hotspotType' => $hotspot->type
+                    ],
                     'text' => $hotspot->info,
                 ];
-                if ($hotspot->type === 'scene') {
+                // Solo agregar sceneId si es tipo 'scene' (enlace) - esto permite navegar
+                if ($hotspot->type === 'scene' && $hotspot->targetScene) {
                     $hs['sceneId'] = (string) $hotspot->targetScene;
                 }
                 $hotspotsForScene[] = $hs;
@@ -161,12 +229,38 @@
             'use strict';
 
             // --- Tooltip: función real (global) ---
-            function hotspotTooltipFunction(hotSpotDiv, imgUrl) {
+            function hotspotTooltipFunction(hotSpotDiv, args) {
+                // args contiene: { imageUrl, displayText, hotspotType }
+                var imageUrl = args.imageUrl || args;
+                var displayText = args.displayText || '';
+                var hotspotType = args.hotspotType || 'scene';
+
+                // Crear contenedor principal
+                const container = document.createElement('div');
+                container.classList.add('hotspot-tooltip-container');
+
+                // Crear etiqueta de texto arriba de la imagen
+                if (displayText) {
+                    const label = document.createElement('div');
+                    label.classList.add('hotspot-label');
+                    label.textContent = displayText;
+                    // Agregar clase adicional según el tipo
+                    if (hotspotType === 'info') {
+                        label.classList.add('hotspot-label-info');
+                    } else {
+                        label.classList.add('hotspot-label-scene');
+                    }
+                    container.appendChild(label);
+                }
+
+                // Crear imagen
                 const img = document.createElement('img');
                 img.classList.add('circular-hotspot-img');
-                img.src = imgUrl;
-                img.alt = 'hotspot';
-                hotSpotDiv.appendChild(img);
+                img.src = imageUrl;
+                img.alt = displayText || 'hotspot';
+                container.appendChild(img);
+
+                hotSpotDiv.appendChild(container);
             }
             window.hotspotTooltipFunction = hotspotTooltipFunction;
 

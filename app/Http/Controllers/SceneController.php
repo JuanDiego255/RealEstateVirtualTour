@@ -20,7 +20,8 @@ class SceneController extends Controller
     public function index($id)
     {
         $scene = Scene::where('property_id', $id)->get();
-        $hotspots = Hotspot::all();
+        $sceneIds = $scene->pluck('id')->toArray();
+        $hotspots = Hotspot::whereIn('sourceScene', $sceneIds)->get();
         return view('admin.config', compact('hotspots', 'scene', 'id'));
     }
     /**
@@ -76,17 +77,20 @@ class SceneController extends Controller
         $propertyId = $request->input('property_id');
         $hotspots = DB::table('hotspots')->where('sc1.property_id',$propertyId)
             ->join('scenes as sc1', 'hotspots.sourceScene', '=', 'sc1.id')
-            ->join('scenes as sc2', 'hotspots.targetScene', '=', 'sc2.id')
+            ->leftJoin('scenes as sc2', 'hotspots.targetScene', '=', 'sc2.id')
             ->select('sc1.title as sourceSceneName', 'sc2.title as targetSceneName', 'hotspots.*');
 
         return Datatables::of($hotspots)
             ->addColumn('action', function ($row) {
-                return '<a href="#" class="text-success" data-toggle="modal" 
+                return '<a href="#" class="text-success" data-toggle="modal"
                     data-target="#detailHotspot' . $row->id . '"><i class="fa fa-eye"></i></a>
-                        <a href="#" class="text-info" data-toggle="modal" 
+                        <a href="#" class="text-info" data-toggle="modal"
                     data-target="#editHotspot' . $row->id . '"><i class="fa fa-edit"></i></a>
-                        <a href="#" class="text-danger" data-toggle="modal" 
+                        <a href="#" class="text-danger" data-toggle="modal"
                     data-target="#deleteHotspot' . $row->id . '"><i class="ti-trash"></i></a>';
+            })
+            ->editColumn('targetSceneName', function ($row) {
+                return $row->targetSceneName ?? 'N/A (Solo información)';
             })
             ->make(true);
     }
@@ -113,10 +117,12 @@ class SceneController extends Controller
             )
             ->get();
 
+        // Obtener hotspots con nombre de escena destino
         $hotspots = DB::table('hotspots')
-            ->where('scenes.property_id', $id)
-            ->join('scenes', 'scenes.id', '=', 'hotspots.sourceScene')
-            ->select('hotspots.*')
+            ->where('sc1.property_id', $id)
+            ->join('scenes as sc1', 'sc1.id', '=', 'hotspots.sourceScene')
+            ->leftJoin('scenes as sc2', 'sc2.id', '=', 'hotspots.targetScene')
+            ->select('hotspots.*', 'sc2.title as targetSceneName')
             ->get();
 
         return view('welcome', compact('fscene', 'scenes', 'hotspots'));
@@ -196,19 +202,22 @@ class SceneController extends Controller
             'hfov' => 'required|min:-360|max:360',
             'yaw' => 'required|min:-360|max:360',
             'pitch' => 'required|min:-360|max:360',
-            'image' => 'image'
+            'image' => 'nullable|image',
+            'image_ref' => 'nullable|image'
         ]);
         $property_id = $request['property_id'];
+
+        // Mantener imágenes existentes si no se suben nuevas
+        $image = $scene->image;
+        $imageRef = $scene->image_ref;
 
         if ($request->hasFile('image')) {
             Storage::delete('public/' . $scene->image);
             $image = $request->file('image')->store('uploads', 'public');
-            $image = $image;
         }
         if ($request->hasFile('image_ref')) {
-            Storage::delete('public/' . $scene->image);
-            $image_ref = $request->file('image_ref')->store('uploads', 'public');
-            $imageRef = $image_ref;
+            Storage::delete('public/' . $scene->image_ref);
+            $imageRef = $request->file('image_ref')->store('uploads', 'public');
         }
 
         Scene::where('id', $id)->update([

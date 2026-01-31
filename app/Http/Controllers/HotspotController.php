@@ -18,18 +18,30 @@ class HotspotController extends Controller
     {
         $image = null;
         $property_id = $request['property_id'];
-        $request->validate([
+
+        // Validación condicional: targetScene solo requerido si tipo es 'scene'
+        $rules = [
             'sourceScene' => 'required',
-            'targetScene' => 'required',
             'type' => 'required',
             'yaw' => 'required',
             'pitch' => 'required',
-            'text' => 'required'
-        ]);
+            'text' => 'required',
+            'image' => 'nullable|image'
+        ];
+
+        // Solo requerir targetScene si el tipo es 'scene' (enlace)
+        if ($request['type'] === 'scene') {
+            $rules['targetScene'] = 'required';
+        }
+
+        $request->validate($rules);
 
         if ($request->hasFile('image')) {
             $image = $request->file('image')->store('uploads', 'public');
         }
+
+        // targetScene puede ser null para tipo 'info'
+        $targetScene = $request['type'] === 'scene' ? $request['targetScene'] : null;
 
         Hotspot::create([
             'type' => $request['type'],
@@ -37,7 +49,7 @@ class HotspotController extends Controller
             'pitch' => (float) $request['pitch'],
             'info' => $request['text'],
             'sourceScene' => $request['sourceScene'],
-            'targetScene' => $request['targetScene'],
+            'targetScene' => $targetScene,
             'image' => $image
         ]);
 
@@ -57,31 +69,44 @@ class HotspotController extends Controller
         $id = $request->id;
         $hotspot = Hotspot::find($id);
 
-        $image = null;
         $property_id = $request['property_id'];
-        $request->validate([
+
+        // Validación condicional: targetScene solo requerido si tipo es 'scene'
+        $rules = [
             'sourceScene' => 'required',
-            'targetScene' => 'required',
             'type' => 'required',
             'yaw' => 'required',
             'pitch' => 'required',
-            'text' => 'required'
-        ]);
+            'text' => 'required',
+            'image' => 'nullable|image'
+        ];
 
+        // Solo requerir targetScene si el tipo es 'scene' (enlace)
+        if ($request['type'] === 'scene') {
+            $rules['targetScene'] = 'required';
+        }
+
+        $request->validate($rules);
+
+        // Mantener imagen existente si no se sube una nueva
+        $image = $hotspot->image;
         if ($request->hasFile('image')) {
             if ($hotspot->image != null) {
                 Storage::delete('public/' . $hotspot->image);
             }
-            $imageSave = $request->file('image')->store('uploads', 'public');
-            $image = $imageSave;
+            $image = $request->file('image')->store('uploads', 'public');
         }
+
+        // targetScene puede ser null para tipo 'info'
+        $targetScene = $request['type'] === 'scene' ? $request['targetScene'] : null;
+
         Hotspot::where('id', $id)->update([
             'type' => $request['type'],
             'yaw' => $request['yaw'],
             'pitch' => $request['pitch'],
             'info' => $request['text'],
             'sourceScene' => $request['sourceScene'],
-            'targetScene' => $request['targetScene'],
+            'targetScene' => $targetScene,
             'image' => $image
         ]);
 

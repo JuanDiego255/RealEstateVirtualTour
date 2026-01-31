@@ -214,20 +214,20 @@
 
 
                         <div class="form-group">
-                            <label for="image" class=" d-flex justify-content-left">Imagen</label>
+                            <label for="image" class=" d-flex justify-content-left">Imagen (dejar vacío para mantener la actual)</label>
                             <img class="card-img-top img-fluid w-25"
                                 src="{{ isset($item->image) ? route('file', $item->image) : url('images/producto-sin-imagen.PNG') }}">
                             <div class="custom-file">
-                                <input type="file" class="form-control-file" required name="image"
+                                <input type="file" class="form-control-file" name="image"
                                     accept="image/*">
                             </div>
                         </div>
                         <div class="form-group">
-                            <label for="image" class=" d-flex justify-content-left">Imagen de referencia</label>
+                            <label for="image" class=" d-flex justify-content-left">Imagen de referencia (dejar vacío para mantener la actual)</label>
                             <img class="card-img-top img-fluid w-25"
                                 src="{{ isset($item->image_ref) ? route('file', $item->image_ref) : url('images/producto-sin-imagen.PNG') }}">
                             <div class="custom-file">
-                                <input type="file" class="form-control-file" required name="image_ref"
+                                <input type="file" class="form-control-file" name="image_ref"
                                     accept="image/*">
                             </div>
                         </div>

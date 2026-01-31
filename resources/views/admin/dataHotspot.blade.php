@@ -46,23 +46,23 @@
                             </div>
 
                             <div class="form-group col-md-6">
-                                <label for="targetSceneAdd">Objetivo de la escena</label>
-                                <select class="form-control form-control-lg input-rounded mb-4" id="targetSceneAdd"
-                                    name="targetScene" required>
-                                    <option value="" disabled selected>Seleccione uno</option>
-                                    @foreach ($scene as $item)
-                                        <option value="{{ $item->id }}">{{ $item->title }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-
-                            <div class="form-group col-md-6">
                                 <label for="typeAdd">Tipo</label>
                                 <select class="form-control form-control-lg input-rounded mb-4" id="typeAdd"
                                     name="type" required>
                                     <option value="" disabled selected>Seleccione uno</option>
                                     <option value="info">Información</option>
                                     <option value="scene">Enlace</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group col-md-6" id="targetSceneAddContainer" style="display: none;">
+                                <label for="targetSceneAdd">Objetivo de la escena</label>
+                                <select class="form-control form-control-lg input-rounded mb-4" id="targetSceneAdd"
+                                    name="targetScene">
+                                    <option value="" disabled selected>Seleccione uno</option>
+                                    @foreach ($scene as $item)
+                                        <option value="{{ $item->id }}">{{ $item->title }}</option>
+                                    @endforeach
                                 </select>
                             </div>
 
@@ -196,29 +196,29 @@
                                 </div>
 
                                 <div class="form-group col-md-6">
-                                    <label for="targetScene-{{ $hotspot->id }}"
-                                        class="d-flex justify-content-left">Objetivo de la escena</label>
-                                    <select class="form-control form-control-lg input-rounded mb-4" name="targetScene"
-                                        id="targetScene-{{ $hotspot->id }}" required>
-                                        <option value="" disabled>Seleccione uno</option>
-                                        @foreach ($scene as $scenes)
-                                            <option value="{{ $scenes->id }}"
-                                                {{ $hotspot->targetScene == $scenes->id ? 'selected' : '' }}>
-                                                {{ $scenes->title }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-
-                                <div class="form-group col-md-6">
                                     <label for="type-{{ $hotspot->id }}"
                                         class="d-flex justify-content-left">Tipo</label>
-                                    <select class="form-control form-control-lg input-rounded mb-4" name="type"
-                                        id="type-{{ $hotspot->id }}" required>
+                                    <select class="form-control form-control-lg input-rounded mb-4 hotspot-type-select" name="type"
+                                        id="type-{{ $hotspot->id }}" data-hotspot-id="{{ $hotspot->id }}" required>
                                         <option value="" disabled>Seleccione uno</option>
                                         <option value="info" {{ $hotspot->type == 'info' ? 'selected' : '' }}>
                                             Información</option>
                                         <option value="scene" {{ $hotspot->type == 'scene' ? 'selected' : '' }}>
                                             Enlace</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group col-md-6 target-scene-container" id="targetSceneContainer-{{ $hotspot->id }}" style="{{ $hotspot->type == 'info' ? 'display: none;' : '' }}">
+                                    <label for="targetScene-{{ $hotspot->id }}"
+                                        class="d-flex justify-content-left">Objetivo de la escena</label>
+                                    <select class="form-control form-control-lg input-rounded mb-4" name="targetScene"
+                                        id="targetScene-{{ $hotspot->id }}">
+                                        <option value="" disabled {{ !$hotspot->targetScene ? 'selected' : '' }}>Seleccione uno</option>
+                                        @foreach ($scene as $scenes)
+                                            <option value="{{ $scenes->id }}"
+                                                {{ $hotspot->targetScene == $scenes->id ? 'selected' : '' }}>
+                                                {{ $scenes->title }}</option>
+                                        @endforeach
                                     </select>
                                 </div>
 
@@ -267,6 +267,32 @@
             </div>
         </div>
     </center>
+
+    {{-- Delete Modal --}}
+    <div id="deleteHotspot{{ $hotspot->id }}" class="modal fade">
+        <div class="modal-dialog modal-dialog-centered modal-confirm">
+            <div class="modal-content">
+                <div class="modal-header flex-column">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                    <div class="icon-box">
+                        <i class="fa fa-times-circle"></i>
+                    </div>
+                </div>
+                <div class="modal-body">
+                    <p class="text-center">¿Está seguro de que desea eliminar este punto de acceso?</p>
+                    <form method="POST" action="{{ route('delHotspot', ['id' => $hotspot->id]) }}">
+                        @csrf
+                        @method('DELETE')
+                        <input type="hidden" name="property_id" value="{{ $id }}">
+                        <div class="modal-footer justify-content-center">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn btn-danger">Eliminar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 @endforeach
 
 {{-- JS --}}
@@ -413,6 +439,35 @@
             var $modal = $(this);
             destroyViewer($modal.data('viewerEdit'));
             $modal.removeData('viewerEdit');
+        });
+
+        // ====== Control de visibilidad de targetScene según tipo ======
+        // Para el formulario de agregar
+        $('#typeAdd').on('change', function() {
+            var selectedType = $(this).val();
+            if (selectedType === 'scene') {
+                $('#targetSceneAddContainer').show();
+                $('#targetSceneAdd').prop('required', true);
+            } else {
+                $('#targetSceneAddContainer').hide();
+                $('#targetSceneAdd').prop('required', false).val('');
+            }
+        });
+
+        // Para los formularios de edición
+        $(document).on('change', '.hotspot-type-select', function() {
+            var selectedType = $(this).val();
+            var hotspotId = $(this).data('hotspot-id');
+            var $container = $('#targetSceneContainer-' + hotspotId);
+            var $select = $('#targetScene-' + hotspotId);
+
+            if (selectedType === 'scene') {
+                $container.show();
+                $select.prop('required', true);
+            } else {
+                $container.hide();
+                $select.prop('required', false).val('');
+            }
         });
     });
 </script>
