@@ -92,6 +92,7 @@ class SceneController extends Controller
             ->editColumn('targetSceneName', function ($row) {
                 return $row->targetSceneName ?? 'N/A (Solo información)';
             })
+            ->rawColumns(['action'])
             ->make(true);
     }
 
