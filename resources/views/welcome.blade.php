@@ -201,6 +201,7 @@
                 console.error('[VT] Error inicializando Pannellum:', err);
                 return;
             }
+            window.viewer = viewer;
 
             // --- UI / Interacciones ---
             // Cerrar overlay inicio
@@ -215,18 +216,27 @@
             });
 
             // Cambiar escena desde menú
-            $(document).on('click', '.js-load-scene', function(e) {
-                e.preventDefault();
-                const sceneId = this.dataset.sceneId;
-                if (sceneId) {
+            document.addEventListener('click', function(e) {
+                var link = e.target.closest ? e.target.closest('a.js-load-scene') : null;
+                if (!link) return;
+
+                e.preventDefault(); // no navegues a "#"
+                var sceneId = link.getAttribute('data-scene-id');
+                console.log('[VT] load-scene →', sceneId);
+
+                if (sceneId && window.viewer) {
                     try {
-                        viewer.loadScene(sceneId);
+                        window.viewer.loadScene(sceneId);
                     } catch (err) {
                         console.error('[VT] No se pudo cargar la escena', sceneId, err);
                     }
+                } else {
+                    console.warn('[VT] Sin sceneId o viewer no disponible');
                 }
-                $('.close-button').trigger('click'); // si usas este botón para cerrar menú lateral
-            });
+
+                // Si usas un botón para cerrar el menú lateral:
+                if (window.$) $('.close-button').trigger('click');
+            }, true); // ← fase de captura
 
             // (Opcional) tooltips Bootstrap
             if (typeof $().tooltip === 'function') {
