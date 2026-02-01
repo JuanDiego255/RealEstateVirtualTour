@@ -111,28 +111,39 @@
             transform: translateX(-50%) translateY(-10px);
         }
 
-        /* Efecto de paso/caminar */
+        /* Contenedor del visor con transiciones suaves */
         #pannellum {
-            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
         }
 
-        #pannellum.walking-forward {
-            animation: walkForward 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        /* Overlay para efecto de transición suave */
+        .walk-transition-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(ellipse at center,
+                rgba(0,0,0,0) 0%,
+                rgba(0,0,0,0.4) 50%,
+                rgba(0,0,0,0.8) 100%);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 998;
+            transition: opacity 0.3s ease-out;
         }
 
-        @keyframes walkForward {
-            0% {
-                transform: scale(1);
-                filter: brightness(1);
-            }
-            50% {
-                transform: scale(1.15);
-                filter: brightness(1.1);
-            }
-            100% {
-                transform: scale(1);
-                filter: brightness(1);
-            }
+        .walk-transition-overlay.active {
+            opacity: 1;
+        }
+
+        /* Efecto de movimiento hacia adelante */
+        .pnlm-render-container {
+            transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+        }
+
+        .walking .pnlm-render-container {
+            transform: scale(1.08);
         }
     </style>
 </head>
@@ -199,6 +210,9 @@
         </div>
     </div>
 
+    {{-- Overlay de transición --}}
+    <div class="walk-transition-overlay"></div>
+
     {{-- Nombre de escena --}}
     <div class="current-scene-name"></div>
 
@@ -231,7 +245,7 @@
             'minHfov' => 50,
             'maxHfov' => 120,
             'autoLoad' => true,
-            'sceneFadeDuration' => 0,             // Sin fade, usamos nuestro efecto
+            'sceneFadeDuration' => 400,           // Fade suave entre escenas
             'autoRotate' => -2,
             'autoRotateInactivityDelay' => 5000,
             'compass' => false,
@@ -357,7 +371,9 @@
             // --- Elementos de UI ---
             const $sceneNameDisplay = $('.current-scene-name');
             const $pannellumContainer = $('#pannellum');
+            const $transitionOverlay = $('.walk-transition-overlay');
             let isTransitioning = false;
+            let pendingOrientation = null; // Guardar orientación para aplicar después del cambio
 
             // --- Función para mostrar nombre de escena ---
             function showSceneName(sceneName) {
@@ -386,26 +402,39 @@
                 if (isTransitioning) return;
                 isTransitioning = true;
 
-                // 1. Primero, mover la cámara hacia el hotspot (mirar hacia él)
                 var currentHfov = viewer.getHfov();
-                var animationDuration = 600;
+                var animationDuration = 500;
                 var startTime = Date.now();
                 var startYaw = viewer.getYaw();
                 var startPitch = viewer.getPitch();
                 var startHfov = currentHfov;
-                var targetHfov = 50; // Zoom in hacia el hotspot
+                var targetHfov = 70; // Zoom moderado hacia el hotspot
 
                 // Calcular la ruta más corta para el yaw
                 var deltaYaw = hotspotYaw - startYaw;
                 if (deltaYaw > 180) deltaYaw -= 360;
                 if (deltaYaw < -180) deltaYaw += 360;
 
+                // Calcular orientación de llegada (mirando hacia adelante)
+                var arrivalYaw = hotspotYaw + 180;
+                if (arrivalYaw > 180) arrivalYaw -= 360;
+                if (arrivalYaw < -180) arrivalYaw += 360;
+
+                // Guardar la orientación para aplicarla después
+                pendingOrientation = {
+                    yaw: arrivalYaw,
+                    pitch: hotspotPitch * 0.3, // Reducir el pitch para vista más natural
+                    hfov: currentHfov
+                };
+
                 function animateToHotspot() {
                     var elapsed = Date.now() - startTime;
                     var progress = Math.min(elapsed / animationDuration, 1);
 
-                    // Easing function (ease-out cubic)
-                    var eased = 1 - Math.pow(1 - progress, 3);
+                    // Easing suave (ease-in-out)
+                    var eased = progress < 0.5
+                        ? 2 * progress * progress
+                        : 1 - Math.pow(-2 * progress + 2, 2) / 2;
 
                     // Interpolar posición
                     var newYaw = startYaw + (deltaYaw * eased);
@@ -419,44 +448,64 @@
                     if (progress < 1) {
                         requestAnimationFrame(animateToHotspot);
                     } else {
-                        // 2. Aplicar efecto visual de "paso"
-                        $pannellumContainer.addClass('walking-forward');
+                        // Aplicar efecto de túnel/movimiento
+                        $transitionOverlay.addClass('active');
+                        $pannellumContainer.addClass('walking');
 
-                        // 3. Cambiar escena después del efecto
                         setTimeout(function() {
-                            // Calcular la orientación inicial de la nueva escena
-                            // El usuario debería mirar "hacia adelante" desde donde vino
-                            var initialYaw = (hotspotYaw + 180) % 360;
-                            if (initialYaw > 180) initialYaw -= 360;
-
                             // Cargar la nueva escena
-                            viewer.loadScene(targetSceneId, hotspotPitch * 0.5, initialYaw, currentHfov);
-
-                            $pannellumContainer.removeClass('walking-forward');
-                            isTransitioning = false;
-                        }, 300);
+                            viewer.loadScene(targetSceneId);
+                        }, 200);
                     }
                 }
 
                 requestAnimationFrame(animateToHotspot);
             }
 
+            // --- Aplicar orientación cuando la escena termine de cargar ---
+            viewer.on('load', function() {
+                if (pendingOrientation) {
+                    // Aplicar la orientación guardada
+                    setTimeout(function() {
+                        viewer.setYaw(pendingOrientation.yaw);
+                        viewer.setPitch(pendingOrientation.pitch);
+                        viewer.setHfov(pendingOrientation.hfov);
+
+                        // Limpiar efectos visuales
+                        $transitionOverlay.removeClass('active');
+                        $pannellumContainer.removeClass('walking');
+                        isTransitioning = false;
+                        pendingOrientation = null;
+                    }, 100);
+                } else {
+                    // Primera carga o desde menú
+                    $transitionOverlay.removeClass('active');
+                    $pannellumContainer.removeClass('walking');
+                    isTransitioning = false;
+                }
+
+                var currentScene = viewer.getScene();
+                if (currentScene && pannellumConfig.scenes[currentScene]) {
+                    showSceneName(pannellumConfig.scenes[currentScene].title);
+                }
+            });
+
             // --- Interceptar clics en hotspots de tipo scene ---
-            // Pannellum no expone un evento directo, así que lo hacemos manualmente
             $pannellumContainer.on('click', '.pnlm-hotspot', function(e) {
-                // Buscar el hotspot clickeado
+                if (isTransitioning) return;
+
                 var currentSceneId = viewer.getScene();
                 var currentScene = pannellumConfig.scenes[currentSceneId];
                 if (!currentScene || !currentScene.hotSpots) return;
 
-                // Obtener posición del clic en coordenadas del visor
+                // Obtener posición del clic
                 var coords = viewer.mouseEventToCoords(e.originalEvent);
                 if (!coords) return;
 
                 var clickPitch = coords[0];
                 var clickYaw = coords[1];
 
-                // Encontrar el hotspot más cercano al clic
+                // Encontrar el hotspot más cercano
                 var closestHotspot = null;
                 var minDistance = Infinity;
 
@@ -473,8 +522,7 @@
                     }
                 });
 
-                // Si encontramos un hotspot de tipo scene, aplicar efecto de caminar
-                if (closestHotspot && closestHotspot.sceneId && minDistance < 30) {
+                if (closestHotspot && closestHotspot.sceneId && minDistance < 50) {
                     e.preventDefault();
                     e.stopPropagation();
                     walkToScene(closestHotspot.sceneId, closestHotspot.yaw, closestHotspot.pitch);
@@ -492,13 +540,6 @@
                 }, 500);
             });
 
-            viewer.on('load', function() {
-                var currentScene = viewer.getScene();
-                if (currentScene && pannellumConfig.scenes[currentScene]) {
-                    showSceneName(pannellumConfig.scenes[currentScene].title);
-                }
-            });
-
             // --- UI / Interacciones ---
             $(document).on('click', '#btn-start-tour', function(e) {
                 e.preventDefault();
@@ -514,7 +555,7 @@
                 $('#denahModal').modal('show');
             });
 
-            // Cambiar escena desde menú lateral
+            // Cambiar escena desde menú lateral (sin efecto de caminar)
             document.addEventListener('click', function(e) {
                 var link = e.target.closest ? e.target.closest('a.js-load-scene') : null;
                 if (!link) return;
@@ -523,14 +564,15 @@
                 var sceneId = link.getAttribute('data-scene-id');
 
                 if (sceneId && window.viewer && !isTransitioning) {
-                    // Desde el menú, usamos efecto de caminar también
-                    var currentYaw = viewer.getYaw();
-                    var currentPitch = viewer.getPitch();
-                    walkToScene(sceneId, currentYaw, currentPitch);
+                    isTransitioning = true;
+                    $transitionOverlay.addClass('active');
 
-                    // Cerrar el menú lateral
-                    $('#menu-trigger-ctrl').removeClass('is-clicked');
-                    $('body').removeClass('menu-is-open');
+                    setTimeout(function() {
+                        viewer.loadScene(sceneId);
+                        // Cerrar el menú lateral
+                        $('#menu-trigger-ctrl').removeClass('is-clicked');
+                        $('body').removeClass('menu-is-open');
+                    }, 200);
                 }
             }, true);
 
