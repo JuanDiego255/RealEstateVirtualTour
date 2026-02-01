@@ -78,6 +78,92 @@
             width: auto !important;
             height: auto !important;
         }
+
+        /* Transiciones suaves para el visor */
+        #pannellum {
+            transition: opacity 0.3s ease;
+        }
+
+        /* Overlay de transición entre escenas */
+        .scene-transition-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(0,0,0,0) 0%, rgba(0,0,0,0.3) 100%);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s ease;
+            z-index: 999;
+        }
+
+        .scene-transition-overlay.active {
+            opacity: 1;
+        }
+
+        /* Indicador de carga elegante */
+        .scene-loading-indicator {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            padding: 10px 25px;
+            border-radius: 25px;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .scene-loading-indicator.active {
+            opacity: 1;
+        }
+
+        .scene-loading-indicator .spinner {
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Nombre de la escena actual */
+        .current-scene-name {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.6);
+            color: #fff;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            opacity: 0;
+            transition: opacity 0.5s ease, transform 0.5s ease;
+            z-index: 1000;
+        }
+
+        .current-scene-name.visible {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .current-scene-name.hidden {
+            opacity: 0;
+            transform: translateX(-50%) translateY(-10px);
+        }
     </style>
 </head>
 
@@ -143,6 +229,14 @@
         </div>
     </div>
 
+    {{-- Elementos de transición --}}
+    <div class="scene-transition-overlay"></div>
+    <div class="scene-loading-indicator">
+        <div class="spinner"></div>
+        <span>Cargando...</span>
+    </div>
+    <div class="current-scene-name"></div>
+
     <div id="preloader">
         <div id="loader"></div>
     </div>
@@ -165,15 +259,23 @@
         // 1) Opciones JSON pre-calculadas (evita usar "|" dentro de @json)
         $jsonOptions = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE;
 
-        // 2) Default Pannellum (ajusta si ya lo tienes)
+        // 2) Default Pannellum - Configuración optimizada para transiciones suaves
         $pannellumDefault = [
             'firstScene' => (string) $fscene->id,
-            'hfov' => -1000,
+            'hfov' => 110,
+            'minHfov' => 50,
+            'maxHfov' => 120,
             'autoLoad' => true,
-            'sceneFadeDuration' => 2000,
-            'autoRotate' => -1,
-            'resolution' => 4096,
-            'autoRotateInactivityDelay' => 30000,
+            'sceneFadeDuration' => 800,           // Transición rápida pero suave
+            'autoRotate' => -2,                   // Rotación automática lenta
+            'autoRotateInactivityDelay' => 5000,  // Esperar 5s antes de rotar
+            'compass' => false,
+            'showControls' => true,
+            'mouseZoom' => true,
+            'draggable' => true,
+            'disableKeyboardCtrl' => false,
+            'showFullscreenCtrl' => true,
+            'showZoomCtrl' => true,
         ];
 
         // 3) Scenes + hotspots (misma lógica tuya, sólo formateado)
@@ -287,6 +389,35 @@
                 });
             });
 
+            // --- Elementos de UI para transiciones ---
+            const $transitionOverlay = $('.scene-transition-overlay');
+            const $loadingIndicator = $('.scene-loading-indicator');
+            const $sceneNameDisplay = $('.current-scene-name');
+
+            // --- Función para mostrar nombre de escena ---
+            function showSceneName(sceneName) {
+                $sceneNameDisplay
+                    .text(sceneName)
+                    .removeClass('hidden')
+                    .addClass('visible');
+
+                // Ocultar después de 3 segundos
+                setTimeout(function() {
+                    $sceneNameDisplay.removeClass('visible').addClass('hidden');
+                }, 3000);
+            }
+
+            // --- Función para transición suave ---
+            function smoothTransition(callback) {
+                $transitionOverlay.addClass('active');
+                setTimeout(function() {
+                    if (callback) callback();
+                    setTimeout(function() {
+                        $transitionOverlay.removeClass('active');
+                    }, 300);
+                }, 200);
+            }
+
             // --- Inicializar visor ---
             let viewer = null;
             try {
@@ -297,11 +428,40 @@
             }
             window.viewer = viewer;
 
+            // --- Eventos de Pannellum para transiciones ---
+            viewer.on('scenechange', function(sceneId) {
+                // Obtener nombre de la escena
+                var sceneName = pannellumConfig.scenes[sceneId]?.title || 'Escena';
+                showSceneName(sceneName);
+
+                // Reiniciar rotación automática
+                setTimeout(function() {
+                    viewer.startAutoRotate();
+                }, 2000);
+            });
+
+            viewer.on('load', function() {
+                // Ocultar indicador de carga cuando la escena esté lista
+                $loadingIndicator.removeClass('active');
+
+                // Mostrar nombre de la primera escena al cargar
+                var currentScene = viewer.getScene();
+                if (currentScene && pannellumConfig.scenes[currentScene]) {
+                    showSceneName(pannellumConfig.scenes[currentScene].title);
+                }
+            });
+
             // --- UI / Interacciones ---
             // Cerrar overlay inicio
             $(document).on('click', '#btn-start-tour', function(e) {
                 e.preventDefault();
-                $('.home-content-table').fadeOut(1000);
+                $('.home-content-table').fadeOut(800, function() {
+                    // Mostrar nombre de la escena inicial
+                    var firstSceneId = pannellumConfig.default.firstScene;
+                    if (pannellumConfig.scenes[firstSceneId]) {
+                        showSceneName(pannellumConfig.scenes[firstSceneId].title);
+                    }
+                });
             });
 
             // Abrir modal de mapa
@@ -309,33 +469,64 @@
                 $('#denahModal').modal('show');
             });
 
-            // Cambiar escena desde menú
+            // Cambiar escena desde menú lateral con transición suave
             document.addEventListener('click', function(e) {
                 var link = e.target.closest ? e.target.closest('a.js-load-scene') : null;
                 if (!link) return;
 
-                e.preventDefault(); // no navegues a "#"
+                e.preventDefault();
                 var sceneId = link.getAttribute('data-scene-id');
                 console.log('[VT] load-scene →', sceneId);
 
                 if (sceneId && window.viewer) {
-                    try {
-                        window.viewer.loadScene(sceneId);
-                    } catch (err) {
-                        console.error('[VT] No se pudo cargar la escena', sceneId, err);
-                    }
+                    // Transición suave al cambiar escena desde menú
+                    smoothTransition(function() {
+                        try {
+                            window.viewer.loadScene(sceneId);
+                        } catch (err) {
+                            console.error('[VT] No se pudo cargar la escena', sceneId, err);
+                        }
+                    });
                 } else {
                     console.warn('[VT] Sin sceneId o viewer no disponible');
                 }
 
-                // Si usas un botón para cerrar el menú lateral:
-                if (window.$) $('.close-button').trigger('click');
-            }, true); // ← fase de captura
+                // Cerrar el menú lateral
+                if (window.$) {
+                    $('#menu-trigger-ctrl').removeClass('is-clicked');
+                    $('body').removeClass('menu-is-open');
+                }
+            }, true);
 
             // (Opcional) tooltips Bootstrap
             if (typeof $().tooltip === 'function') {
                 $('[data-bs-toggle="tooltip"]').tooltip();
             }
+
+            // Pre-cargar imágenes de escenas adyacentes para transiciones más rápidas
+            function preloadAdjacentScenes(currentSceneId) {
+                var currentScene = pannellumConfig.scenes[currentSceneId];
+                if (!currentScene || !currentScene.hotSpots) return;
+
+                currentScene.hotSpots.forEach(function(hs) {
+                    if (hs.sceneId && pannellumConfig.scenes[hs.sceneId]) {
+                        var img = new Image();
+                        img.src = pannellumConfig.scenes[hs.sceneId].panorama;
+                    }
+                });
+            }
+
+            // Pre-cargar escenas conectadas a la escena inicial
+            setTimeout(function() {
+                preloadAdjacentScenes(pannellumConfig.default.firstScene);
+            }, 2000);
+
+            // Pre-cargar cuando cambie de escena
+            viewer.on('scenechange', function(sceneId) {
+                setTimeout(function() {
+                    preloadAdjacentScenes(sceneId);
+                }, 1000);
+            });
         })();
     </script>
 
