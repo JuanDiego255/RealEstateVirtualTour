@@ -1,10 +1,7 @@
 <?php
 
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
-
+ 
 class MakeTargetSceneNullableInHotspotsTable extends Migration
 {
     /**
@@ -19,10 +16,10 @@ class MakeTargetSceneNullableInHotspotsTable extends Migration
         Schema::table('hotspots', function (Blueprint $table) {
             $table->dropForeign(['targetScene']);
         });
-
+ 
         // Modificar la columna para permitir NULL usando SQL raw
         DB::statement('ALTER TABLE hotspots MODIFY targetScene BIGINT UNSIGNED NULL');
-
+ 
         // Recrear la foreign key con onDelete set null
         Schema::table('hotspots', function (Blueprint $table) {
             $table->foreign('targetScene')
@@ -31,7 +28,7 @@ class MakeTargetSceneNullableInHotspotsTable extends Migration
                   ->onDelete('set null');
         });
     }
-
+ 
     /**
      * Reverse the migrations.
      *
@@ -42,18 +39,14 @@ class MakeTargetSceneNullableInHotspotsTable extends Migration
         Schema::table('hotspots', function (Blueprint $table) {
             $table->dropForeign(['targetScene']);
         });
-
+ 
         // Primero actualizar los NULL a un valor válido (si existe)
         DB::statement('UPDATE hotspots SET targetScene = sourceScene WHERE targetScene IS NULL');
-
+ 
         // Modificar la columna para NO permitir NULL
         DB::statement('ALTER TABLE hotspots MODIFY targetScene BIGINT UNSIGNED NOT NULL');
-
+ 
         Schema::table('hotspots', function (Blueprint $table) {
-            $table->foreign('targetScene')
-                  ->references('id')
-                  ->on('scenes')
-                  ->onDelete('cascade');
         });
     }
 }
