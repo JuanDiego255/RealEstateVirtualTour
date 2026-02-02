@@ -9,6 +9,7 @@ use App\Hotspot;
 use App\Properties;
 use Datatables;
 use Illuminate\Support\Facades\Storage;
+use Yajra\DataTables\DataTables as YajraDataTables;
 
 class SceneController extends Controller
 {
@@ -40,7 +41,7 @@ class SceneController extends Controller
         if ($request->ajax()) {
             $propertyId = $request->input('property_id');
             $data = Scene::where('property_id', $propertyId)->select('*');
-            return Datatables::of($data)
+            return YajraDataTables::of($data)
                 ->addColumn('status', function ($row) {
                     $sendData = route('changeFScene', $row->id);
                     $csrf = csrf_token();
@@ -61,9 +62,9 @@ class SceneController extends Controller
                 })
                 ->addColumn('action', function ($row) {
                     return '<a href="#" class="text-success" data-toggle="modal" 
-                        data-target="#detailScene' . $row->id . '"><i class="fa fa-eye"></i></a>
+                        data-target="#detailScene' . $row->id . '"><i class="ti-eye"></i></a>
                             <a href="#" class="text-info" data-toggle="modal" 
-                        data-target="#editModal' . $row->id . '"><i class="fa fa-edit"></i></a>
+                        data-target="#editModal' . $row->id . '"><i class="ti-pencil"></i></a>
                             <a href="#" class="text-danger" data-toggle="modal" 
                         data-target="#deleteModal' . $row->id . '"><i class="ti-trash"></i></a>';
                 })
@@ -80,12 +81,12 @@ class SceneController extends Controller
             ->leftJoin('scenes as sc2', 'hotspots.targetScene', '=', 'sc2.id')
             ->select('sc1.title as sourceSceneName', 'sc2.title as targetSceneName', 'hotspots.*');
 
-        return Datatables::of($hotspots)
+        return YajraDataTables::of($hotspots)
             ->addColumn('action', function ($row) {
                 return '<a href="#" class="text-success" data-toggle="modal"
-                    data-target="#detailHotspot' . $row->id . '"><i class="fa fa-eye"></i></a>
+                    data-target="#detailHotspot' . $row->id . '"><i class="ti-eye"></i></a>
                         <a href="#" class="text-info" data-toggle="modal"
-                    data-target="#editHotspot' . $row->id . '"><i class="fa fa-edit"></i></a>
+                    data-target="#editHotspot' . $row->id . '"><i class="ti-pencil"></i></a>
                         <a href="#" class="text-danger" data-toggle="modal"
                     data-target="#deleteHotspot' . $row->id . '"><i class="ti-trash"></i></a>';
             })
