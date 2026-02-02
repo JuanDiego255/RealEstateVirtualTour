@@ -43,26 +43,37 @@
                             </div>
 
                             <div class="form-group col-md-6">
-                                <label for="yaw">Movimiento de rotación horizontal</label>
-                                <input class="form-control form-control-lg input-rounded mb-4" type="number"
-                                    step="0.1" name="yaw" min="-360" max="360" value="0" required>
+                                <label for="yaw">Rotación horizontal (Yaw)</label>
+                                <input class="form-control form-control-lg input-rounded mb-4" type="text"
+                                    step="0.1" name="yaw" id="yaw-add" value="0" required readonly
+                                    style="background-color: #e9ecef; cursor: not-allowed;">
+                                <small class="form-text text-muted">Se actualiza al hacer clic en el visor</small>
                             </div>
 
                             <div class="form-group col-md-6">
-                                <label for="pitch">Movimiento de rotación vertical</label>
-                                <input class="form-control form-control-lg input-rounded mb-4" type="number"
-                                    step="0.1" name="pitch" min="-360" max="360" value="0" required>
+                                <label for="pitch">Rotación vertical (Pitch)</label>
+                                <input class="form-control form-control-lg input-rounded mb-4" type="text"
+                                    step="0.1" name="pitch" id="pitch-add" value="0" required readonly
+                                    style="background-color: #e9ecef; cursor: not-allowed;">
+                                <small class="form-text text-muted">Se actualiza al hacer clic en el visor</small>
                             </div>
                         </div>
 
 
                         <div class="form-group">
-                            <label for="image">Imagen</label>
-                            <img class="card-img-top img-fluid" id="image-preview" alt="Image Preview" />
+                            <label for="image">Imagen 360</label>
+                            <img class="card-img-top img-fluid" id="image-preview-add" alt="Image Preview" style="display: none;" />
                             <div class="custom-file">
-                                <input type="file" class="form-control-file" id="image-upload" name="image"
-                                    required onchange="previewImage()" accept="image/*">
+                                <input type="file" class="form-control-file" id="image-upload-add" name="image"
+                                    required accept="image/*">
                             </div>
+                        </div>
+
+                        <!-- Visor Pannellum para seleccionar yaw/pitch -->
+                        <div class="form-group" id="pannellum-container-add" style="display: none;">
+                            <label><strong>Seleccione la vista inicial (haga clic donde desea que inicie la escena)</strong></label>
+                            <div id="panorama-scene-add" style="width: 100%; height: 400px; border: 2px solid #007bff; border-radius: 5px;"></div>
+                            <small class="form-text text-muted">Navegue por la imagen y haga clic en el punto donde desea que el visor quede al frente cuando cargue esta escena.</small>
                         </div>
                         <div class="form-group">
                             <label for="image">Imagen de referencia</label>
@@ -179,6 +190,17 @@
                             <input class="form-control form-control-lg input-rounded mb-4" type="hidden"
                                 name="type" value="{{ $item->type }}">
                         </div>
+                        <!-- Visor Pannellum para seleccionar yaw/pitch en edición -->
+                        <div class="form-group">
+                            <label><strong>Seleccione la vista inicial (haga clic donde desea que inicie la escena)</strong></label>
+                            <div id="panorama-scene-edit-{{ $item->id }}"
+                                 style="width: 100%; height: 400px; border: 2px solid #007bff; border-radius: 5px;"
+                                 data-image="{{ isset($item->image) ? route('file', $item->image) : '' }}"
+                                 data-yaw="{{ $item->yaw }}"
+                                 data-pitch="{{ $item->pitch }}"></div>
+                            <small class="form-text text-muted">Navegue por la imagen y haga clic en el punto donde desea que el visor quede al frente cuando cargue esta escena.</small>
+                        </div>
+
                         <div class="row">
                             <div class="form-group col-md-6">
                                 <label for="title" class="d-flex justify-content-left">Título de la escena</label>
@@ -195,30 +217,33 @@
                             </div>
 
                             <div class="form-group col-md-6">
-                                <label for="yaw" class=" d-flex justify-content-left">Movimiento de rotación
-                                    horizontal</label>
-                                <input class="form-control form-control-lg input-rounded mb-4" type="number"
-                                    step="0.1" name="yaw" min="-360" max="360"
-                                    value="{{ $item->yaw }}" required>
+                                <label for="yaw" class=" d-flex justify-content-left">Rotación horizontal (Yaw)</label>
+                                <input class="form-control form-control-lg input-rounded mb-4" type="text"
+                                    step="0.1" name="yaw" id="yaw-edit-{{ $item->id }}"
+                                    value="{{ $item->yaw }}" required readonly
+                                    style="background-color: #e9ecef; cursor: not-allowed;">
+                                <small class="form-text text-muted">Se actualiza al hacer clic en el visor</small>
                             </div>
 
                             <div class="form-group col-md-6">
-                                <label for="pitch" class=" d-flex justify-content-left">Movimiento de rotación
-                                    vertical</label>
-                                <input class="form-control form-control-lg input-rounded mb-4" type="number"
-                                    step="0.1" name="pitch" min="-360" max="360"
-                                    value="{{ $item->pitch }}" required>
+                                <label for="pitch" class=" d-flex justify-content-left">Rotación vertical (Pitch)</label>
+                                <input class="form-control form-control-lg input-rounded mb-4" type="text"
+                                    step="0.1" name="pitch" id="pitch-edit-{{ $item->id }}"
+                                    value="{{ $item->pitch }}" required readonly
+                                    style="background-color: #e9ecef; cursor: not-allowed;">
+                                <small class="form-text text-muted">Se actualiza al hacer clic en el visor</small>
                             </div>
                         </div>
 
 
 
                         <div class="form-group">
-                            <label for="image" class=" d-flex justify-content-left">Imagen (dejar vacío para mantener la actual)</label>
-                            <img class="card-img-top img-fluid w-25"
+                            <label for="image" class=" d-flex justify-content-left">Imagen 360 (dejar vacío para mantener la actual)</label>
+                            <img class="card-img-top img-fluid w-25" id="image-preview-edit-{{ $item->id }}"
                                 src="{{ isset($item->image) ? route('file', $item->image) : url('images/producto-sin-imagen.PNG') }}">
                             <div class="custom-file">
-                                <input type="file" class="form-control-file" name="image"
+                                <input type="file" class="form-control-file image-upload-edit"
+                                    name="image" data-scene-id="{{ $item->id }}"
                                     accept="image/*">
                             </div>
                         </div>
@@ -269,3 +294,177 @@
         </div>
     </div>
 @endforeach
+
+{{-- JavaScript para selección dinámica de Yaw/Pitch en escenas --}}
+<script>
+    $(document).ready(function() {
+        // ---------- Utilidades ----------
+        function round3(n) {
+            return Number.parseFloat(n).toFixed(3);
+        }
+
+        function destroyViewer(v) {
+            try {
+                v && v.destroy && v.destroy();
+            } catch (e) {}
+        }
+
+        // ====== FORMULARIO DE AGREGAR ESCENA ======
+        var viewerAdd = null;
+        var panoramaAddEl = document.getElementById("panorama-scene-add");
+        var pannellumContainerAdd = document.getElementById("pannellum-container-add");
+
+        // Cuando se selecciona una imagen 360
+        $("#image-upload-add").on("change", function(e) {
+            var file = e.target.files[0];
+            if (!file) return;
+
+            // Crear URL temporal para la imagen
+            var imageUrl = URL.createObjectURL(file);
+
+            // Mostrar el contenedor del visor
+            if (pannellumContainerAdd) {
+                pannellumContainerAdd.style.display = "block";
+            }
+
+            // Destruir visor anterior si existe
+            destroyViewer(viewerAdd);
+
+            // Crear nuevo visor Pannellum
+            viewerAdd = pannellum.viewer('panorama-scene-add', {
+                type: "equirectangular",
+                panorama: imageUrl,
+                autoLoad: true,
+                showControls: true,
+                mouseZoom: true,
+                draggable: true,
+                yaw: 0,
+                pitch: 0
+            });
+
+            // Resetear campos yaw y pitch
+            $("#yaw-add").val('0');
+            $("#pitch-add").val('0');
+
+            // Evento de click para seleccionar yaw/pitch
+            viewerAdd.on('mousedown', function(ev) {
+                var coords = viewerAdd.mouseEventToCoords(ev);
+                if (!coords) return;
+                var pitch = coords[0];
+                var yaw = coords[1];
+                console.log('ADD Scene coords:', coords);
+                $("#yaw-add").val(round3(yaw));
+                $("#pitch-add").val(round3(pitch));
+            });
+        });
+
+        // Limpiar cuando se cierra el modal de agregar
+        $("#addScene").on('hidden.bs.modal', function() {
+            destroyViewer(viewerAdd);
+            viewerAdd = null;
+            if (pannellumContainerAdd) {
+                pannellumContainerAdd.style.display = "none";
+            }
+            $("#yaw-add").val('0');
+            $("#pitch-add").val('0');
+            $("#image-upload-add").val('');
+        });
+
+        // ====== MODALES DE EDICIÓN DE ESCENA ======
+        // Inicializar visor cuando se abre el modal de edición
+        $('[id^="editModal"]').on('shown.bs.modal', function() {
+            var $modal = $(this);
+            var idNum = $modal.attr('id').match(/\d+/)[0];
+            var containerId = 'panorama-scene-edit-' + idNum;
+            var $container = $('#' + containerId);
+
+            var imageUrl = $container.data('image');
+            var initialYaw = parseFloat($container.data('yaw')) || 0;
+            var initialPitch = parseFloat($container.data('pitch')) || 0;
+
+            if (!imageUrl) {
+                console.log('No hay imagen para la escena', idNum);
+                return;
+            }
+
+            destroyViewer($modal.data('viewerEdit'));
+
+            var viewerEdit = pannellum.viewer(containerId, {
+                type: "equirectangular",
+                panorama: imageUrl,
+                autoLoad: true,
+                showControls: true,
+                mouseZoom: true,
+                draggable: true,
+                yaw: initialYaw,
+                pitch: initialPitch
+            });
+            $modal.data('viewerEdit', viewerEdit);
+
+            // Evento de click para seleccionar yaw/pitch
+            viewerEdit.on('mousedown', function(ev) {
+                var coords = viewerEdit.mouseEventToCoords(ev);
+                if (!coords) return;
+                var pitch = coords[0];
+                var yaw = coords[1];
+                console.log('EDIT Scene coords:', idNum, coords);
+                $('#yaw-edit-' + idNum).val(round3(yaw));
+                $('#pitch-edit-' + idNum).val(round3(pitch));
+            });
+        });
+
+        // Limpiar visor cuando se cierra el modal de edición
+        $('[id^="editModal"]').on('hidden.bs.modal', function() {
+            var $modal = $(this);
+            destroyViewer($modal.data('viewerEdit'));
+            $modal.removeData('viewerEdit');
+        });
+
+        // Cuando se selecciona una nueva imagen en el modal de edición
+        $(document).on('change', '.image-upload-edit', function(e) {
+            var file = e.target.files[0];
+            if (!file) return;
+
+            var sceneId = $(this).data('scene-id');
+            var imageUrl = URL.createObjectURL(file);
+            var containerId = 'panorama-scene-edit-' + sceneId;
+            var $modal = $('#editModal' + sceneId);
+
+            // Actualizar preview de imagen
+            $('#image-preview-edit-' + sceneId).attr('src', imageUrl);
+
+            // Actualizar el data-image del contenedor
+            $('#' + containerId).data('image', imageUrl);
+
+            // Destruir y recrear visor con nueva imagen
+            destroyViewer($modal.data('viewerEdit'));
+
+            var viewerEdit = pannellum.viewer(containerId, {
+                type: "equirectangular",
+                panorama: imageUrl,
+                autoLoad: true,
+                showControls: true,
+                mouseZoom: true,
+                draggable: true,
+                yaw: 0,
+                pitch: 0
+            });
+            $modal.data('viewerEdit', viewerEdit);
+
+            // Resetear campos yaw y pitch cuando cambia la imagen
+            $('#yaw-edit-' + sceneId).val('0');
+            $('#pitch-edit-' + sceneId).val('0');
+
+            // Re-agregar evento de click
+            viewerEdit.on('mousedown', function(ev) {
+                var coords = viewerEdit.mouseEventToCoords(ev);
+                if (!coords) return;
+                var pitch = coords[0];
+                var yaw = coords[1];
+                console.log('EDIT Scene (new image) coords:', sceneId, coords);
+                $('#yaw-edit-' + sceneId).val(round3(yaw));
+                $('#pitch-edit-' + sceneId).val(round3(pitch));
+            });
+        });
+    });
+</script>
