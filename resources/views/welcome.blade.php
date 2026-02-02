@@ -295,7 +295,7 @@
                 'title' => $scene->title,
                 'hfov' => (float) $scene->hfov,
                 'pitch' => (float) $scene->pitch,
-                'yaw' => (float) $scene->yaw,
+                'yaw' => (float) $scene->yaw + 270,
                 'type' => $scene->type,
                 'panorama' => isset($scene->image)
                     ? route('file', $scene->image)
