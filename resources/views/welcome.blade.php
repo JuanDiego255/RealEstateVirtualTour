@@ -242,10 +242,10 @@
         $pannellumDefault = [
             'firstScene' => (string) $fscene->id,
             'hfov' => 100,
-            'minHfov' => 50,
+            'minHfov' => 30,                      // Permitir zoom más cercano
             'maxHfov' => 120,
             'autoLoad' => true,
-            'sceneFadeDuration' => 400,           // Fade suave entre escenas
+            'sceneFadeDuration' => 0,             // Sin fade - usamos zoom
             'autoRotate' => -2,
             'autoRotateInactivityDelay' => 5000,
             'compass' => false,
@@ -373,7 +373,7 @@
             const $pannellumContainer = $('#pannellum');
             const $transitionOverlay = $('.walk-transition-overlay');
             let isTransitioning = false;
-            let pendingOrientation = null; // Guardar orientación para aplicar después del cambio
+            let pendingOrientation = null;
 
             // --- Función para mostrar nombre de escena ---
             function showSceneName(sceneName) {
@@ -397,46 +397,46 @@
             }
             window.viewer = viewer;
 
-            // --- Efecto de "caminar" hacia el hotspot ---
+            // --- Efecto de "caminar" con zoom continuo hacia el hotspot ---
             function walkToScene(targetSceneId, hotspotYaw, hotspotPitch) {
                 if (isTransitioning) return;
                 isTransitioning = true;
 
-                var currentHfov = viewer.getHfov();
-                var animationDuration = 500;
-                var startTime = Date.now();
+                var startHfov = viewer.getHfov();
                 var startYaw = viewer.getYaw();
                 var startPitch = viewer.getPitch();
-                var startHfov = currentHfov;
-                var targetHfov = 70; // Zoom moderado hacia el hotspot
+
+                // Fase 1: Zoom hacia el hotspot (simula caminar hacia él)
+                var zoomDuration = 800; // Duración del zoom
+                var targetHfov = 30; // Zoom muy cercano (campo de visión estrecho = más cerca)
+                var startTime = Date.now();
 
                 // Calcular la ruta más corta para el yaw
                 var deltaYaw = hotspotYaw - startYaw;
                 if (deltaYaw > 180) deltaYaw -= 360;
                 if (deltaYaw < -180) deltaYaw += 360;
 
-                // Calcular orientación de llegada (mirando hacia adelante)
+                // Calcular orientación de llegada
                 var arrivalYaw = hotspotYaw + 180;
                 if (arrivalYaw > 180) arrivalYaw -= 360;
                 if (arrivalYaw < -180) arrivalYaw += 360;
 
-                // Guardar la orientación para aplicarla después
+                // Guardar orientación para la nueva escena
                 pendingOrientation = {
                     yaw: arrivalYaw,
-                    pitch: hotspotPitch * 0.3, // Reducir el pitch para vista más natural
-                    hfov: currentHfov
+                    pitch: 0,
+                    hfov: startHfov,
+                    needsZoomOut: true // Indicar que necesita animación de zoom out
                 };
 
-                function animateToHotspot() {
+                function animateZoomIn() {
                     var elapsed = Date.now() - startTime;
-                    var progress = Math.min(elapsed / animationDuration, 1);
+                    var progress = Math.min(elapsed / zoomDuration, 1);
 
-                    // Easing suave (ease-in-out)
-                    var eased = progress < 0.5
-                        ? 2 * progress * progress
-                        : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+                    // Easing: acelerar al principio, mantener velocidad al final
+                    var eased = 1 - Math.pow(1 - progress, 2);
 
-                    // Interpolar posición
+                    // Interpolar hacia el hotspot
                     var newYaw = startYaw + (deltaYaw * eased);
                     var newPitch = startPitch + ((hotspotPitch - startPitch) * eased);
                     var newHfov = startHfov + ((targetHfov - startHfov) * eased);
@@ -446,41 +446,65 @@
                     viewer.setHfov(newHfov);
 
                     if (progress < 1) {
-                        requestAnimationFrame(animateToHotspot);
+                        requestAnimationFrame(animateZoomIn);
                     } else {
-                        // Aplicar efecto de túnel/movimiento
+                        // Cuando el zoom llega al máximo, cambiar escena
+                        // Aplicar un pequeño blur/fade para suavizar
                         $transitionOverlay.addClass('active');
-                        $pannellumContainer.addClass('walking');
 
                         setTimeout(function() {
-                            // Cargar la nueva escena
                             viewer.loadScene(targetSceneId);
-                        }, 200);
+                        }, 100);
                     }
                 }
 
-                requestAnimationFrame(animateToHotspot);
+                requestAnimationFrame(animateZoomIn);
             }
 
-            // --- Aplicar orientación cuando la escena termine de cargar ---
+            // --- Aplicar orientación y zoom out cuando la escena termine de cargar ---
             viewer.on('load', function() {
                 if (pendingOrientation) {
-                    // Aplicar la orientación guardada
-                    setTimeout(function() {
-                        viewer.setYaw(pendingOrientation.yaw);
-                        viewer.setPitch(pendingOrientation.pitch);
-                        viewer.setHfov(pendingOrientation.hfov);
+                    // Aplicar orientación inmediatamente
+                    viewer.setYaw(pendingOrientation.yaw);
+                    viewer.setPitch(pendingOrientation.pitch);
 
-                        // Limpiar efectos visuales
+                    if (pendingOrientation.needsZoomOut) {
+                        // Iniciar con zoom cercano y animar hacia zoom normal
+                        var startHfov = 30; // Empezar con zoom cercano
+                        var targetHfov = pendingOrientation.hfov;
+                        var zoomOutDuration = 600;
+                        var startTime = Date.now();
+
+                        viewer.setHfov(startHfov);
                         $transitionOverlay.removeClass('active');
-                        $pannellumContainer.removeClass('walking');
+
+                        function animateZoomOut() {
+                            var elapsed = Date.now() - startTime;
+                            var progress = Math.min(elapsed / zoomOutDuration, 1);
+
+                            // Easing suave
+                            var eased = 1 - Math.pow(1 - progress, 3);
+
+                            var newHfov = startHfov + ((targetHfov - startHfov) * eased);
+                            viewer.setHfov(newHfov);
+
+                            if (progress < 1) {
+                                requestAnimationFrame(animateZoomOut);
+                            } else {
+                                isTransitioning = false;
+                                pendingOrientation = null;
+                            }
+                        }
+
+                        requestAnimationFrame(animateZoomOut);
+                    } else {
+                        viewer.setHfov(pendingOrientation.hfov);
+                        $transitionOverlay.removeClass('active');
                         isTransitioning = false;
                         pendingOrientation = null;
-                    }, 100);
+                    }
                 } else {
-                    // Primera carga o desde menú
                     $transitionOverlay.removeClass('active');
-                    $pannellumContainer.removeClass('walking');
                     isTransitioning = false;
                 }
 
@@ -498,14 +522,12 @@
                 var currentScene = pannellumConfig.scenes[currentSceneId];
                 if (!currentScene || !currentScene.hotSpots) return;
 
-                // Obtener posición del clic
                 var coords = viewer.mouseEventToCoords(e.originalEvent);
                 if (!coords) return;
 
                 var clickPitch = coords[0];
                 var clickYaw = coords[1];
 
-                // Encontrar el hotspot más cercano
                 var closestHotspot = null;
                 var minDistance = Infinity;
 
@@ -534,7 +556,6 @@
                 var sceneName = pannellumConfig.scenes[sceneId]?.title || 'Escena';
                 showSceneName(sceneName);
 
-                // Pre-cargar escenas adyacentes
                 setTimeout(function() {
                     preloadAdjacentScenes(sceneId);
                 }, 500);
@@ -555,7 +576,7 @@
                 $('#denahModal').modal('show');
             });
 
-            // Cambiar escena desde menú lateral (sin efecto de caminar)
+            // Cambiar escena desde menú lateral
             document.addEventListener('click', function(e) {
                 var link = e.target.closest ? e.target.closest('a.js-load-scene') : null;
                 if (!link) return;
@@ -569,7 +590,6 @@
 
                     setTimeout(function() {
                         viewer.loadScene(sceneId);
-                        // Cerrar el menú lateral
                         $('#menu-trigger-ctrl').removeClass('is-clicked');
                         $('body').removeClass('menu-is-open');
                     }, 200);
@@ -589,7 +609,6 @@
                 });
             }
 
-            // Pre-cargar escenas conectadas a la escena inicial
             setTimeout(function() {
                 preloadAdjacentScenes(pannellumConfig.default.firstScene);
             }, 1000);
