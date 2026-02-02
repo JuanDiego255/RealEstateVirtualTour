@@ -111,40 +111,14 @@
             transform: translateX(-50%) translateY(-10px);
         }
 
-        /* Contenedor del visor con transiciones suaves */
+        /* Contenedor del visor */
         #pannellum {
             position: relative;
         }
 
-        /* Overlay para efecto de transición - completamente opaco para ocultar el cambio */
+        /* Ocultar cualquier overlay de transición */
         .walk-transition-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: #000;
-            opacity: 0;
-            pointer-events: none;
-            z-index: 998;
-            transition: opacity 0.4s ease-out;
-        }
-
-        .walk-transition-overlay.fade-in {
-            opacity: 1;
-        }
-
-        .walk-transition-overlay.fade-out {
-            opacity: 0;
-        }
-
-        /* Efecto de movimiento hacia adelante */
-        .pnlm-render-container {
-            transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
-        }
-
-        .walking .pnlm-render-container {
-            transform: scale(1.08);
+            display: none !important;
         }
     </style>
 </head>
@@ -239,14 +213,14 @@
         // 1) Opciones JSON pre-calculadas (evita usar "|" dentro de @json)
         $jsonOptions = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE;
 
-        // 2) Default Pannellum - Configuración optimizada para efecto de "caminar"
+        // 2) Default Pannellum - Configuración para efecto de caminar con zoom
         $pannellumDefault = [
             'firstScene' => (string) $fscene->id,
             'hfov' => 100,
-            'minHfov' => 30,                      // Permitir zoom más cercano
+            'minHfov' => 10,                      // Permitir zoom muy cercano para transición
             'maxHfov' => 120,
             'autoLoad' => true,
-            'sceneFadeDuration' => 0,             // Sin fade - usamos zoom
+            'sceneFadeDuration' => 0,             // Sin fade
             'autoRotate' => -2,
             'autoRotateInactivityDelay' => 5000,
             'compass' => false,
@@ -371,8 +345,6 @@
 
             // --- Elementos de UI ---
             const $sceneNameDisplay = $('.current-scene-name');
-            const $pannellumContainer = $('#pannellum');
-            const $transitionOverlay = $('.walk-transition-overlay');
             let isTransitioning = false;
             let pendingOrientation = null;
 
@@ -398,7 +370,7 @@
             }
             window.viewer = viewer;
 
-            // --- Efecto de "caminar" con zoom continuo y overlay negro ---
+            // --- Efecto de caminar: zoom continuo hacia el hotspot ---
             function walkToScene(targetSceneId, hotspotYaw, hotspotPitch) {
                 if (isTransitioning) return;
                 isTransitioning = true;
@@ -406,8 +378,10 @@
                 var startHfov = viewer.getHfov();
                 var startYaw = viewer.getYaw();
                 var startPitch = viewer.getPitch();
-                var zoomDuration = 600;
-                var targetHfov = 40;
+
+                // Zoom muy cercano para que el cambio sea imperceptible
+                var minHfov = 15;
+                var zoomInDuration = 800;
                 var startTime = Date.now();
 
                 // Calcular la ruta más corta para el yaw
@@ -415,94 +389,81 @@
                 if (deltaYaw > 180) deltaYaw -= 360;
                 if (deltaYaw < -180) deltaYaw += 360;
 
-                // Calcular orientación de llegada (mirando hacia adelante)
+                // Calcular orientación de llegada (mirando hacia adelante desde el hotspot)
                 var arrivalYaw = hotspotYaw + 180;
                 if (arrivalYaw > 180) arrivalYaw -= 360;
                 if (arrivalYaw < -180) arrivalYaw += 360;
 
-                // Guardar datos para después del cambio
+                // Guardar datos para la nueva escena
                 pendingOrientation = {
                     yaw: arrivalYaw,
                     pitch: 0,
-                    hfov: startHfov
+                    hfov: startHfov,
+                    minHfov: minHfov
                 };
 
-                // FASE 1: Zoom hacia el hotspot mientras el overlay se oscurece gradualmente
-                function animateZoomIn() {
+                // Zoom IN continuo hacia el hotspot (simula caminar)
+                function animateWalkIn() {
                     var elapsed = Date.now() - startTime;
-                    var progress = Math.min(elapsed / zoomDuration, 1);
+                    var progress = Math.min(elapsed / zoomInDuration, 1);
 
-                    // Easing suave
-                    var eased = progress * progress;
+                    // Easing: empieza lento, acelera (como caminar)
+                    var eased = progress * progress * progress;
 
-                    // Interpolar hacia el hotspot
+                    // Interpolar posición y zoom
                     var newYaw = startYaw + (deltaYaw * eased);
                     var newPitch = startPitch + ((hotspotPitch - startPitch) * eased);
-                    var newHfov = startHfov + ((targetHfov - startHfov) * eased);
+                    var newHfov = startHfov - ((startHfov - minHfov) * eased);
 
                     viewer.setYaw(newYaw);
                     viewer.setPitch(newPitch);
                     viewer.setHfov(newHfov);
 
-                    // Oscurecer gradualmente el overlay durante el zoom
-                    $transitionOverlay.css('opacity', eased);
-
                     if (progress < 1) {
-                        requestAnimationFrame(animateZoomIn);
+                        requestAnimationFrame(animateWalkIn);
                     } else {
-                        // FASE 2: Overlay completamente negro - cambiar escena
-                        setTimeout(function() {
-                            viewer.loadScene(targetSceneId);
-                        }, 50);
+                        // Cuando el zoom está al máximo, cambiar escena inmediatamente
+                        viewer.loadScene(targetSceneId);
                     }
                 }
 
-                requestAnimationFrame(animateZoomIn);
+                requestAnimationFrame(animateWalkIn);
             }
 
-            // --- Cuando la escena carga, aplicar orientación y hacer zoom out ---
+            // --- Cuando la escena carga, continuar el zoom out ---
             viewer.on('load', function() {
                 if (pendingOrientation) {
-                    // Aplicar orientación mientras está oscuro
+                    // Aplicar orientación y mantener zoom cercano
                     viewer.setYaw(pendingOrientation.yaw);
                     viewer.setPitch(pendingOrientation.pitch);
-                    viewer.setHfov(40); // Mantener zoom cercano
+                    viewer.setHfov(pendingOrientation.minHfov);
 
-                    // Pequeña pausa antes de hacer zoom out
-                    setTimeout(function() {
-                        // FASE 3: Zoom out mientras el overlay se aclara
-                        var startHfov = 40;
-                        var targetHfov = pendingOrientation.hfov;
-                        var zoomOutDuration = 600;
-                        var startTime = Date.now();
+                    // Zoom OUT continuo (simula llegar al destino)
+                    var startHfov = pendingOrientation.minHfov;
+                    var targetHfov = pendingOrientation.hfov;
+                    var zoomOutDuration = 600;
+                    var startTime = Date.now();
 
-                        function animateZoomOut() {
-                            var elapsed = Date.now() - startTime;
-                            var progress = Math.min(elapsed / zoomOutDuration, 1);
+                    function animateWalkOut() {
+                        var elapsed = Date.now() - startTime;
+                        var progress = Math.min(elapsed / zoomOutDuration, 1);
 
-                            // Easing suave
-                            var eased = 1 - Math.pow(1 - progress, 2);
+                        // Easing: empieza rápido, desacelera (como llegar)
+                        var eased = 1 - Math.pow(1 - progress, 3);
 
-                            // Zoom out
-                            var newHfov = startHfov + ((targetHfov - startHfov) * eased);
-                            viewer.setHfov(newHfov);
+                        var newHfov = startHfov + ((targetHfov - startHfov) * eased);
+                        viewer.setHfov(newHfov);
 
-                            // Aclarar el overlay gradualmente
-                            $transitionOverlay.css('opacity', 1 - eased);
-
-                            if (progress < 1) {
-                                requestAnimationFrame(animateZoomOut);
-                            } else {
-                                $transitionOverlay.css('opacity', 0);
-                                isTransitioning = false;
-                                pendingOrientation = null;
-                            }
+                        if (progress < 1) {
+                            requestAnimationFrame(animateWalkOut);
+                        } else {
+                            isTransitioning = false;
+                            pendingOrientation = null;
                         }
+                    }
 
-                        requestAnimationFrame(animateZoomOut);
-                    }, 100);
+                    requestAnimationFrame(animateWalkOut);
                 } else {
-                    $transitionOverlay.css('opacity', 0);
                     isTransitioning = false;
                 }
 
@@ -574,7 +535,7 @@
                 $('#denahModal').modal('show');
             });
 
-            // Cambiar escena desde menú lateral (con fade suave)
+            // Cambiar escena desde menú lateral (con zoom)
             document.addEventListener('click', function(e) {
                 var link = e.target.closest ? e.target.closest('a.js-load-scene') : null;
                 if (!link) return;
@@ -585,28 +546,40 @@
                 if (sceneId && window.viewer && !isTransitioning) {
                     isTransitioning = true;
 
-                    // Cerrar el menú lateral primero
+                    // Cerrar el menú lateral
                     $('#menu-trigger-ctrl').removeClass('is-clicked');
                     $('body').removeClass('menu-is-open');
 
-                    // Fade a negro
-                    var fadeInDuration = 300;
+                    // Guardar orientación para zoom out
+                    pendingOrientation = {
+                        yaw: viewer.getYaw(),
+                        pitch: viewer.getPitch(),
+                        hfov: viewer.getHfov(),
+                        minHfov: 15
+                    };
+
+                    // Zoom in rápido, luego cambiar escena
+                    var startHfov = viewer.getHfov();
+                    var minHfov = 15;
+                    var zoomDuration = 400;
                     var startTime = Date.now();
 
-                    function fadeIn() {
+                    function zoomAndChange() {
                         var elapsed = Date.now() - startTime;
-                        var progress = Math.min(elapsed / fadeInDuration, 1);
-                        $transitionOverlay.css('opacity', progress);
+                        var progress = Math.min(elapsed / zoomDuration, 1);
+                        var eased = progress * progress;
+
+                        var newHfov = startHfov - ((startHfov - minHfov) * eased);
+                        viewer.setHfov(newHfov);
 
                         if (progress < 1) {
-                            requestAnimationFrame(fadeIn);
+                            requestAnimationFrame(zoomAndChange);
                         } else {
-                            // Cambiar escena cuando está negro
                             viewer.loadScene(sceneId);
                         }
                     }
 
-                    requestAnimationFrame(fadeIn);
+                    requestAnimationFrame(zoomAndChange);
                 }
             }, true);
 
