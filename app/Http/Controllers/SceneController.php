@@ -67,7 +67,7 @@ class SceneController extends Controller
                             <a href="#" class="text-danger" data-toggle="modal" 
                         data-target="#deleteModal' . $row->id . '"><i class="ti-trash"></i></a>';
                 })
-                ->escapeColumns([])
+                ->rawColumns(['status', 'action'])
                 ->make(true);
         }
     }
