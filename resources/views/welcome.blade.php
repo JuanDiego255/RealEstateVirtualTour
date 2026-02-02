@@ -248,7 +248,7 @@
                     'pitch' => (float) $hotspot->pitch,
                     'yaw' => (float) $hotspot->yaw,
                     'cssClass' => 'circular-hotspot',
-                    'type' => $hotspot->type,
+                    'type' => 'custom',  // Usar tipo custom para control total
                     'createTooltipFunc' => 'hotspotTooltipFunction',
                     'createTooltipArgs' => [
                         'imageUrl' => isset($hotspot->image)
@@ -259,9 +259,14 @@
                     ],
                     'text' => $hotspot->info,
                 ];
-                // Solo agregar sceneId si es tipo 'scene' (enlace) - esto permite navegar
+                // Para hotspots de tipo scene, agregar handler personalizado
                 if ($hotspot->type === 'scene' && $hotspot->targetScene) {
-                    $hs['sceneId'] = (string) $hotspot->targetScene;
+                    $hs['clickHandlerFunc'] = 'onHotspotClick';
+                    $hs['clickHandlerArgs'] = [
+                        'targetSceneId' => (string) $hotspot->targetScene,
+                        'yaw' => (float) $hotspot->yaw,
+                        'pitch' => (float) $hotspot->pitch
+                    ];
                 }
                 $hotspotsForScene[] = $hs;
             }
@@ -320,6 +325,14 @@
             }
             window.hotspotTooltipFunction = hotspotTooltipFunction;
 
+            // --- Handler de clic en hotspot (global) ---
+            function onHotspotClick(e, args) {
+                if (window.walkToScene && args) {
+                    window.walkToScene(args.targetSceneId, args.yaw, args.pitch);
+                }
+            }
+            window.onHotspotClick = onHotspotClick;
+
             // --- Config generada en Blade (sin operadores "|")
             const pannellumConfig = {
                 default: @json($pannellumDefault, $jsonOptions),
@@ -330,14 +343,22 @@
             Object.keys(pannellumConfig.scenes || {}).forEach(sceneId => {
                 const hs = pannellumConfig.scenes[sceneId].hotSpots || [];
                 hs.forEach(h => {
+                    // Reconectar createTooltipFunc
                     if (typeof h.createTooltipFunc === 'string') {
                         const fn = window[h.createTooltipFunc];
                         if (typeof fn === 'function') {
                             h.createTooltipFunc = fn;
                         } else {
-                            console.warn('[VT] Tooltip function not found:', h.createTooltipFunc,
-                                'in scene', sceneId);
                             delete h.createTooltipFunc;
+                        }
+                    }
+                    // Reconectar clickHandlerFunc
+                    if (typeof h.clickHandlerFunc === 'string') {
+                        const fn = window[h.clickHandlerFunc];
+                        if (typeof fn === 'function') {
+                            h.clickHandlerFunc = fn;
+                        } else {
+                            delete h.clickHandlerFunc;
                         }
                     }
                 });
@@ -371,7 +392,7 @@
             window.viewer = viewer;
 
             // --- Efecto de caminar: zoom continuo hacia el hotspot ---
-            function walkToScene(targetSceneId, hotspotYaw, hotspotPitch) {
+            window.walkToScene = function(targetSceneId, hotspotYaw, hotspotPitch) {
                 if (isTransitioning) return;
                 isTransitioning = true;
 
@@ -470,43 +491,6 @@
                 var currentScene = viewer.getScene();
                 if (currentScene && pannellumConfig.scenes[currentScene]) {
                     showSceneName(pannellumConfig.scenes[currentScene].title);
-                }
-            });
-
-            // --- Interceptar clics en hotspots de tipo scene ---
-            $pannellumContainer.on('click', '.pnlm-hotspot', function(e) {
-                if (isTransitioning) return;
-
-                var currentSceneId = viewer.getScene();
-                var currentScene = pannellumConfig.scenes[currentSceneId];
-                if (!currentScene || !currentScene.hotSpots) return;
-
-                var coords = viewer.mouseEventToCoords(e.originalEvent);
-                if (!coords) return;
-
-                var clickPitch = coords[0];
-                var clickYaw = coords[1];
-
-                var closestHotspot = null;
-                var minDistance = Infinity;
-
-                currentScene.hotSpots.forEach(function(hs) {
-                    if (hs.type === 'scene' && hs.sceneId) {
-                        var distance = Math.sqrt(
-                            Math.pow(hs.pitch - clickPitch, 2) +
-                            Math.pow(hs.yaw - clickYaw, 2)
-                        );
-                        if (distance < minDistance) {
-                            minDistance = distance;
-                            closestHotspot = hs;
-                        }
-                    }
-                });
-
-                if (closestHotspot && closestHotspot.sceneId && minDistance < 50) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    walkToScene(closestHotspot.sceneId, closestHotspot.yaw, closestHotspot.pitch);
                 }
             });
 
