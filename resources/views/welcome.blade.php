@@ -275,7 +275,7 @@
                 'title' => $scene->title,
                 'hfov' => (float) $scene->hfov,
                 'pitch' => (float) $scene->pitch,
-                'yaw' => (float) $scene->yaw + 270,
+                'yaw' => (float) $scene->yaw,
                 'type' => $scene->type,
                 'panorama' => isset($scene->image)
                     ? route('file', $scene->image)
@@ -411,7 +411,7 @@
                 if (deltaYaw < -180) deltaYaw += 360;
 
                 // Calcular orientación de llegada (mirando hacia adelante desde el hotspot)
-                var arrivalYaw = hotspotYaw + 180;
+                var arrivalYaw = hotspotYaw;
                 if (arrivalYaw > 180) arrivalYaw -= 360;
                 if (arrivalYaw < -180) arrivalYaw += 360;
 
