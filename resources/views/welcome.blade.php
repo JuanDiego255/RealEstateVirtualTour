@@ -116,25 +116,26 @@
             position: relative;
         }
 
-        /* Overlay para efecto de transición suave */
+        /* Overlay para efecto de transición - completamente opaco para ocultar el cambio */
         .walk-transition-overlay {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: radial-gradient(ellipse at center,
-                rgba(0,0,0,0) 0%,
-                rgba(0,0,0,0.4) 50%,
-                rgba(0,0,0,0.8) 100%);
+            background: #000;
             opacity: 0;
             pointer-events: none;
             z-index: 998;
-            transition: opacity 0.3s ease-out;
+            transition: opacity 0.4s ease-out;
         }
 
-        .walk-transition-overlay.active {
+        .walk-transition-overlay.fade-in {
             opacity: 1;
+        }
+
+        .walk-transition-overlay.fade-out {
+            opacity: 0;
         }
 
         /* Efecto de movimiento hacia adelante */
@@ -397,7 +398,7 @@
             }
             window.viewer = viewer;
 
-            // --- Efecto de "caminar" con zoom continuo hacia el hotspot ---
+            // --- Efecto de "caminar" con zoom continuo y overlay negro ---
             function walkToScene(targetSceneId, hotspotYaw, hotspotPitch) {
                 if (isTransitioning) return;
                 isTransitioning = true;
@@ -405,10 +406,8 @@
                 var startHfov = viewer.getHfov();
                 var startYaw = viewer.getYaw();
                 var startPitch = viewer.getPitch();
-
-                // Fase 1: Zoom hacia el hotspot (simula caminar hacia él)
-                var zoomDuration = 800; // Duración del zoom
-                var targetHfov = 30; // Zoom muy cercano (campo de visión estrecho = más cerca)
+                var zoomDuration = 600;
+                var targetHfov = 40;
                 var startTime = Date.now();
 
                 // Calcular la ruta más corta para el yaw
@@ -416,25 +415,25 @@
                 if (deltaYaw > 180) deltaYaw -= 360;
                 if (deltaYaw < -180) deltaYaw += 360;
 
-                // Calcular orientación de llegada
+                // Calcular orientación de llegada (mirando hacia adelante)
                 var arrivalYaw = hotspotYaw + 180;
                 if (arrivalYaw > 180) arrivalYaw -= 360;
                 if (arrivalYaw < -180) arrivalYaw += 360;
 
-                // Guardar orientación para la nueva escena
+                // Guardar datos para después del cambio
                 pendingOrientation = {
                     yaw: arrivalYaw,
                     pitch: 0,
-                    hfov: startHfov,
-                    needsZoomOut: true // Indicar que necesita animación de zoom out
+                    hfov: startHfov
                 };
 
+                // FASE 1: Zoom hacia el hotspot mientras el overlay se oscurece gradualmente
                 function animateZoomIn() {
                     var elapsed = Date.now() - startTime;
                     var progress = Math.min(elapsed / zoomDuration, 1);
 
-                    // Easing: acelerar al principio, mantener velocidad al final
-                    var eased = 1 - Math.pow(1 - progress, 2);
+                    // Easing suave
+                    var eased = progress * progress;
 
                     // Interpolar hacia el hotspot
                     var newYaw = startYaw + (deltaYaw * eased);
@@ -445,66 +444,65 @@
                     viewer.setPitch(newPitch);
                     viewer.setHfov(newHfov);
 
+                    // Oscurecer gradualmente el overlay durante el zoom
+                    $transitionOverlay.css('opacity', eased);
+
                     if (progress < 1) {
                         requestAnimationFrame(animateZoomIn);
                     } else {
-                        // Cuando el zoom llega al máximo, cambiar escena
-                        // Aplicar un pequeño blur/fade para suavizar
-                        $transitionOverlay.addClass('active');
-
+                        // FASE 2: Overlay completamente negro - cambiar escena
                         setTimeout(function() {
                             viewer.loadScene(targetSceneId);
-                        }, 100);
+                        }, 50);
                     }
                 }
 
                 requestAnimationFrame(animateZoomIn);
             }
 
-            // --- Aplicar orientación y zoom out cuando la escena termine de cargar ---
+            // --- Cuando la escena carga, aplicar orientación y hacer zoom out ---
             viewer.on('load', function() {
                 if (pendingOrientation) {
-                    // Aplicar orientación inmediatamente
+                    // Aplicar orientación mientras está oscuro
                     viewer.setYaw(pendingOrientation.yaw);
                     viewer.setPitch(pendingOrientation.pitch);
+                    viewer.setHfov(40); // Mantener zoom cercano
 
-                    if (pendingOrientation.needsZoomOut) {
-                        // Iniciar con zoom cercano y animar hacia zoom normal
-                        var startHfov = 30; // Empezar con zoom cercano
+                    // Pequeña pausa antes de hacer zoom out
+                    setTimeout(function() {
+                        // FASE 3: Zoom out mientras el overlay se aclara
+                        var startHfov = 40;
                         var targetHfov = pendingOrientation.hfov;
                         var zoomOutDuration = 600;
                         var startTime = Date.now();
-
-                        viewer.setHfov(startHfov);
-                        $transitionOverlay.removeClass('active');
 
                         function animateZoomOut() {
                             var elapsed = Date.now() - startTime;
                             var progress = Math.min(elapsed / zoomOutDuration, 1);
 
                             // Easing suave
-                            var eased = 1 - Math.pow(1 - progress, 3);
+                            var eased = 1 - Math.pow(1 - progress, 2);
 
+                            // Zoom out
                             var newHfov = startHfov + ((targetHfov - startHfov) * eased);
                             viewer.setHfov(newHfov);
+
+                            // Aclarar el overlay gradualmente
+                            $transitionOverlay.css('opacity', 1 - eased);
 
                             if (progress < 1) {
                                 requestAnimationFrame(animateZoomOut);
                             } else {
+                                $transitionOverlay.css('opacity', 0);
                                 isTransitioning = false;
                                 pendingOrientation = null;
                             }
                         }
 
                         requestAnimationFrame(animateZoomOut);
-                    } else {
-                        viewer.setHfov(pendingOrientation.hfov);
-                        $transitionOverlay.removeClass('active');
-                        isTransitioning = false;
-                        pendingOrientation = null;
-                    }
+                    }, 100);
                 } else {
-                    $transitionOverlay.removeClass('active');
+                    $transitionOverlay.css('opacity', 0);
                     isTransitioning = false;
                 }
 
@@ -576,7 +574,7 @@
                 $('#denahModal').modal('show');
             });
 
-            // Cambiar escena desde menú lateral
+            // Cambiar escena desde menú lateral (con fade suave)
             document.addEventListener('click', function(e) {
                 var link = e.target.closest ? e.target.closest('a.js-load-scene') : null;
                 if (!link) return;
@@ -586,13 +584,29 @@
 
                 if (sceneId && window.viewer && !isTransitioning) {
                     isTransitioning = true;
-                    $transitionOverlay.addClass('active');
 
-                    setTimeout(function() {
-                        viewer.loadScene(sceneId);
-                        $('#menu-trigger-ctrl').removeClass('is-clicked');
-                        $('body').removeClass('menu-is-open');
-                    }, 200);
+                    // Cerrar el menú lateral primero
+                    $('#menu-trigger-ctrl').removeClass('is-clicked');
+                    $('body').removeClass('menu-is-open');
+
+                    // Fade a negro
+                    var fadeInDuration = 300;
+                    var startTime = Date.now();
+
+                    function fadeIn() {
+                        var elapsed = Date.now() - startTime;
+                        var progress = Math.min(elapsed / fadeInDuration, 1);
+                        $transitionOverlay.css('opacity', progress);
+
+                        if (progress < 1) {
+                            requestAnimationFrame(fadeIn);
+                        } else {
+                            // Cambiar escena cuando está negro
+                            viewer.loadScene(sceneId);
+                        }
+                    }
+
+                    requestAnimationFrame(fadeIn);
                 }
             }, true);
 
