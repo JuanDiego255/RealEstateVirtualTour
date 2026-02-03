@@ -442,13 +442,44 @@
             $('#pannellum').append($polygonSvg);
 
             // Función para obtener coordenadas de pantalla desde yaw/pitch
-            function getPolygonScreenCoords(yaw, pitch) {
+            // Implementación manual ya que pitchAndYawToScreen no existe en Pannellum 2.5.6
+            function getPolygonScreenCoords(targetYaw, targetPitch) {
                 if (!viewer) return null;
                 try {
-                    var coords = viewer.pitchAndYawToScreen(pitch, yaw);
-                    if (coords && coords.x !== false && coords.y !== false) {
-                        return { x: coords.x, y: coords.y };
+                    var vYaw = viewer.getYaw();
+                    var vPitch = viewer.getPitch();
+                    var hfov = viewer.getHfov();
+
+                    var container = document.getElementById('pannellum');
+                    var width = container.clientWidth;
+                    var height = container.clientHeight;
+
+                    var yawRad = (targetYaw - vYaw) * Math.PI / 180;
+                    var pitchRad = targetPitch * Math.PI / 180;
+                    var vPitchRad = vPitch * Math.PI / 180;
+                    var hfovRad = hfov * Math.PI / 180;
+
+                    var x = Math.cos(pitchRad) * Math.sin(yawRad);
+                    var y = Math.sin(pitchRad);
+                    var z = Math.cos(pitchRad) * Math.cos(yawRad);
+
+                    var cosPitch = Math.cos(vPitchRad);
+                    var sinPitch = Math.sin(vPitchRad);
+                    var x2 = x;
+                    var y2 = y * cosPitch - z * sinPitch;
+                    var z2 = y * sinPitch + z * cosPitch;
+
+                    if (z2 <= 0.01) return null;
+
+                    var focalLength = width / (2 * Math.tan(hfovRad / 2));
+                    var screenX = (x2 / z2) * focalLength + width / 2;
+                    var screenY = -(y2 / z2) * focalLength + height / 2;
+
+                    if (screenX < -50 || screenX > width + 50 || screenY < -50 || screenY > height + 50) {
+                        return null;
                     }
+
+                    return { x: screenX, y: screenY };
                 } catch(e) {}
                 return null;
             }
