@@ -24,6 +24,7 @@
                             <ul class="nav" role="tablist" id="TabMenu">
                                 <li><a class="active" data-toggle="tab" href="#scene" role="tab">Escena</a></li>
                                 <li><a data-toggle="tab" href="#hotspot" role="tab">Hotspot</a></li>
+                                <li><a data-toggle="tab" href="#polygon" role="tab">Marcadores</a></li>
                             </ul>
                         </div>
                     </div>
@@ -38,6 +39,11 @@
                             <!-- Hotspot Tab -->
                             <div class="tab-pane fade" id="hotspot" role="tabpanel">
                                 @include('admin.dataHotspot')
+                            </div>
+
+                            <!-- Polygon Tab -->
+                            <div class="tab-pane fade" id="polygon" role="tabpanel">
+                                @include('admin.dataPolygon')
                             </div>
                         </div>
                     </div>

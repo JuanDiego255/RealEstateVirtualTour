@@ -127,7 +127,13 @@ class SceneController extends Controller
             ->select('hotspots.*', 'sc2.title as targetSceneName')
             ->get();
 
-        return view('welcome', compact('fscene', 'scenes', 'hotspots'));
+        // Obtener polígonos de todas las escenas de esta propiedad
+        $sceneIds = $scenes->pluck('id')->toArray();
+        $polygons = DB::table('scene_polygons')
+            ->whereIn('scene_id', $sceneIds)
+            ->get();
+
+        return view('welcome', compact('fscene', 'scenes', 'hotspots', 'polygons'));
     }
 
     public function allProperties()

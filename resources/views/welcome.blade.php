@@ -217,7 +217,7 @@
         $pannellumDefault = [
             'firstScene' => (string) $fscene->id,
             'hfov' => 100,
-            'minHfov' => 10,                      // Permitir zoom muy cercano para transición
+            'minHfov' => 2,                       // Permitir zoom extremo para transición de caminar
             'maxHfov' => 120,
             'autoLoad' => true,
             'sceneFadeDuration' => 0,             // Sin fade
@@ -283,6 +283,26 @@
                 'hotSpots' => $hotspotsForScene,
             ];
         }
+
+        // 4) Polígonos por escena
+        $polygonsConfig = [];
+        if (isset($polygons)) {
+            foreach ($polygons as $polygon) {
+                $sceneId = (string) $polygon->scene_id;
+                if (!isset($polygonsConfig[$sceneId])) {
+                    $polygonsConfig[$sceneId] = [];
+                }
+                $polygonsConfig[$sceneId][] = [
+                    'id' => $polygon->id,
+                    'name' => $polygon->name,
+                    'fillColor' => $polygon->fill_color,
+                    'fillOpacity' => (float) $polygon->fill_opacity,
+                    'strokeColor' => $polygon->stroke_color,
+                    'strokeWidth' => (int) $polygon->stroke_width,
+                    'points' => json_decode($polygon->points, true),
+                ];
+            }
+        }
     @endphp
 
     <script>
@@ -339,6 +359,9 @@
                 scenes: @json($scenesConfig, $jsonOptions)
             };
 
+            // --- Polígonos por escena ---
+            const scenePolygons = @json($polygonsConfig ?? [], $jsonOptions);
+
             // --- Reconectar strings -> funciones reales (evita TypeError) ---
             Object.keys(pannellumConfig.scenes || {}).forEach(sceneId => {
                 const hs = pannellumConfig.scenes[sceneId].hotSpots || [];
@@ -391,39 +414,131 @@
             }
             window.viewer = viewer;
 
-            // --- Efecto de caminar: zoom continuo hacia el hotspot ---
+            // --- Overlay para transición suave ---
+            var $transitionOverlay = $('<div id="transition-overlay"></div>').css({
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                backgroundColor: '#000',
+                opacity: 0,
+                pointerEvents: 'none',
+                zIndex: 1000,
+                transition: 'none'
+            });
+            $('#pannellum').append($transitionOverlay);
+
+            // --- SVG Overlay para polígonos de terreno ---
+            var $polygonSvg = $('<svg id="polygon-overlay"></svg>').css({
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                pointerEvents: 'none',
+                zIndex: 500
+            });
+            $('#pannellum').append($polygonSvg);
+
+            // Función para obtener coordenadas de pantalla desde yaw/pitch
+            function getPolygonScreenCoords(yaw, pitch) {
+                if (!viewer) return null;
+                try {
+                    var coords = viewer.pitchAndYawToScreen(pitch, yaw);
+                    if (coords && coords.x !== false && coords.y !== false) {
+                        return { x: coords.x, y: coords.y };
+                    }
+                } catch(e) {}
+                return null;
+            }
+
+            // Función para renderizar polígonos de la escena actual
+            function renderScenePolygons() {
+                var svg = $polygonSvg[0];
+                // Limpiar SVG
+                while (svg.firstChild) {
+                    svg.removeChild(svg.firstChild);
+                }
+
+                var currentSceneId = viewer.getScene();
+                var polygons = scenePolygons[currentSceneId] || [];
+
+                polygons.forEach(function(poly) {
+                    if (!poly.points || poly.points.length < 3) return;
+
+                    var pathData = '';
+                    var validPoints = 0;
+
+                    poly.points.forEach(function(p, i) {
+                        var screenCoords = getPolygonScreenCoords(p.yaw, p.pitch);
+                        if (screenCoords) {
+                            if (validPoints === 0) {
+                                pathData += 'M ' + screenCoords.x + ' ' + screenCoords.y + ' ';
+                            } else {
+                                pathData += 'L ' + screenCoords.x + ' ' + screenCoords.y + ' ';
+                            }
+                            validPoints++;
+                        }
+                    });
+
+                    if (validPoints >= 3) {
+                        pathData += 'Z';
+
+                        var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                        path.setAttribute('d', pathData);
+                        path.setAttribute('fill', poly.fillColor);
+                        path.setAttribute('fill-opacity', poly.fillOpacity);
+                        path.setAttribute('stroke', poly.strokeColor);
+                        path.setAttribute('stroke-width', poly.strokeWidth);
+                        path.setAttribute('data-polygon-id', poly.id);
+                        path.setAttribute('data-polygon-name', poly.name);
+                        svg.appendChild(path);
+                    }
+                });
+            }
+
+            // Actualizar polígonos periódicamente mientras se navega
+            var polygonUpdateInterval = null;
+            function startPolygonUpdates() {
+                if (polygonUpdateInterval) return;
+                polygonUpdateInterval = setInterval(function() {
+                    if (!isTransitioning) {
+                        renderScenePolygons();
+                    }
+                }, 50);
+            }
+
+            // Iniciar actualizaciones de polígonos
+            startPolygonUpdates();
+
+            // --- Efecto de caminar: zoom continuo sin girar ---
             window.walkToScene = function(targetSceneId, hotspotYaw, hotspotPitch) {
                 if (isTransitioning) return;
                 isTransitioning = true;
 
                 var startHfov = viewer.getHfov();
-                var startYaw = viewer.getYaw();
-                var startPitch = viewer.getPitch();
 
-                // Zoom muy cercano para que el cambio sea imperceptible
-                var minHfov = 15;
-                var zoomInDuration = 800;
+                // Zoom muy profundo para simular caminar hasta casi llegar a la escena
+                var minHfov = 2;
+                var zoomInDuration = 1200;
+                var fadeDuration = 300;
                 var startTime = Date.now();
 
-                // Calcular la ruta más corta para el yaw
-                var deltaYaw = hotspotYaw - startYaw;
-                if (deltaYaw > 180) deltaYaw -= 360;
-                if (deltaYaw < -180) deltaYaw += 360;
+                // Obtener el yaw/pitch configurado de la escena destino
+                var targetScene = pannellumConfig.scenes[targetSceneId];
+                var targetYaw = targetScene ? targetScene.yaw : 0;
+                var targetPitch = targetScene ? targetScene.pitch : 0;
 
-                // Calcular orientación de llegada (mirando hacia adelante desde el hotspot)
-                var arrivalYaw = hotspotYaw;
-                if (arrivalYaw > 180) arrivalYaw -= 360;
-                if (arrivalYaw < -180) arrivalYaw += 360;
-
-                // Guardar datos para la nueva escena
+                // Guardar datos para la nueva escena (usar yaw/pitch de la escena, no del hotspot)
                 pendingOrientation = {
-                    yaw: arrivalYaw,
-                    pitch: 0,
+                    yaw: targetYaw,
+                    pitch: targetPitch,
                     hfov: startHfov,
                     minHfov: minHfov
                 };
 
-                // Zoom IN continuo hacia el hotspot (simula caminar)
+                // Zoom IN continuo (sin girar, solo acercarse)
                 function animateWalkIn() {
                     var elapsed = Date.now() - startTime;
                     var progress = Math.min(elapsed / zoomInDuration, 1);
@@ -431,20 +546,23 @@
                     // Easing: empieza lento, acelera (como caminar)
                     var eased = progress * progress * progress;
 
-                    // Interpolar posición y zoom
-                    var newYaw = startYaw + (deltaYaw * eased);
-                    var newPitch = startPitch + ((hotspotPitch - startPitch) * eased);
+                    // Solo interpolar el zoom, no la rotación
                     var newHfov = startHfov - ((startHfov - minHfov) * eased);
-
-                    viewer.setYaw(newYaw);
-                    viewer.setPitch(newPitch);
                     viewer.setHfov(newHfov);
+
+                    // Fade in del overlay en el último 25% del zoom
+                    if (progress > 0.75) {
+                        var fadeProgress = (progress - 0.75) / 0.25;
+                        $transitionOverlay.css('opacity', fadeProgress * 0.9);
+                    }
 
                     if (progress < 1) {
                         requestAnimationFrame(animateWalkIn);
                     } else {
-                        // Cuando el zoom está al máximo, cambiar escena inmediatamente
-                        viewer.loadScene(targetSceneId);
+                        // Pequeña pausa antes de cambiar escena
+                        setTimeout(function() {
+                            viewer.loadScene(targetSceneId);
+                        }, 100);
                     }
                 }
 
@@ -462,7 +580,7 @@
                     // Zoom OUT continuo (simula llegar al destino)
                     var startHfov = pendingOrientation.minHfov;
                     var targetHfov = pendingOrientation.hfov;
-                    var zoomOutDuration = 600;
+                    var zoomOutDuration = 800;
                     var startTime = Date.now();
 
                     function animateWalkOut() {
@@ -475,17 +593,27 @@
                         var newHfov = startHfov + ((targetHfov - startHfov) * eased);
                         viewer.setHfov(newHfov);
 
+                        // Fade out del overlay en el primer 40% del zoom out
+                        if (progress < 0.4) {
+                            var fadeProgress = 1 - (progress / 0.4);
+                            $transitionOverlay.css('opacity', fadeProgress * 0.9);
+                        } else {
+                            $transitionOverlay.css('opacity', 0);
+                        }
+
                         if (progress < 1) {
                             requestAnimationFrame(animateWalkOut);
                         } else {
                             isTransitioning = false;
                             pendingOrientation = null;
+                            $transitionOverlay.css('opacity', 0);
                         }
                     }
 
                     requestAnimationFrame(animateWalkOut);
                 } else {
                     isTransitioning = false;
+                    $transitionOverlay.css('opacity', 0);
                 }
 
                 var currentScene = viewer.getScene();
