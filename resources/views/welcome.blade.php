@@ -217,7 +217,7 @@
         $pannellumDefault = [
             'firstScene' => (string) $fscene->id,
             'hfov' => 100,
-            'minHfov' => 10,                      // Permitir zoom muy cercano para transición
+            'minHfov' => 5,                       // Permitir zoom muy profundo para transición de caminar
             'maxHfov' => 120,
             'autoLoad' => true,
             'sceneFadeDuration' => 0,             // Sin fade
@@ -391,39 +391,32 @@
             }
             window.viewer = viewer;
 
-            // --- Efecto de caminar: zoom continuo hacia el hotspot ---
+            // --- Efecto de caminar: zoom continuo sin girar ---
             window.walkToScene = function(targetSceneId, hotspotYaw, hotspotPitch) {
                 if (isTransitioning) return;
                 isTransitioning = true;
 
                 var startHfov = viewer.getHfov();
-                var startYaw = viewer.getYaw();
-                var startPitch = viewer.getPitch();
 
-                // Zoom muy cercano para que el cambio sea imperceptible
-                var minHfov = 15;
-                var zoomInDuration = 800;
+                // Zoom muy profundo para simular caminar hasta casi llegar
+                var minHfov = 5;
+                var zoomInDuration = 1000;
                 var startTime = Date.now();
 
-                // Calcular la ruta más corta para el yaw
-                var deltaYaw = hotspotYaw - startYaw;
-                if (deltaYaw > 180) deltaYaw -= 360;
-                if (deltaYaw < -180) deltaYaw += 360;
+                // Obtener el yaw/pitch configurado de la escena destino
+                var targetScene = pannellumConfig.scenes[targetSceneId];
+                var targetYaw = targetScene ? targetScene.yaw : 0;
+                var targetPitch = targetScene ? targetScene.pitch : 0;
 
-                // Calcular orientación de llegada (mirando hacia adelante desde el hotspot)
-                var arrivalYaw = hotspotYaw;
-                if (arrivalYaw > 180) arrivalYaw -= 360;
-                if (arrivalYaw < -180) arrivalYaw += 360;
-
-                // Guardar datos para la nueva escena
+                // Guardar datos para la nueva escena (usar yaw/pitch de la escena, no del hotspot)
                 pendingOrientation = {
-                    yaw: arrivalYaw,
-                    pitch: 0,
+                    yaw: targetYaw,
+                    pitch: targetPitch,
                     hfov: startHfov,
                     minHfov: minHfov
                 };
 
-                // Zoom IN continuo hacia el hotspot (simula caminar)
+                // Zoom IN continuo (sin girar, solo acercarse)
                 function animateWalkIn() {
                     var elapsed = Date.now() - startTime;
                     var progress = Math.min(elapsed / zoomInDuration, 1);
@@ -431,13 +424,8 @@
                     // Easing: empieza lento, acelera (como caminar)
                     var eased = progress * progress * progress;
 
-                    // Interpolar posición y zoom
-                    var newYaw = startYaw + (deltaYaw * eased);
-                    var newPitch = startPitch + ((hotspotPitch - startPitch) * eased);
+                    // Solo interpolar el zoom, no la rotación
                     var newHfov = startHfov - ((startHfov - minHfov) * eased);
-
-                    viewer.setYaw(newYaw);
-                    viewer.setPitch(newPitch);
                     viewer.setHfov(newHfov);
 
                     if (progress < 1) {
