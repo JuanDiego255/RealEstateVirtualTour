@@ -217,7 +217,7 @@
         $pannellumDefault = [
             'firstScene' => (string) $fscene->id,
             'hfov' => 100,
-            'minHfov' => 5,                       // Permitir zoom muy profundo para transición de caminar
+            'minHfov' => 2,                       // Permitir zoom extremo para transición de caminar
             'maxHfov' => 120,
             'autoLoad' => true,
             'sceneFadeDuration' => 0,             // Sin fade
@@ -391,6 +391,21 @@
             }
             window.viewer = viewer;
 
+            // --- Overlay para transición suave ---
+            var $transitionOverlay = $('<div id="transition-overlay"></div>').css({
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                backgroundColor: '#000',
+                opacity: 0,
+                pointerEvents: 'none',
+                zIndex: 1000,
+                transition: 'none'
+            });
+            $('#pannellum').append($transitionOverlay);
+
             // --- Efecto de caminar: zoom continuo sin girar ---
             window.walkToScene = function(targetSceneId, hotspotYaw, hotspotPitch) {
                 if (isTransitioning) return;
@@ -398,9 +413,10 @@
 
                 var startHfov = viewer.getHfov();
 
-                // Zoom muy profundo para simular caminar hasta casi llegar
-                var minHfov = 5;
-                var zoomInDuration = 1000;
+                // Zoom muy profundo para simular caminar hasta casi llegar a la escena
+                var minHfov = 2;
+                var zoomInDuration = 1200;
+                var fadeDuration = 300;
                 var startTime = Date.now();
 
                 // Obtener el yaw/pitch configurado de la escena destino
@@ -428,11 +444,19 @@
                     var newHfov = startHfov - ((startHfov - minHfov) * eased);
                     viewer.setHfov(newHfov);
 
+                    // Fade in del overlay en el último 25% del zoom
+                    if (progress > 0.75) {
+                        var fadeProgress = (progress - 0.75) / 0.25;
+                        $transitionOverlay.css('opacity', fadeProgress * 0.9);
+                    }
+
                     if (progress < 1) {
                         requestAnimationFrame(animateWalkIn);
                     } else {
-                        // Cuando el zoom está al máximo, cambiar escena inmediatamente
-                        viewer.loadScene(targetSceneId);
+                        // Pequeña pausa antes de cambiar escena
+                        setTimeout(function() {
+                            viewer.loadScene(targetSceneId);
+                        }, 100);
                     }
                 }
 
@@ -450,7 +474,7 @@
                     // Zoom OUT continuo (simula llegar al destino)
                     var startHfov = pendingOrientation.minHfov;
                     var targetHfov = pendingOrientation.hfov;
-                    var zoomOutDuration = 600;
+                    var zoomOutDuration = 800;
                     var startTime = Date.now();
 
                     function animateWalkOut() {
@@ -463,17 +487,27 @@
                         var newHfov = startHfov + ((targetHfov - startHfov) * eased);
                         viewer.setHfov(newHfov);
 
+                        // Fade out del overlay en el primer 40% del zoom out
+                        if (progress < 0.4) {
+                            var fadeProgress = 1 - (progress / 0.4);
+                            $transitionOverlay.css('opacity', fadeProgress * 0.9);
+                        } else {
+                            $transitionOverlay.css('opacity', 0);
+                        }
+
                         if (progress < 1) {
                             requestAnimationFrame(animateWalkOut);
                         } else {
                             isTransitioning = false;
                             pendingOrientation = null;
+                            $transitionOverlay.css('opacity', 0);
                         }
                     }
 
                     requestAnimationFrame(animateWalkOut);
                 } else {
                     isTransitioning = false;
+                    $transitionOverlay.css('opacity', 0);
                 }
 
                 var currentScene = viewer.getScene();
