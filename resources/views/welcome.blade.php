@@ -283,6 +283,26 @@
                 'hotSpots' => $hotspotsForScene,
             ];
         }
+
+        // 4) Polígonos por escena
+        $polygonsConfig = [];
+        if (isset($polygons)) {
+            foreach ($polygons as $polygon) {
+                $sceneId = (string) $polygon->scene_id;
+                if (!isset($polygonsConfig[$sceneId])) {
+                    $polygonsConfig[$sceneId] = [];
+                }
+                $polygonsConfig[$sceneId][] = [
+                    'id' => $polygon->id,
+                    'name' => $polygon->name,
+                    'fillColor' => $polygon->fill_color,
+                    'fillOpacity' => (float) $polygon->fill_opacity,
+                    'strokeColor' => $polygon->stroke_color,
+                    'strokeWidth' => (int) $polygon->stroke_width,
+                    'points' => json_decode($polygon->points, true),
+                ];
+            }
+        }
     @endphp
 
     <script>
@@ -338,6 +358,9 @@
                 default: @json($pannellumDefault, $jsonOptions),
                 scenes: @json($scenesConfig, $jsonOptions)
             };
+
+            // --- Polígonos por escena ---
+            const scenePolygons = @json($polygonsConfig ?? [], $jsonOptions);
 
             // --- Reconectar strings -> funciones reales (evita TypeError) ---
             Object.keys(pannellumConfig.scenes || {}).forEach(sceneId => {
@@ -405,6 +428,89 @@
                 transition: 'none'
             });
             $('#pannellum').append($transitionOverlay);
+
+            // --- SVG Overlay para polígonos de terreno ---
+            var $polygonSvg = $('<svg id="polygon-overlay"></svg>').css({
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                pointerEvents: 'none',
+                zIndex: 500
+            });
+            $('#pannellum').append($polygonSvg);
+
+            // Función para obtener coordenadas de pantalla desde yaw/pitch
+            function getPolygonScreenCoords(yaw, pitch) {
+                if (!viewer) return null;
+                try {
+                    var coords = viewer.pitchAndYawToScreen(pitch, yaw);
+                    if (coords && coords.x !== false && coords.y !== false) {
+                        return { x: coords.x, y: coords.y };
+                    }
+                } catch(e) {}
+                return null;
+            }
+
+            // Función para renderizar polígonos de la escena actual
+            function renderScenePolygons() {
+                var svg = $polygonSvg[0];
+                // Limpiar SVG
+                while (svg.firstChild) {
+                    svg.removeChild(svg.firstChild);
+                }
+
+                var currentSceneId = viewer.getScene();
+                var polygons = scenePolygons[currentSceneId] || [];
+
+                polygons.forEach(function(poly) {
+                    if (!poly.points || poly.points.length < 3) return;
+
+                    var pathData = '';
+                    var validPoints = 0;
+
+                    poly.points.forEach(function(p, i) {
+                        var screenCoords = getPolygonScreenCoords(p.yaw, p.pitch);
+                        if (screenCoords) {
+                            if (validPoints === 0) {
+                                pathData += 'M ' + screenCoords.x + ' ' + screenCoords.y + ' ';
+                            } else {
+                                pathData += 'L ' + screenCoords.x + ' ' + screenCoords.y + ' ';
+                            }
+                            validPoints++;
+                        }
+                    });
+
+                    if (validPoints >= 3) {
+                        pathData += 'Z';
+
+                        var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                        path.setAttribute('d', pathData);
+                        path.setAttribute('fill', poly.fillColor);
+                        path.setAttribute('fill-opacity', poly.fillOpacity);
+                        path.setAttribute('stroke', poly.strokeColor);
+                        path.setAttribute('stroke-width', poly.strokeWidth);
+                        path.setAttribute('data-polygon-id', poly.id);
+                        path.setAttribute('data-polygon-name', poly.name);
+                        svg.appendChild(path);
+                    }
+                });
+            }
+
+            // Actualizar polígonos periódicamente mientras se navega
+            var polygonUpdateInterval = null;
+            function startPolygonUpdates() {
+                if (polygonUpdateInterval) return;
+                polygonUpdateInterval = setInterval(function() {
+                    if (!isTransitioning) {
+                        renderScenePolygons();
+                    }
+                }, 50);
+            }
+
+            // Iniciar actualizaciones de polígonos
+            startPolygonUpdates();
 
             // --- Efecto de caminar: zoom continuo sin girar ---
             window.walkToScene = function(targetSceneId, hotspotYaw, hotspotPitch) {

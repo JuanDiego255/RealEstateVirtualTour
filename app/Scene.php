@@ -11,9 +11,14 @@ class Scene extends Model
     protected $fillable = [
         'title', 'type', 'hfov', 'yaw', 'pitch', 'image', 'status','property_id','image_ref'
     ];
-    
+
     public function hotspots()
     {
         return $this->hasMany('App\Hotspot', 'sourceScene');
+    }
+
+    public function polygons()
+    {
+        return $this->hasMany('App\ScenePolygon', 'scene_id');
     }
 }

@@ -41,6 +41,13 @@ Route::group(['middleware' => 'auth'], function () {
     Route::delete('/delUser/{id}', 'UserController@destroy')->name('delProfil');
     Route::delete('/delScene/{id}', 'SceneController@destroy')->name('delScene');
     Route::delete('/delHotspot/{id}', 'HotspotController@destroy')->name('delHotspot');
+
+    // Rutas para polígonos de escenas (marcadores de terreno)
+    Route::get('/scene/{sceneId}/polygons', 'ScenePolygonController@index')->name('scenePolygons');
+    Route::post('/polygon', 'ScenePolygonController@store')->name('addPolygon');
+    Route::put('/polygon/{id}', 'ScenePolygonController@update')->name('editPolygon');
+    Route::delete('/polygon/{id}', 'ScenePolygonController@destroy')->name('delPolygon');
+
     //Rutas para redes sociales seccion
     Route::post('property/store', [PropertiesController::class, 'store'])->name('addProperty');
     Route::put('/property/update/{id}', [PropertiesController::class, 'update']);
