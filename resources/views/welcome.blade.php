@@ -140,11 +140,44 @@
             cursor: grabbing;
         }
 
-        #drone-video {
+        #drone-canvas {
             width: 100%;
             height: 100%;
             object-fit: cover;
-            pointer-events: none;
+            display: block;
+        }
+
+        #video-extract-progress {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 8;
+            display: none;
+        }
+
+        #video-extract-bar {
+            width: 220px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        #video-extract-fill {
+            height: 100%;
+            width: 0%;
+            background: #007bff;
+            border-radius: 3px;
+            transition: width 0.15s linear;
+        }
+
+        #video-extract-text {
+            color: #fff;
+            font-size: 13px;
+            font-weight: 500;
         }
 
         #video-scrub-indicator {
@@ -328,7 +361,12 @@
 
         {{-- Video Dron Orbital Overlay --}}
         <div id="video-viewer-overlay">
-            <video id="drone-video" muted playsinline preload="auto"></video>
+            <video id="drone-video" muted playsinline preload="auto" style="display:none;"></video>
+            <canvas id="drone-canvas"></canvas>
+            <div id="video-extract-progress">
+                <div id="video-extract-bar"><div id="video-extract-fill"></div></div>
+                <div id="video-extract-text">Preparando vista interactiva: 0%</div>
+            </div>
             <div id="video-drag-hint"><i class="fa fa-arrows-h"></i> Arrastra para girar alrededor de la propiedad</div>
             <div id="video-scrub-indicator"></div>
             <div id="video-hotspots-bar"></div>
@@ -833,58 +871,198 @@
             // Iniciar actualizaciones de polígonos
             startPolygonUpdates();
 
-            // ===== VIDEO DRON ORBITAL - Drag-to-scrub (optimizado) =====
+            // ===== VIDEO DRON ORBITAL - Canvas Frame Cache (rendimiento instantáneo) =====
             var videoOverlay = document.getElementById('video-viewer-overlay');
             var droneVideo = document.getElementById('drone-video');
+            var droneCanvas = document.getElementById('drone-canvas');
+            var droneCtx = droneCanvas.getContext('2d');
             var videoProgressFill = document.getElementById('video-progress-fill');
             var videoScrubIndicator = document.getElementById('video-scrub-indicator');
             var videoHotspotsBar = document.getElementById('video-hotspots-bar');
             var videoDragHint = document.getElementById('video-drag-hint');
+            var videoExtractProgress = document.getElementById('video-extract-progress');
+            var videoExtractFill = document.getElementById('video-extract-fill');
+            var videoExtractText = document.getElementById('video-extract-text');
             var currentVideoSceneId = null;
             var videoReady = false;
+
+            // Frame cache: almacena frames extraídos del video como ImageBitmap/Image
+            var frameCache = {
+                frames: [],          // Array de Image objects
+                times: [],           // Tiempo correspondiente a cada frame
+                totalFrames: 0,
+                duration: 0,
+                currentIndex: 0,     // Frame actualmente mostrado
+                extracting: false,
+                aborted: false,
+                canvasWidth: 0,
+                canvasHeight: 0
+            };
+
             var videoDragState = {
                 isDragging: false,
                 startX: 0,
-                startTime: 0,
-                sensitivity: 0.04, // seconds per pixel of drag
-                pendingSeek: null  // throttle seeks via rAF
+                startNorm: 0,        // posición normalizada (0-1) al inicio del drag
+                sensitivity: 0.0015  // cambio normalizado por pixel de drag
             };
-
-            // Función de seek optimizada: usa fastSeek cuando está disponible
-            function seekVideo(time) {
-                if (!droneVideo.duration || droneVideo.duration === 0) return;
-                // Wrap around para orbitar continuamente
-                while (time < 0) time += droneVideo.duration;
-                while (time >= droneVideo.duration) time -= droneVideo.duration;
-                time = Math.max(0, Math.min(droneVideo.duration, time));
-
-                if (typeof droneVideo.fastSeek === 'function') {
-                    droneVideo.fastSeek(time);
-                } else {
-                    droneVideo.currentTime = time;
-                }
-            }
-
-            // Throttle de seeks: solo aplica un seek por frame de animación
-            function scheduleSeek(time) {
-                videoDragState.pendingSeek = time;
-                if (!videoDragState._rafId) {
-                    videoDragState._rafId = requestAnimationFrame(function applySeek() {
-                        videoDragState._rafId = null;
-                        if (videoDragState.pendingSeek !== null) {
-                            seekVideo(videoDragState.pendingSeek);
-                            // Actualizar indicador
-                            var pct = droneVideo.duration ? Math.round((droneVideo.currentTime / droneVideo.duration) * 100) : 0;
-                            videoScrubIndicator.textContent = pct + '%';
-                            videoDragState.pendingSeek = null;
-                        }
-                    });
-                }
-            }
 
             function isVideoScene(sceneId) {
                 var sc = pannellumConfig.scenes[sceneId];
                 return sc && sc.type === 'video' && sc.video;
+            }
+
+            // Mostrar un frame del cache en el canvas (INSTANTÁNEO)
+            function showFrameAt(normalizedTime) {
+                if (frameCache.frames.length === 0) return;
+
+                // Wrap around 0-1
+                while (normalizedTime < 0) normalizedTime += 1;
+                while (normalizedTime >= 1) normalizedTime -= 1;
+
+                var idx = Math.round(normalizedTime * (frameCache.frames.length - 1));
+                idx = Math.max(0, Math.min(frameCache.frames.length - 1, idx));
+
+                if (idx === frameCache.currentIndex && droneCanvas.width > 0) return; // ya mostrado
+
+                var frame = frameCache.frames[idx];
+                if (!frame) return;
+
+                frameCache.currentIndex = idx;
+
+                // Dibujar frame en el canvas
+                droneCtx.drawImage(frame, 0, 0, droneCanvas.width, droneCanvas.height);
+
+                // Actualizar progreso visual
+                var pct = Math.round(normalizedTime * 100);
+                videoProgressFill.style.width = pct + '%';
+
+                // Actualizar hotspots posicionados
+                updateVideoPositionedHotspots();
+            }
+
+            // Obtener el tiempo actual del video basado en el frame mostrado
+            function getCurrentVideoTime() {
+                if (frameCache.frames.length === 0 || frameCache.duration === 0) return 0;
+                return (frameCache.currentIndex / (frameCache.frames.length - 1)) * frameCache.duration;
+            }
+
+            // Obtener posición normalizada (0-1) actual
+            function getCurrentNormalized() {
+                if (frameCache.frames.length <= 1) return 0;
+                return frameCache.currentIndex / (frameCache.frames.length - 1);
+            }
+
+            // Extraer frames del video al cache
+            function extractFrames(videoEl, callback) {
+                frameCache.extracting = true;
+                frameCache.aborted = false;
+                frameCache.frames = [];
+                frameCache.times = [];
+                frameCache.currentIndex = 0;
+
+                var duration = videoEl.duration;
+                frameCache.duration = duration;
+
+                // Calcular número de frames: ~4fps, máximo 200, mínimo 30
+                var targetFps = 4;
+                var totalFrames = Math.min(200, Math.max(30, Math.round(duration * targetFps)));
+                frameCache.totalFrames = totalFrames;
+
+                // Canvas offscreen para extracción (resolución reducida para memoria)
+                var maxW = 960;
+                var vw = videoEl.videoWidth || 1920;
+                var vh = videoEl.videoHeight || 1080;
+                var scale = Math.min(1, maxW / vw);
+                var ew = Math.round(vw * scale);
+                var eh = Math.round(vh * scale);
+
+                var offscreen = document.createElement('canvas');
+                offscreen.width = ew;
+                offscreen.height = eh;
+                var offCtx = offscreen.getContext('2d');
+
+                // Configurar canvas de display
+                droneCanvas.width = ew;
+                droneCanvas.height = eh;
+                frameCache.canvasWidth = ew;
+                frameCache.canvasHeight = eh;
+
+                var extracted = 0;
+                var interval = duration / totalFrames;
+
+                // Mostrar progreso
+                videoExtractProgress.style.display = 'block';
+
+                function extractNext() {
+                    if (frameCache.aborted) {
+                        videoExtractProgress.style.display = 'none';
+                        frameCache.extracting = false;
+                        return;
+                    }
+
+                    if (extracted >= totalFrames) {
+                        // Extracción completa
+                        videoExtractProgress.style.display = 'none';
+                        frameCache.extracting = false;
+                        if (callback) callback();
+                        return;
+                    }
+
+                    var targetTime = extracted * interval;
+                    videoEl.currentTime = targetTime;
+                }
+
+                videoEl.onseeked = function() {
+                    if (frameCache.aborted) {
+                        videoExtractProgress.style.display = 'none';
+                        frameCache.extracting = false;
+                        return;
+                    }
+
+                    // Dibujar frame actual en canvas offscreen
+                    offCtx.drawImage(videoEl, 0, 0, ew, eh);
+
+                    // Crear Image desde data URL (JPEG comprimido)
+                    var dataUrl = offscreen.toDataURL('image/jpeg', 0.7);
+                    var img = new Image();
+                    img.onload = function() {
+                        frameCache.frames[extracted] = img;
+                        frameCache.times[extracted] = videoEl.currentTime;
+
+                        // Mostrar el primer frame inmediatamente en el canvas
+                        if (extracted === 0) {
+                            droneCtx.drawImage(img, 0, 0, droneCanvas.width, droneCanvas.height);
+                        }
+
+                        extracted++;
+
+                        // Actualizar progreso
+                        var pct = Math.round((extracted / totalFrames) * 100);
+                        videoExtractFill.style.width = pct + '%';
+                        videoExtractText.textContent = 'Preparando vista interactiva: ' + pct + '%';
+
+                        // Permitir interacción con frames ya extraídos (desde el 15%)
+                        if (extracted >= Math.ceil(totalFrames * 0.15) && !videoReady) {
+                            videoReady = true;
+                            videoDragHint.innerHTML = '<i class="fa fa-arrows-h"></i> Arrastra para girar alrededor de la propiedad';
+                            setTimeout(function() {
+                                videoDragHint.classList.remove('visible');
+                            }, 3000);
+                        }
+
+                        // Siguiente frame
+                        extractNext();
+                    };
+                    img.onerror = function() {
+                        // Si falla un frame, saltarlo
+                        extracted++;
+                        extractNext();
+                    };
+                    img.src = dataUrl;
+                };
+
+                // Iniciar extracción
+                extractNext();
             }
 
             function showVideoViewer(sceneId) {
@@ -894,56 +1072,61 @@
                 currentVideoSceneId = sceneId;
                 videoReady = false;
 
-                // Mostrar overlay con indicador de carga
+                // Mostrar overlay
                 videoOverlay.style.display = 'block';
                 videoDragHint.textContent = 'Cargando video...';
                 videoDragHint.classList.add('visible');
 
-                // Cargar video
+                // Limpiar canvas
+                droneCanvas.width = droneCanvas.width; // reset
+
+                // Cargar video (oculto, solo para extracción)
                 droneVideo.src = sc.video;
                 droneVideo.load();
 
-                // Cuando el video tiene suficientes datos para hacer seek
-                droneVideo.oncanplay = function() {
-                    if (videoReady) return;
-                    videoReady = true;
-                    droneVideo.currentTime = 0;
-
-                    // Mostrar hint de arrastre
-                    videoDragHint.innerHTML = '<i class="fa fa-arrows-h"></i> Arrastra para girar alrededor de la propiedad';
-                    setTimeout(function() {
-                        videoDragHint.classList.remove('visible');
-                    }, 3000);
-                };
-
-                // Eventos de buffering
-                droneVideo.onwaiting = function() {
-                    videoDragHint.textContent = 'Cargando...';
-                    videoDragHint.classList.add('visible');
-                };
-                droneVideo.oncanplaythrough = function() {
-                    if (videoDragHint.textContent === 'Cargando...') {
-                        videoDragHint.classList.remove('visible');
-                    }
+                // Cuando hay suficiente data, iniciar extracción de frames
+                droneVideo.onloadeddata = function() {
+                    videoDragHint.textContent = 'Preparando vista...';
+                    extractFrames(droneVideo, function() {
+                        // Extracción completa
+                        console.log('[Video] Frame cache listo:', frameCache.frames.length, 'frames');
+                        // Liberar video de memoria
+                        droneVideo.onseeked = null;
+                        droneVideo.onloadeddata = null;
+                        droneVideo.pause();
+                        droneVideo.removeAttribute('src');
+                        droneVideo.load();
+                    });
                 };
 
                 // Generar hotspots posicionados en el video
                 buildVideoHotspots(sceneId);
-
-                // Actualizar barra de progreso
-                updateVideoProgress();
             }
 
             function hideVideoViewer() {
+                // Abortar extracción en curso
+                frameCache.aborted = true;
+                frameCache.extracting = false;
+
                 videoOverlay.style.display = 'none';
+                videoExtractProgress.style.display = 'none';
                 currentVideoSceneId = null;
                 videoReady = false;
-                droneVideo.oncanplay = null;
-                droneVideo.onwaiting = null;
-                droneVideo.oncanplaythrough = null;
+
+                // Limpiar video
+                droneVideo.onseeked = null;
+                droneVideo.onloadeddata = null;
                 droneVideo.pause();
                 droneVideo.removeAttribute('src');
                 droneVideo.load();
+
+                // Limpiar frame cache (liberar memoria)
+                frameCache.frames = [];
+                frameCache.times = [];
+                frameCache.totalFrames = 0;
+                frameCache.duration = 0;
+                frameCache.currentIndex = 0;
+
                 videoHotspotsBar.innerHTML = '';
                 // Remover hotspots posicionados
                 var posHotspots = videoOverlay.querySelectorAll('.video-pos-hotspot');
@@ -1021,8 +1204,8 @@
             // Actualizar visibilidad de hotspots posicionados según tiempo del video
             function updateVideoPositionedHotspots() {
                 if (!currentVideoSceneId) return;
-                var currentTime = droneVideo.currentTime;
-                var duration = droneVideo.duration || 0;
+                var currentTime = getCurrentVideoTime();
+                var duration = frameCache.duration || 0;
                 var posHotspots = videoOverlay.querySelectorAll('.video-pos-hotspot');
 
                 posHotspots.forEach(function(el) {
@@ -1069,24 +1252,13 @@
                 }, 500);
             }
 
-            function updateVideoProgress() {
-                if (!currentVideoSceneId) return;
-                if (droneVideo.duration && droneVideo.duration > 0) {
-                    var pct = (droneVideo.currentTime / droneVideo.duration) * 100;
-                    videoProgressFill.style.width = pct + '%';
-                }
-                // Actualizar hotspots posicionados
-                updateVideoPositionedHotspots();
-                requestAnimationFrame(updateVideoProgress);
-            }
-
-            // --- Drag-to-scrub: Mouse events (optimizado con throttle) ---
+            // --- Drag-to-scrub: Mouse events (usa frame cache = INSTANTÁNEO) ---
             videoOverlay.addEventListener('mousedown', function(e) {
                 if (e.target.closest('.video-hotspot-btn, .video-pos-hotspot')) return;
                 if (!videoReady) return;
                 videoDragState.isDragging = true;
                 videoDragState.startX = e.clientX;
-                videoDragState.startTime = droneVideo.currentTime;
+                videoDragState.startNorm = getCurrentNormalized();
                 videoOverlay.classList.add('active-dragging');
                 videoScrubIndicator.classList.add('visible');
                 e.preventDefault();
@@ -1095,8 +1267,10 @@
             document.addEventListener('mousemove', function(e) {
                 if (!videoDragState.isDragging) return;
                 var deltaX = e.clientX - videoDragState.startX;
-                var newTime = videoDragState.startTime + deltaX * videoDragState.sensitivity;
-                scheduleSeek(newTime);
+                var newNorm = videoDragState.startNorm + deltaX * videoDragState.sensitivity;
+                showFrameAt(newNorm);
+                var pct = Math.round(((newNorm % 1) + 1) % 1 * 100);
+                videoScrubIndicator.textContent = pct + '%';
             });
 
             document.addEventListener('mouseup', function() {
@@ -1109,14 +1283,14 @@
                 }
             });
 
-            // --- Drag-to-scrub: Touch events (mobile, optimizado) ---
+            // --- Drag-to-scrub: Touch events (mobile, usa frame cache) ---
             videoOverlay.addEventListener('touchstart', function(e) {
                 if (e.target.closest('.video-hotspot-btn, .video-pos-hotspot')) return;
                 if (!videoReady) return;
                 var touch = e.touches[0];
                 videoDragState.isDragging = true;
                 videoDragState.startX = touch.clientX;
-                videoDragState.startTime = droneVideo.currentTime;
+                videoDragState.startNorm = getCurrentNormalized();
                 videoOverlay.classList.add('active-dragging');
                 videoScrubIndicator.classList.add('visible');
             }, { passive: true });
@@ -1125,8 +1299,10 @@
                 if (!videoDragState.isDragging) return;
                 var touch = e.touches[0];
                 var deltaX = touch.clientX - videoDragState.startX;
-                var newTime = videoDragState.startTime + deltaX * videoDragState.sensitivity;
-                scheduleSeek(newTime);
+                var newNorm = videoDragState.startNorm + deltaX * videoDragState.sensitivity;
+                showFrameAt(newNorm);
+                var pct = Math.round(((newNorm % 1) + 1) % 1 * 100);
+                videoScrubIndicator.textContent = pct + '%';
             }, { passive: true });
 
             document.addEventListener('touchend', function() {
