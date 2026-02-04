@@ -156,32 +156,50 @@ class SceneController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
+        $isVideo = $request->type === 'video';
+
+        $rules = [
             'title' => 'required|max:255',
             'type' => 'required',
-            'hfov' => 'required|numeric|min:-360|max:360',
-            'yaw' => 'required|numeric|min:-360|max:360',
-            'pitch' => 'required|numeric|min:-360|max:360',
-            'image' => 'required|image',
             'image_ref' => 'required|image'
-        ]);
+        ];
+
+        if ($isVideo) {
+            $rules['video'] = 'required|file|mimetypes:video/mp4,video/webm,video/ogg,video/quicktime';
+        } else {
+            $rules['hfov'] = 'required|numeric|min:-360|max:360';
+            $rules['yaw'] = 'required|numeric|min:-360|max:360';
+            $rules['pitch'] = 'required|numeric|min:-360|max:360';
+            $rules['image'] = 'required|image';
+        }
+
+        $request->validate($rules);
+
+        $image = null;
+        $video = null;
+        $imageRef = null;
 
         if ($request->hasFile('image')) {
             $image = $request->file('image')->store('uploads', 'public');
         }
+        if ($request->hasFile('video')) {
+            $video = $request->file('video')->store('uploads', 'public');
+        }
         if ($request->hasFile('image_ref')) {
             $imageRef = $request->file('image_ref')->store('uploads', 'public');
         }
+
         $property_id = $request['property_id'];
 
         Scene::create([
             'title' => $request['title'],
             'property_id' => $property_id,
             'type' => $request['type'],
-            'hfov' => $request['hfov'],
-            'yaw' => $request['yaw'],
-            'pitch' => $request['pitch'],
-            'image' => $image,
+            'hfov' => $isVideo ? 100 : $request['hfov'],
+            'yaw' => $isVideo ? 0 : $request['yaw'],
+            'pitch' => $isVideo ? 0 : $request['pitch'],
+            'image' => $image ?? $imageRef,
+            'video' => $video,
             'image_ref' => $imageRef
         ]);
 
@@ -203,41 +221,57 @@ class SceneController extends Controller
     public function update(Request $request, $id)
     {
         $scene = Scene::find($id);
+        $isVideo = $request->type === 'video';
 
-        $request->validate([
+        $rules = [
             'title' => 'required|max:255',
             'type' => 'required',
-            'hfov' => 'required|numeric|min:-360|max:360',
-            'yaw' => 'required|numeric|min:-360|max:360',
-            'pitch' => 'required|numeric|min:-360|max:360',
-            'image' => 'nullable|image',
             'image_ref' => 'nullable|image'
-        ]);
+        ];
+
+        if ($isVideo) {
+            $rules['video'] = 'nullable|file|mimetypes:video/mp4,video/webm,video/ogg,video/quicktime';
+        } else {
+            $rules['hfov'] = 'required|numeric|min:-360|max:360';
+            $rules['yaw'] = 'required|numeric|min:-360|max:360';
+            $rules['pitch'] = 'required|numeric|min:-360|max:360';
+            $rules['image'] = 'nullable|image';
+        }
+
+        $request->validate($rules);
         $property_id = $request['property_id'];
 
-        // Mantener imágenes existentes si no se suben nuevas
+        // Mantener archivos existentes si no se suben nuevos
         $image = $scene->image;
         $imageRef = $scene->image_ref;
+        $video = $scene->video;
 
         if ($request->hasFile('image')) {
-            Storage::delete('public/' . $scene->image);
+            if ($scene->image) Storage::delete('public/' . $scene->image);
             $image = $request->file('image')->store('uploads', 'public');
         }
         if ($request->hasFile('image_ref')) {
-            Storage::delete('public/' . $scene->image_ref);
+            if ($scene->image_ref) Storage::delete('public/' . $scene->image_ref);
             $imageRef = $request->file('image_ref')->store('uploads', 'public');
         }
+        if ($request->hasFile('video')) {
+            if ($scene->video) Storage::delete('public/' . $scene->video);
+            $video = $request->file('video')->store('uploads', 'public');
+        }
 
-        Scene::where('id', $id)->update([
+        $updateData = [
             'title' => $request['title'],
             'type' => $request['type'],
             'property_id' => $property_id,
-            'hfov' => $request['hfov'],
-            'yaw' => $request['yaw'],
-            'pitch' => $request['pitch'],
-            'image' => $image,
+            'hfov' => $isVideo ? 100 : $request['hfov'],
+            'yaw' => $isVideo ? 0 : $request['yaw'],
+            'pitch' => $isVideo ? 0 : $request['pitch'],
+            'image' => $isVideo ? ($image ?? $imageRef) : $image,
+            'video' => $isVideo ? $video : null,
             'image_ref' => $imageRef
-        ]);
+        ];
+
+        Scene::where('id', $id)->update($updateData);
 
         return redirect()->route('config', $property_id)->with('success', 'Escena editada con éxito');
     }

@@ -120,6 +120,117 @@
         .walk-transition-overlay {
             display: none !important;
         }
+
+        /* Video Dron Orbital Viewer */
+        #video-viewer-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 5;
+            background: #000;
+            display: none;
+            cursor: grab;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        #video-viewer-overlay.active-dragging {
+            cursor: grabbing;
+        }
+
+        #drone-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            pointer-events: none;
+        }
+
+        #video-scrub-indicator {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.6);
+            color: #fff;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+
+        #video-scrub-indicator.visible {
+            opacity: 1;
+        }
+
+        #video-progress-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        #video-progress-fill {
+            height: 100%;
+            background: #007bff;
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+
+        #video-hotspots-bar {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 6;
+        }
+
+        .video-hotspot-btn {
+            background: rgba(46, 204, 113, 0.9);
+            border: 2px solid #27ae60;
+            color: #fff;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: transform 0.2s ease, background 0.2s ease;
+            pointer-events: auto;
+        }
+
+        .video-hotspot-btn:hover {
+            transform: scale(1.05);
+            background: rgba(39, 174, 96, 1);
+        }
+
+        #video-drag-hint {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        #video-drag-hint.visible {
+            opacity: 1;
+        }
     </style>
 </head>
 
@@ -181,6 +292,17 @@
             </div>
             <div class="ctrl" id="menu-trigger-ctrl-map" title="Mapa">
                 <i class="fa fa-map"></i>
+            </div>
+        </div>
+
+        {{-- Video Dron Orbital Overlay --}}
+        <div id="video-viewer-overlay">
+            <video id="drone-video" muted playsinline preload="auto"></video>
+            <div id="video-drag-hint"><i class="fa fa-arrows-h"></i> Arrastra para girar alrededor de la propiedad</div>
+            <div id="video-scrub-indicator"></div>
+            <div id="video-hotspots-bar"></div>
+            <div id="video-progress-bar">
+                <div id="video-progress-fill"></div>
             </div>
         </div>
     </div>
@@ -280,6 +402,7 @@
                 'panorama' => isset($scene->image)
                     ? route('file', $scene->image)
                     : url('images/producto-sin-imagen.PNG'),
+                'video' => $scene->video ? route('file', $scene->video) : null,
                 'hotSpots' => $hotspotsForScene,
             ];
         }
@@ -676,6 +799,190 @@
             // Iniciar actualizaciones de polígonos
             startPolygonUpdates();
 
+            // ===== VIDEO DRON ORBITAL - Drag-to-scrub =====
+            var videoOverlay = document.getElementById('video-viewer-overlay');
+            var droneVideo = document.getElementById('drone-video');
+            var videoProgressFill = document.getElementById('video-progress-fill');
+            var videoScrubIndicator = document.getElementById('video-scrub-indicator');
+            var videoHotspotsBar = document.getElementById('video-hotspots-bar');
+            var videoDragHint = document.getElementById('video-drag-hint');
+            var currentVideoSceneId = null;
+            var videoDragState = {
+                isDragging: false,
+                startX: 0,
+                startTime: 0,
+                sensitivity: 0.04 // seconds per pixel of drag
+            };
+
+            function isVideoScene(sceneId) {
+                var sc = pannellumConfig.scenes[sceneId];
+                return sc && sc.type === 'video' && sc.video;
+            }
+
+            function showVideoViewer(sceneId) {
+                var sc = pannellumConfig.scenes[sceneId];
+                if (!sc || !sc.video) return;
+
+                currentVideoSceneId = sceneId;
+                droneVideo.src = sc.video;
+                droneVideo.currentTime = 0;
+
+                // Mostrar overlay
+                videoOverlay.style.display = 'block';
+
+                // Mostrar hint de arrastre
+                videoDragHint.classList.add('visible');
+                setTimeout(function() {
+                    videoDragHint.classList.remove('visible');
+                }, 3000);
+
+                // Generar botones de hotspot para navegar a otras escenas
+                buildVideoHotspots(sceneId);
+
+                // Actualizar barra de progreso
+                updateVideoProgress();
+            }
+
+            function hideVideoViewer() {
+                videoOverlay.style.display = 'none';
+                currentVideoSceneId = null;
+                droneVideo.pause();
+                droneVideo.src = '';
+                videoHotspotsBar.innerHTML = '';
+            }
+
+            function buildVideoHotspots(sceneId) {
+                videoHotspotsBar.innerHTML = '';
+                var sc = pannellumConfig.scenes[sceneId];
+                if (!sc || !sc.hotSpots) return;
+
+                sc.hotSpots.forEach(function(hs) {
+                    if (!hs.clickHandlerArgs || !hs.clickHandlerArgs.targetSceneId) return;
+                    var targetId = hs.clickHandlerArgs.targetSceneId;
+                    var targetScene = pannellumConfig.scenes[targetId];
+                    if (!targetScene) return;
+
+                    var btn = document.createElement('button');
+                    btn.className = 'video-hotspot-btn';
+                    btn.textContent = hs.createTooltipArgs ? hs.createTooltipArgs.displayText : targetScene.title;
+                    btn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        navigateFromVideo(targetId);
+                    });
+                    videoHotspotsBar.appendChild(btn);
+                });
+            }
+
+            function navigateFromVideo(targetSceneId) {
+                if (isTransitioning) return;
+                isTransitioning = true;
+
+                // Fade out video
+                $transitionOverlay.css({ opacity: 0, transition: 'opacity 0.4s ease' });
+                setTimeout(function() {
+                    $transitionOverlay.css('opacity', 1);
+                }, 10);
+
+                setTimeout(function() {
+                    hideVideoViewer();
+                    viewer.loadScene(targetSceneId);
+                    $transitionOverlay.css({ transition: 'opacity 0.6s ease' });
+                    setTimeout(function() {
+                        $transitionOverlay.css('opacity', 0);
+                        setTimeout(function() {
+                            $transitionOverlay.css('transition', 'none');
+                            isTransitioning = false;
+                        }, 600);
+                    }, 100);
+                }, 500);
+            }
+
+            function updateVideoProgress() {
+                if (!currentVideoSceneId) return;
+                if (droneVideo.duration && droneVideo.duration > 0) {
+                    var pct = (droneVideo.currentTime / droneVideo.duration) * 100;
+                    videoProgressFill.style.width = pct + '%';
+                }
+                requestAnimationFrame(updateVideoProgress);
+            }
+
+            // --- Drag-to-scrub: Mouse events ---
+            videoOverlay.addEventListener('mousedown', function(e) {
+                if (e.target.classList.contains('video-hotspot-btn')) return;
+                videoDragState.isDragging = true;
+                videoDragState.startX = e.clientX;
+                videoDragState.startTime = droneVideo.currentTime;
+                videoOverlay.classList.add('active-dragging');
+                videoScrubIndicator.classList.add('visible');
+                e.preventDefault();
+            });
+
+            document.addEventListener('mousemove', function(e) {
+                if (!videoDragState.isDragging) return;
+                var deltaX = e.clientX - videoDragState.startX;
+                var newTime = videoDragState.startTime + deltaX * videoDragState.sensitivity;
+
+                // Wrap around para que sea continuo (como orbitar)
+                if (droneVideo.duration && droneVideo.duration > 0) {
+                    while (newTime < 0) newTime += droneVideo.duration;
+                    while (newTime >= droneVideo.duration) newTime -= droneVideo.duration;
+                }
+                newTime = Math.max(0, Math.min(droneVideo.duration || 0, newTime));
+                droneVideo.currentTime = newTime;
+
+                // Actualizar indicador
+                var pct = droneVideo.duration ? Math.round((newTime / droneVideo.duration) * 100) : 0;
+                videoScrubIndicator.textContent = pct + '%';
+            });
+
+            document.addEventListener('mouseup', function() {
+                if (videoDragState.isDragging) {
+                    videoDragState.isDragging = false;
+                    videoOverlay.classList.remove('active-dragging');
+                    setTimeout(function() {
+                        videoScrubIndicator.classList.remove('visible');
+                    }, 800);
+                }
+            });
+
+            // --- Drag-to-scrub: Touch events (mobile) ---
+            videoOverlay.addEventListener('touchstart', function(e) {
+                if (e.target.classList.contains('video-hotspot-btn')) return;
+                var touch = e.touches[0];
+                videoDragState.isDragging = true;
+                videoDragState.startX = touch.clientX;
+                videoDragState.startTime = droneVideo.currentTime;
+                videoOverlay.classList.add('active-dragging');
+                videoScrubIndicator.classList.add('visible');
+            }, { passive: true });
+
+            document.addEventListener('touchmove', function(e) {
+                if (!videoDragState.isDragging) return;
+                var touch = e.touches[0];
+                var deltaX = touch.clientX - videoDragState.startX;
+                var newTime = videoDragState.startTime + deltaX * videoDragState.sensitivity;
+
+                if (droneVideo.duration && droneVideo.duration > 0) {
+                    while (newTime < 0) newTime += droneVideo.duration;
+                    while (newTime >= droneVideo.duration) newTime -= droneVideo.duration;
+                }
+                newTime = Math.max(0, Math.min(droneVideo.duration || 0, newTime));
+                droneVideo.currentTime = newTime;
+
+                var pct = droneVideo.duration ? Math.round((newTime / droneVideo.duration) * 100) : 0;
+                videoScrubIndicator.textContent = pct + '%';
+            }, { passive: true });
+
+            document.addEventListener('touchend', function() {
+                if (videoDragState.isDragging) {
+                    videoDragState.isDragging = false;
+                    videoOverlay.classList.remove('active-dragging');
+                    setTimeout(function() {
+                        videoScrubIndicator.classList.remove('visible');
+                    }, 800);
+                }
+            });
+
             // --- Efecto de caminar: zoom continuo sin girar ---
             window.walkToScene = function(targetSceneId, hotspotYaw, hotspotPitch) {
                 if (isTransitioning) return;
@@ -735,6 +1042,29 @@
 
             // --- Cuando la escena carga, continuar el zoom out ---
             viewer.on('load', function() {
+                var loadedSceneId = String(viewer.getScene());
+
+                // Verificar si es una escena de video
+                if (isVideoScene(loadedSceneId)) {
+                    console.log('[Video] Escena de video cargada:', loadedSceneId);
+                    showVideoViewer(loadedSceneId);
+                    // Mostrar nombre de escena
+                    var sceneName = pannellumConfig.scenes[loadedSceneId]?.title || 'Escena';
+                    showSceneName(sceneName);
+                    // Completar transición pendiente
+                    if (pendingOrientation) {
+                        $transitionOverlay.css('opacity', 0);
+                        isTransitioning = false;
+                        pendingOrientation = null;
+                    }
+                    return;
+                }
+
+                // Escena 360 normal - ocultar video si estaba activo
+                if (currentVideoSceneId) {
+                    hideVideoViewer();
+                }
+
                 // Recrear SVG de polígonos dentro del contenedor Pannellum
                 ensurePolygonSvg();
                 console.log('[Polygons] Escena cargada:', viewer.getScene(), '- Polígonos disponibles:', (scenePolygons[String(viewer.getScene())] || []).length);
@@ -808,6 +1138,10 @@
                     var firstSceneId = pannellumConfig.default.firstScene;
                     if (pannellumConfig.scenes[firstSceneId]) {
                         showSceneName(pannellumConfig.scenes[firstSceneId].title);
+                        // Si la primera escena es video, mostrar el visor de video
+                        if (isVideoScene(firstSceneId)) {
+                            showVideoViewer(firstSceneId);
+                        }
                     }
                 });
             });
@@ -830,6 +1164,28 @@
                     // Cerrar el menú lateral
                     $('#menu-trigger-ctrl').removeClass('is-clicked');
                     $('body').removeClass('menu-is-open');
+
+                    // Si estamos en un video scene, navegar con fade en vez de zoom
+                    if (currentVideoSceneId) {
+                        $transitionOverlay.css({ opacity: 0, transition: 'opacity 0.4s ease' });
+                        setTimeout(function() {
+                            $transitionOverlay.css('opacity', 1);
+                        }, 10);
+                        setTimeout(function() {
+                            hideVideoViewer();
+                            pendingOrientation = null;
+                            viewer.loadScene(sceneId);
+                            $transitionOverlay.css({ transition: 'opacity 0.6s ease' });
+                            setTimeout(function() {
+                                $transitionOverlay.css('opacity', 0);
+                                setTimeout(function() {
+                                    $transitionOverlay.css('transition', 'none');
+                                    isTransitioning = false;
+                                }, 600);
+                            }, 100);
+                        }, 500);
+                        return;
+                    }
 
                     // Guardar orientación para zoom out
                     pendingOrientation = {

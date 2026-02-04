@@ -23,10 +23,7 @@
                             @endforeach
                         @endif
                         <input type="hidden" name="property_id" value="{{ $id }}">
-                        <div class="form-group col-md-6">
-                            <input class="form-control form-control-lg input-rounded mb-4" type="hidden" name="type"
-                                value="equirectangular">
-                        </div>
+
                         <div class="row">
                             <div class="form-group col-md-6">
                                 <label for="title">Escena</label>
@@ -34,49 +31,68 @@
                                     name="title" required>
                             </div>
 
-
-
                             <div class="form-group col-md-6">
-                                <label for="hfov">Campo de Visión Horizontal</label>
-                                <input class="form-control form-control-lg input-rounded mb-4" type="number"
-                                    step="0.1" name="hfov" min="-360" max="360" value="200" required>
+                                <label for="scene_type_add">Tipo de escena</label>
+                                <select class="form-control form-control-lg input-rounded mb-4" id="scene-type-add" name="type">
+                                    <option value="equirectangular">Panorama 360</option>
+                                    <option value="video">Video Dron Orbital</option>
+                                </select>
                             </div>
 
-                            <div class="form-group col-md-6">
+                            {{-- Campos solo para panorama 360 --}}
+                            <div class="form-group col-md-6 panorama-fields-add">
+                                <label for="hfov">Campo de Visión Horizontal</label>
+                                <input class="form-control form-control-lg input-rounded mb-4" type="number"
+                                    step="0.1" name="hfov" min="-360" max="360" value="200">
+                            </div>
+
+                            <div class="form-group col-md-6 panorama-fields-add">
                                 <label for="yaw">Rotación horizontal (Yaw)</label>
                                 <input class="form-control form-control-lg input-rounded mb-4" type="text"
-                                    step="0.1" name="yaw" id="yaw-add" value="0" required readonly
+                                    step="0.1" name="yaw" id="yaw-add" value="0" readonly
                                     style="background-color: #e9ecef; cursor: not-allowed;">
                                 <small class="form-text text-muted">Se actualiza al hacer clic en el visor</small>
                             </div>
 
-                            <div class="form-group col-md-6">
+                            <div class="form-group col-md-6 panorama-fields-add">
                                 <label for="pitch">Rotación vertical (Pitch)</label>
                                 <input class="form-control form-control-lg input-rounded mb-4" type="text"
-                                    step="0.1" name="pitch" id="pitch-add" value="0" required readonly
+                                    step="0.1" name="pitch" id="pitch-add" value="0" readonly
                                     style="background-color: #e9ecef; cursor: not-allowed;">
                                 <small class="form-text text-muted">Se actualiza al hacer clic en el visor</small>
                             </div>
                         </div>
 
-
-                        <div class="form-group">
+                        {{-- Imagen 360 (solo panorama) --}}
+                        <div class="form-group panorama-fields-add">
                             <label for="image">Imagen 360</label>
                             <img class="card-img-top img-fluid" id="image-preview-add" alt="Image Preview" style="display: none;" />
                             <div class="custom-file">
                                 <input type="file" class="form-control-file" id="image-upload-add" name="image"
-                                    required accept="image/*">
+                                    accept="image/*">
                             </div>
                         </div>
 
-                        <!-- Visor Pannellum para seleccionar yaw/pitch -->
-                        <div class="form-group" id="pannellum-container-add" style="display: none;">
+                        <!-- Visor Pannellum para seleccionar yaw/pitch (solo panorama) -->
+                        <div class="form-group panorama-fields-add" id="pannellum-container-add" style="display: none;">
                             <label><strong>Seleccione la vista inicial (haga clic donde desea que inicie la escena)</strong></label>
                             <div id="panorama-scene-add" style="width: 100%; height: 400px; border: 2px solid #007bff; border-radius: 5px;"></div>
                             <small class="form-text text-muted">Navegue por la imagen y haga clic en el punto donde desea que el visor quede al frente cuando cargue esta escena.</small>
                         </div>
+
+                        {{-- Video dron (solo video) --}}
+                        <div class="form-group video-fields-add" style="display: none;">
+                            <label for="video"><i class="fa fa-video-camera"></i> Video del dron</label>
+                            <div class="custom-file">
+                                <input type="file" class="form-control-file" id="video-upload-add" name="video"
+                                    accept="video/mp4,video/webm,video/ogg">
+                            </div>
+                            <small class="form-text text-muted">Suba el video del dron que orbita la propiedad (MP4, WebM u OGG). En el tour, el usuario podrá arrastrar para controlar la rotación.</small>
+                            <video id="video-preview-add" style="display:none; width:100%; max-height:200px; margin-top:10px; border-radius:5px;" muted></video>
+                        </div>
+
                         <div class="form-group">
-                            <label for="image">Imagen de referencia</label>
+                            <label for="image">Imagen de referencia (miniatura)</label>
                             <img class="card-img-top img-fluid" id="image-preview" alt="Image Preview" />
                             <div class="custom-file">
                                 <input type="file" class="form-control-file" id="image-upload" name="image_ref"
@@ -131,13 +147,14 @@
                 <div class="modal-body">
 
                     <img id="hotspot-image" class="card-img-top img-fluid"
-                        src="{{ isset($item->image) ? route('file', $item->image) : url('images/producto-sin-imagen.PNG') }}">
+                        src="{{ isset($item->image_ref) ? route('file', $item->image_ref) : (isset($item->image) ? route('file', $item->image) : url('images/producto-sin-imagen.PNG')) }}">
                     <br> <br>
                     <hr>
                     <h5>Información {{ $item->title }}</h5><br>
 
-                    <p class="d-flex justify-content-left"><b> Tipo: </b> {{ $item->type }} </p><br>
+                    <p class="d-flex justify-content-left"><b> Tipo: </b> {{ $item->type === 'video' ? 'Video Dron Orbital' : 'Panorama 360' }} </p><br>
 
+                    @if($item->type !== 'video')
                     <p class="d-flex justify-content-left">
                         <b> Campo de Visión Horizontal: </b> {{ $item->hfov }}
                     </p><br>
@@ -149,6 +166,11 @@
                     <p class="d-flex justify-content-left">
                         <b> Movimiento de rotación vertical: </b> {{ $item->pitch }}
                     </p><br>
+                    @endif
+
+                    @if($item->type === 'video' && $item->video)
+                    <p class="d-flex justify-content-left"><b> Video: </b> {{ basename($item->video) }} </p><br>
+                    @endif
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
@@ -186,12 +208,50 @@
                         @endif
                         <input type="hidden" name="property_id" value="{{ $id }}">
 
-                        <div class="form-group">
-                            <input class="form-control form-control-lg input-rounded mb-4" type="hidden"
-                                name="type" value="{{ $item->type }}">
+                        <div class="row">
+                            <div class="form-group col-md-6">
+                                <label for="title" class="d-flex justify-content-left">Título de la escena</label>
+                                <input class="form-control form-control-lg input-rounded mb-4" type="text"
+                                    name="title" required value="{{ $item->title }}">
+                            </div>
+
+                            <div class="form-group col-md-6">
+                                <label for="type">Tipo de escena</label>
+                                <select class="form-control form-control-lg input-rounded mb-4 scene-type-edit"
+                                        name="type" data-scene-id="{{ $item->id }}">
+                                    <option value="equirectangular" {{ $item->type !== 'video' ? 'selected' : '' }}>Panorama 360</option>
+                                    <option value="video" {{ $item->type === 'video' ? 'selected' : '' }}>Video Dron Orbital</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group col-md-6 panorama-fields-edit-{{ $item->id }}" style="{{ $item->type === 'video' ? 'display:none' : '' }}">
+                                <label for="hfov" class="d-flex justify-content-left">Campo de Visión Horizontal</label>
+                                <input class="form-control form-control-lg input-rounded mb-4" type="number"
+                                    step="0.1" name="hfov" min="-360" max="360"
+                                    value="{{ $item->hfov }}">
+                            </div>
+
+                            <div class="form-group col-md-6 panorama-fields-edit-{{ $item->id }}" style="{{ $item->type === 'video' ? 'display:none' : '' }}">
+                                <label for="yaw" class="d-flex justify-content-left">Rotación horizontal (Yaw)</label>
+                                <input class="form-control form-control-lg input-rounded mb-4" type="text"
+                                    step="0.1" name="yaw" id="yaw-edit-{{ $item->id }}"
+                                    value="{{ $item->yaw }}" readonly
+                                    style="background-color: #e9ecef; cursor: not-allowed;">
+                                <small class="form-text text-muted">Se actualiza al hacer clic en el visor</small>
+                            </div>
+
+                            <div class="form-group col-md-6 panorama-fields-edit-{{ $item->id }}" style="{{ $item->type === 'video' ? 'display:none' : '' }}">
+                                <label for="pitch" class="d-flex justify-content-left">Rotación vertical (Pitch)</label>
+                                <input class="form-control form-control-lg input-rounded mb-4" type="text"
+                                    step="0.1" name="pitch" id="pitch-edit-{{ $item->id }}"
+                                    value="{{ $item->pitch }}" readonly
+                                    style="background-color: #e9ecef; cursor: not-allowed;">
+                                <small class="form-text text-muted">Se actualiza al hacer clic en el visor</small>
+                            </div>
                         </div>
-                        <!-- Visor Pannellum para seleccionar yaw/pitch en edición -->
-                        <div class="form-group">
+
+                        <!-- Visor Pannellum para seleccionar yaw/pitch en edición (solo panorama) -->
+                        <div class="form-group panorama-fields-edit-{{ $item->id }}" style="{{ $item->type === 'video' ? 'display:none' : '' }}">
                             <label><strong>Seleccione la vista inicial (haga clic donde desea que inicie la escena)</strong></label>
                             <div id="panorama-scene-edit-{{ $item->id }}"
                                  style="width: 100%; height: 400px; border: 2px solid #007bff; border-radius: 5px;"
@@ -201,44 +261,8 @@
                             <small class="form-text text-muted">Navegue por la imagen y haga clic en el punto donde desea que el visor quede al frente cuando cargue esta escena.</small>
                         </div>
 
-                        <div class="row">
-                            <div class="form-group col-md-6">
-                                <label for="title" class="d-flex justify-content-left">Título de la escena</label>
-                                <input class="form-control form-control-lg input-rounded mb-4" type="text"
-                                    name="title" required value="{{ $item->title }}">
-                            </div>
-
-                            <div class="form-group col-md-6">
-                                <label for="hfov" class=" d-flex justify-content-left">Campo de Visión
-                                    Horizontal</label>
-                                <input class="form-control form-control-lg input-rounded mb-4" type="number"
-                                    step="0.1" name="hfov" min="-360" max="360"
-                                    value="{{ $item->hfov }}" required>
-                            </div>
-
-                            <div class="form-group col-md-6">
-                                <label for="yaw" class=" d-flex justify-content-left">Rotación horizontal (Yaw)</label>
-                                <input class="form-control form-control-lg input-rounded mb-4" type="text"
-                                    step="0.1" name="yaw" id="yaw-edit-{{ $item->id }}"
-                                    value="{{ $item->yaw }}" required readonly
-                                    style="background-color: #e9ecef; cursor: not-allowed;">
-                                <small class="form-text text-muted">Se actualiza al hacer clic en el visor</small>
-                            </div>
-
-                            <div class="form-group col-md-6">
-                                <label for="pitch" class=" d-flex justify-content-left">Rotación vertical (Pitch)</label>
-                                <input class="form-control form-control-lg input-rounded mb-4" type="text"
-                                    step="0.1" name="pitch" id="pitch-edit-{{ $item->id }}"
-                                    value="{{ $item->pitch }}" required readonly
-                                    style="background-color: #e9ecef; cursor: not-allowed;">
-                                <small class="form-text text-muted">Se actualiza al hacer clic en el visor</small>
-                            </div>
-                        </div>
-
-
-
-                        <div class="form-group">
-                            <label for="image" class=" d-flex justify-content-left">Imagen 360 (dejar vacío para mantener la actual)</label>
+                        <div class="form-group panorama-fields-edit-{{ $item->id }}" style="{{ $item->type === 'video' ? 'display:none' : '' }}">
+                            <label for="image" class="d-flex justify-content-left">Imagen 360 (dejar vacío para mantener la actual)</label>
                             <img class="card-img-top img-fluid w-25" id="image-preview-edit-{{ $item->id }}"
                                 src="{{ isset($item->image) ? route('file', $item->image) : url('images/producto-sin-imagen.PNG') }}">
                             <div class="custom-file">
@@ -246,6 +270,21 @@
                                     name="image" data-scene-id="{{ $item->id }}"
                                     accept="image/*">
                             </div>
+                        </div>
+
+                        {{-- Video dron (solo video) --}}
+                        <div class="form-group video-fields-edit-{{ $item->id }}" style="{{ $item->type !== 'video' ? 'display:none' : '' }}">
+                            <label for="video"><i class="fa fa-video-camera"></i> Video del dron (dejar vacío para mantener el actual)</label>
+                            @if($item->video)
+                                <div class="mb-2">
+                                    <small class="text-muted">Video actual: {{ basename($item->video) }}</small>
+                                </div>
+                            @endif
+                            <div class="custom-file">
+                                <input type="file" class="form-control-file" name="video"
+                                    accept="video/mp4,video/webm,video/ogg">
+                            </div>
+                            <small class="form-text text-muted">Suba el video del dron que orbita la propiedad (MP4, WebM u OGG).</small>
                         </div>
                         <div class="form-group">
                             <label for="image" class=" d-flex justify-content-left">Imagen de referencia (dejar vacío para mantener la actual)</label>
@@ -309,6 +348,28 @@
             } catch (e) {}
         }
 
+        // ====== TOGGLE TIPO DE ESCENA (Panorama vs Video) ======
+        $('#scene-type-add').on('change', function() {
+            var isVideo = $(this).val() === 'video';
+            if (isVideo) {
+                $('.panorama-fields-add').hide();
+                $('.video-fields-add').show();
+            } else {
+                $('.panorama-fields-add').show();
+                $('.video-fields-add').hide();
+            }
+        });
+
+        // Vista previa de video en formulario de agregar
+        $('#video-upload-add').on('change', function(e) {
+            var file = e.target.files[0];
+            if (!file) return;
+            var videoUrl = URL.createObjectURL(file);
+            var $preview = $('#video-preview-add');
+            $preview.attr('src', videoUrl).show();
+            $preview[0].currentTime = 0;
+        });
+
         // ====== FORMULARIO DE AGREGAR ESCENA ======
         var viewerAdd = null;
         var panoramaAddEl = document.getElementById("panorama-scene-add");
@@ -370,6 +431,19 @@
             $("#image-upload-add").val('');
         });
 
+        // ====== TOGGLE TIPO DE ESCENA EN EDICIÓN ======
+        $(document).on('change', '.scene-type-edit', function() {
+            var sceneId = $(this).data('scene-id');
+            var isVideo = $(this).val() === 'video';
+            if (isVideo) {
+                $('.panorama-fields-edit-' + sceneId).hide();
+                $('.video-fields-edit-' + sceneId).show();
+            } else {
+                $('.panorama-fields-edit-' + sceneId).show();
+                $('.video-fields-edit-' + sceneId).hide();
+            }
+        });
+
         // ====== MODALES DE EDICIÓN DE ESCENA ======
         // Inicializar visor cuando se abre el modal de edición
         $('[id^="editModal"]').on('shown.bs.modal', function() {
@@ -377,6 +451,12 @@
             var idNum = $modal.attr('id').match(/\d+/)[0];
             var containerId = 'panorama-scene-edit-' + idNum;
             var $container = $('#' + containerId);
+
+            // No inicializar Pannellum si es escena de video
+            var sceneTypeSelect = $modal.find('.scene-type-edit');
+            if (sceneTypeSelect.length && sceneTypeSelect.val() === 'video') {
+                return;
+            }
 
             var imageUrl = $container.data('image');
             var initialYaw = parseFloat($container.data('yaw')) || 0;
