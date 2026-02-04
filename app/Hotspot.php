@@ -8,7 +8,7 @@ class Hotspot extends Model
 {
     protected $table = 'hotspots';
     protected $fillable = [
-        'title', 'type', 'yaw', 'pitch', 'info', 'sourceScene', 'targetScene','image'
+        'title', 'type', 'yaw', 'pitch', 'video_time', 'pos_x', 'pos_y', 'info', 'sourceScene', 'targetScene','image'
     ];
 
     public function scene()

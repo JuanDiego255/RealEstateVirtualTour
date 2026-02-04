@@ -231,6 +231,37 @@
         #video-drag-hint.visible {
             opacity: 1;
         }
+
+        /* Hotspots posicionados en el video */
+        .video-pos-hotspot {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            z-index: 7;
+            cursor: pointer;
+            pointer-events: auto;
+            transition: opacity 0.3s ease;
+        }
+
+        .video-pos-hotspot .hotspot-tooltip-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        .video-pos-hotspot .circular-hotspot-img {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: 2px solid #fff;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            object-fit: cover;
+            transition: transform 0.2s ease;
+        }
+
+        .video-pos-hotspot:hover .circular-hotspot-img {
+            transform: scale(1.1);
+        }
     </style>
 </head>
 
@@ -377,7 +408,10 @@
                             ? route('file', $hotspot->image)
                             : url('images/producto-sin-imagen.PNG'),
                         'displayText' => $displayText,
-                        'hotspotType' => $hotspot->type
+                        'hotspotType' => $hotspot->type,
+                        'videoTime' => $hotspot->video_time !== null ? (float) $hotspot->video_time : null,
+                        'posX' => $hotspot->pos_x !== null ? (float) $hotspot->pos_x : null,
+                        'posY' => $hotspot->pos_y !== null ? (float) $hotspot->pos_y : null,
                     ],
                     'text' => $hotspot->info,
                 ];
@@ -799,7 +833,7 @@
             // Iniciar actualizaciones de polígonos
             startPolygonUpdates();
 
-            // ===== VIDEO DRON ORBITAL - Drag-to-scrub =====
+            // ===== VIDEO DRON ORBITAL - Drag-to-scrub (optimizado) =====
             var videoOverlay = document.getElementById('video-viewer-overlay');
             var droneVideo = document.getElementById('drone-video');
             var videoProgressFill = document.getElementById('video-progress-fill');
@@ -807,12 +841,46 @@
             var videoHotspotsBar = document.getElementById('video-hotspots-bar');
             var videoDragHint = document.getElementById('video-drag-hint');
             var currentVideoSceneId = null;
+            var videoReady = false;
             var videoDragState = {
                 isDragging: false,
                 startX: 0,
                 startTime: 0,
-                sensitivity: 0.04 // seconds per pixel of drag
+                sensitivity: 0.04, // seconds per pixel of drag
+                pendingSeek: null  // throttle seeks via rAF
             };
+
+            // Función de seek optimizada: usa fastSeek cuando está disponible
+            function seekVideo(time) {
+                if (!droneVideo.duration || droneVideo.duration === 0) return;
+                // Wrap around para orbitar continuamente
+                while (time < 0) time += droneVideo.duration;
+                while (time >= droneVideo.duration) time -= droneVideo.duration;
+                time = Math.max(0, Math.min(droneVideo.duration, time));
+
+                if (typeof droneVideo.fastSeek === 'function') {
+                    droneVideo.fastSeek(time);
+                } else {
+                    droneVideo.currentTime = time;
+                }
+            }
+
+            // Throttle de seeks: solo aplica un seek por frame de animación
+            function scheduleSeek(time) {
+                videoDragState.pendingSeek = time;
+                if (!videoDragState._rafId) {
+                    videoDragState._rafId = requestAnimationFrame(function applySeek() {
+                        videoDragState._rafId = null;
+                        if (videoDragState.pendingSeek !== null) {
+                            seekVideo(videoDragState.pendingSeek);
+                            // Actualizar indicador
+                            var pct = droneVideo.duration ? Math.round((droneVideo.currentTime / droneVideo.duration) * 100) : 0;
+                            videoScrubIndicator.textContent = pct + '%';
+                            videoDragState.pendingSeek = null;
+                        }
+                    });
+                }
+            }
 
             function isVideoScene(sceneId) {
                 var sc = pannellumConfig.scenes[sceneId];
@@ -824,19 +892,42 @@
                 if (!sc || !sc.video) return;
 
                 currentVideoSceneId = sceneId;
-                droneVideo.src = sc.video;
-                droneVideo.currentTime = 0;
+                videoReady = false;
 
-                // Mostrar overlay
+                // Mostrar overlay con indicador de carga
                 videoOverlay.style.display = 'block';
-
-                // Mostrar hint de arrastre
+                videoDragHint.textContent = 'Cargando video...';
                 videoDragHint.classList.add('visible');
-                setTimeout(function() {
-                    videoDragHint.classList.remove('visible');
-                }, 3000);
 
-                // Generar botones de hotspot para navegar a otras escenas
+                // Cargar video
+                droneVideo.src = sc.video;
+                droneVideo.load();
+
+                // Cuando el video tiene suficientes datos para hacer seek
+                droneVideo.oncanplay = function() {
+                    if (videoReady) return;
+                    videoReady = true;
+                    droneVideo.currentTime = 0;
+
+                    // Mostrar hint de arrastre
+                    videoDragHint.innerHTML = '<i class="fa fa-arrows-h"></i> Arrastra para girar alrededor de la propiedad';
+                    setTimeout(function() {
+                        videoDragHint.classList.remove('visible');
+                    }, 3000);
+                };
+
+                // Eventos de buffering
+                droneVideo.onwaiting = function() {
+                    videoDragHint.textContent = 'Cargando...';
+                    videoDragHint.classList.add('visible');
+                };
+                droneVideo.oncanplaythrough = function() {
+                    if (videoDragHint.textContent === 'Cargando...') {
+                        videoDragHint.classList.remove('visible');
+                    }
+                };
+
+                // Generar hotspots posicionados en el video
                 buildVideoHotspots(sceneId);
 
                 // Actualizar barra de progreso
@@ -846,13 +937,25 @@
             function hideVideoViewer() {
                 videoOverlay.style.display = 'none';
                 currentVideoSceneId = null;
+                videoReady = false;
+                droneVideo.oncanplay = null;
+                droneVideo.onwaiting = null;
+                droneVideo.oncanplaythrough = null;
                 droneVideo.pause();
-                droneVideo.src = '';
+                droneVideo.removeAttribute('src');
+                droneVideo.load();
                 videoHotspotsBar.innerHTML = '';
+                // Remover hotspots posicionados
+                var posHotspots = videoOverlay.querySelectorAll('.video-pos-hotspot');
+                posHotspots.forEach(function(el) { el.remove(); });
             }
 
             function buildVideoHotspots(sceneId) {
                 videoHotspotsBar.innerHTML = '';
+                // Remover hotspots posicionados previos
+                var oldPosHotspots = videoOverlay.querySelectorAll('.video-pos-hotspot');
+                oldPosHotspots.forEach(function(el) { el.remove(); });
+
                 var sc = pannellumConfig.scenes[sceneId];
                 if (!sc || !sc.hotSpots) return;
 
@@ -862,14 +965,83 @@
                     var targetScene = pannellumConfig.scenes[targetId];
                     if (!targetScene) return;
 
-                    var btn = document.createElement('button');
-                    btn.className = 'video-hotspot-btn';
-                    btn.textContent = hs.createTooltipArgs ? hs.createTooltipArgs.displayText : targetScene.title;
-                    btn.addEventListener('click', function(e) {
-                        e.stopPropagation();
-                        navigateFromVideo(targetId);
-                    });
-                    videoHotspotsBar.appendChild(btn);
+                    var displayText = hs.createTooltipArgs ? hs.createTooltipArgs.displayText : targetScene.title;
+                    var imageUrl = hs.createTooltipArgs ? hs.createTooltipArgs.imageUrl : null;
+
+                    // Verificar si tiene posición en video (video_time + pos_x + pos_y)
+                    var vt = hs.createTooltipArgs ? hs.createTooltipArgs.videoTime : null;
+                    var px = hs.createTooltipArgs ? hs.createTooltipArgs.posX : null;
+                    var py = hs.createTooltipArgs ? hs.createTooltipArgs.posY : null;
+
+                    if (vt !== null && vt !== undefined && px !== null && py !== null) {
+                        // Hotspot posicionado en el video
+                        var posDiv = document.createElement('div');
+                        posDiv.className = 'video-pos-hotspot';
+                        posDiv.style.left = px + '%';
+                        posDiv.style.top = py + '%';
+                        posDiv.setAttribute('data-video-time', vt);
+                        posDiv.setAttribute('data-time-range', '3'); // visible ±3 segundos
+
+                        var container = document.createElement('div');
+                        container.classList.add('hotspot-tooltip-container');
+
+                        var label = document.createElement('div');
+                        label.classList.add('hotspot-label', 'hotspot-label-scene');
+                        label.textContent = displayText;
+                        container.appendChild(label);
+
+                        if (imageUrl) {
+                            var img = document.createElement('img');
+                            img.classList.add('circular-hotspot-img');
+                            img.src = imageUrl;
+                            img.alt = displayText;
+                            container.appendChild(img);
+                        }
+
+                        posDiv.appendChild(container);
+                        posDiv.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            navigateFromVideo(targetId);
+                        });
+                        videoOverlay.appendChild(posDiv);
+                    } else {
+                        // Hotspot sin posición en video → botón en barra inferior
+                        var btn = document.createElement('button');
+                        btn.className = 'video-hotspot-btn';
+                        btn.textContent = displayText;
+                        btn.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            navigateFromVideo(targetId);
+                        });
+                        videoHotspotsBar.appendChild(btn);
+                    }
+                });
+            }
+
+            // Actualizar visibilidad de hotspots posicionados según tiempo del video
+            function updateVideoPositionedHotspots() {
+                if (!currentVideoSceneId) return;
+                var currentTime = droneVideo.currentTime;
+                var duration = droneVideo.duration || 0;
+                var posHotspots = videoOverlay.querySelectorAll('.video-pos-hotspot');
+
+                posHotspots.forEach(function(el) {
+                    var vt = parseFloat(el.getAttribute('data-video-time'));
+                    var range = parseFloat(el.getAttribute('data-time-range')) || 3;
+
+                    // Calcular distancia temporal (con wrap-around)
+                    var diff = Math.abs(currentTime - vt);
+                    if (duration > 0) {
+                        diff = Math.min(diff, duration - diff);
+                    }
+
+                    if (diff <= range) {
+                        el.style.display = 'block';
+                        var opacity = 1 - (diff / range) * 0.6; // fade basado en proximidad
+                        el.style.opacity = opacity;
+                    } else {
+                        el.style.display = 'none';
+                    }
                 });
             }
 
@@ -903,12 +1075,15 @@
                     var pct = (droneVideo.currentTime / droneVideo.duration) * 100;
                     videoProgressFill.style.width = pct + '%';
                 }
+                // Actualizar hotspots posicionados
+                updateVideoPositionedHotspots();
                 requestAnimationFrame(updateVideoProgress);
             }
 
-            // --- Drag-to-scrub: Mouse events ---
+            // --- Drag-to-scrub: Mouse events (optimizado con throttle) ---
             videoOverlay.addEventListener('mousedown', function(e) {
-                if (e.target.classList.contains('video-hotspot-btn')) return;
+                if (e.target.closest('.video-hotspot-btn, .video-pos-hotspot')) return;
+                if (!videoReady) return;
                 videoDragState.isDragging = true;
                 videoDragState.startX = e.clientX;
                 videoDragState.startTime = droneVideo.currentTime;
@@ -921,18 +1096,7 @@
                 if (!videoDragState.isDragging) return;
                 var deltaX = e.clientX - videoDragState.startX;
                 var newTime = videoDragState.startTime + deltaX * videoDragState.sensitivity;
-
-                // Wrap around para que sea continuo (como orbitar)
-                if (droneVideo.duration && droneVideo.duration > 0) {
-                    while (newTime < 0) newTime += droneVideo.duration;
-                    while (newTime >= droneVideo.duration) newTime -= droneVideo.duration;
-                }
-                newTime = Math.max(0, Math.min(droneVideo.duration || 0, newTime));
-                droneVideo.currentTime = newTime;
-
-                // Actualizar indicador
-                var pct = droneVideo.duration ? Math.round((newTime / droneVideo.duration) * 100) : 0;
-                videoScrubIndicator.textContent = pct + '%';
+                scheduleSeek(newTime);
             });
 
             document.addEventListener('mouseup', function() {
@@ -945,9 +1109,10 @@
                 }
             });
 
-            // --- Drag-to-scrub: Touch events (mobile) ---
+            // --- Drag-to-scrub: Touch events (mobile, optimizado) ---
             videoOverlay.addEventListener('touchstart', function(e) {
-                if (e.target.classList.contains('video-hotspot-btn')) return;
+                if (e.target.closest('.video-hotspot-btn, .video-pos-hotspot')) return;
+                if (!videoReady) return;
                 var touch = e.touches[0];
                 videoDragState.isDragging = true;
                 videoDragState.startX = touch.clientX;
@@ -961,16 +1126,7 @@
                 var touch = e.touches[0];
                 var deltaX = touch.clientX - videoDragState.startX;
                 var newTime = videoDragState.startTime + deltaX * videoDragState.sensitivity;
-
-                if (droneVideo.duration && droneVideo.duration > 0) {
-                    while (newTime < 0) newTime += droneVideo.duration;
-                    while (newTime >= droneVideo.duration) newTime -= droneVideo.duration;
-                }
-                newTime = Math.max(0, Math.min(droneVideo.duration || 0, newTime));
-                droneVideo.currentTime = newTime;
-
-                var pct = droneVideo.duration ? Math.round((newTime / droneVideo.duration) * 100) : 0;
-                videoScrubIndicator.textContent = pct + '%';
+                scheduleSeek(newTime);
             }, { passive: true });
 
             document.addEventListener('touchend', function() {
