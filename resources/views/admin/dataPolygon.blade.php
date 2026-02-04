@@ -578,7 +578,7 @@ $(document).ready(function() {
             text.setAttribute('x', ox);
             text.setAttribute('y', oy);
             text.setAttribute('fill', '#FFFFFF');
-            text.setAttribute('font-size', '12');
+            text.setAttribute('font-size', '10');
             text.setAttribute('font-weight', 'bold');
             text.setAttribute('font-family', 'Arial, sans-serif');
             text.setAttribute('text-anchor', 'middle');
@@ -669,8 +669,8 @@ $(document).ready(function() {
             );
 
             var btnGroup = $('<div class="btn-group btn-group-sm"></div>');
-            btnGroup.append('<button class="btn btn-outline-primary btn-edit-polygon" data-id="' + poly.id + '" title="Editar"><i class="fa fa-edit"></i></button>');
-            btnGroup.append('<button class="btn btn-outline-danger btn-delete-polygon" data-id="' + poly.id + '" title="Eliminar"><i class="fa fa-trash"></i></button>');
+            btnGroup.append('<button class="btn btn-outline-primary btn-edit-polygon" data-id="' + poly.id + '" title="Editar"><i class="ti-pencil"></i></button>');
+            btnGroup.append('<button class="btn btn-outline-danger btn-delete-polygon" data-id="' + poly.id + '" title="Eliminar"><i class="ti-trash"></i></button>');
             item.append(btnGroup);
 
             container.append(item);
