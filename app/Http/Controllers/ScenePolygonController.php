@@ -39,7 +39,9 @@ class ScenePolygonController extends Controller
             'fill_opacity' => $request->fill_opacity,
             'stroke_color' => $request->stroke_color,
             'stroke_width' => $request->stroke_width,
-            'points' => json_decode($request->points, true)
+            'points' => json_decode($request->points, true),
+            'edge_labels' => $request->edge_labels ? json_decode($request->edge_labels, true) : null,
+            'interior_text' => $request->interior_text
         ]);
 
         return response()->json([
@@ -71,7 +73,9 @@ class ScenePolygonController extends Controller
             'fill_opacity' => $request->fill_opacity,
             'stroke_color' => $request->stroke_color,
             'stroke_width' => $request->stroke_width,
-            'points' => json_decode($request->points, true)
+            'points' => json_decode($request->points, true),
+            'edge_labels' => $request->edge_labels ? json_decode($request->edge_labels, true) : null,
+            'interior_text' => $request->interior_text
         ]);
 
         return response()->json([

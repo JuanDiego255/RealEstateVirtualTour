@@ -300,6 +300,8 @@
                     'strokeColor' => $polygon->stroke_color,
                     'strokeWidth' => (int) $polygon->stroke_width,
                     'points' => json_decode($polygon->points, true),
+                    'edgeLabels' => $polygon->edge_labels ? json_decode($polygon->edge_labels, true) : null,
+                    'interiorText' => $polygon->interior_text,
                 ];
             }
         }
@@ -540,11 +542,13 @@
                     }
                     if (!Array.isArray(points) || points.length < 3) return;
 
+                    var screenPoints = [];
                     var pathData = '';
                     var validPoints = 0;
 
                     points.forEach(function(p, i) {
                         var screenCoords = getPolygonScreenCoords(p.yaw, p.pitch);
+                        screenPoints.push(screenCoords);
                         if (screenCoords) {
                             if (validPoints === 0) {
                                 pathData += 'M ' + screenCoords.x + ' ' + screenCoords.y + ' ';
@@ -567,8 +571,95 @@
                         path.setAttribute('data-polygon-id', poly.id);
                         path.setAttribute('data-polygon-name', poly.name);
                         svg.appendChild(path);
+
+                        // Dibujar medidas en los lados
+                        var edgeLabels = poly.edgeLabels;
+                        if (typeof edgeLabels === 'string') {
+                            try { edgeLabels = JSON.parse(edgeLabels); } catch(e) { edgeLabels = null; }
+                        }
+                        if (edgeLabels && Array.isArray(edgeLabels)) {
+                            drawPolygonEdgeLabels(svg, screenPoints, edgeLabels);
+                        }
+
+                        // Dibujar texto interior
+                        if (poly.interiorText) {
+                            drawPolygonInteriorText(svg, screenPoints, poly.interiorText);
+                        }
                     }
                 });
+            }
+
+            // Dibujar medidas en los lados del polígono
+            function drawPolygonEdgeLabels(svg, screenPoints, labels) {
+                var numPoints = screenPoints.length;
+                for (var i = 0; i < numPoints; i++) {
+                    var label = labels[i];
+                    if (!label) continue;
+
+                    var p1 = screenPoints[i];
+                    var p2 = screenPoints[(i + 1) % numPoints];
+                    if (!p1 || !p2) continue;
+
+                    var mx = (p1.x + p2.x) / 2;
+                    var my = (p1.y + p2.y) / 2;
+
+                    var angle = Math.atan2(p2.y - p1.y, p2.x - p1.x) * 180 / Math.PI;
+                    if (angle > 90) angle -= 180;
+                    if (angle < -90) angle += 180;
+
+                    // Offset perpendicular para no montar sobre la línea
+                    var perpAngle = (angle + 90) * Math.PI / 180;
+                    var offsetDist = 12;
+                    var ox = mx + Math.cos(perpAngle) * offsetDist;
+                    var oy = my + Math.sin(perpAngle) * offsetDist;
+
+                    var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    text.setAttribute('x', ox);
+                    text.setAttribute('y', oy);
+                    text.setAttribute('fill', '#FFFFFF');
+                    text.setAttribute('font-size', '12');
+                    text.setAttribute('font-weight', 'bold');
+                    text.setAttribute('font-family', 'Arial, sans-serif');
+                    text.setAttribute('text-anchor', 'middle');
+                    text.setAttribute('dominant-baseline', 'middle');
+                    text.setAttribute('transform', 'rotate(' + angle + ' ' + ox + ' ' + oy + ')');
+                    text.setAttribute('paint-order', 'stroke');
+                    text.setAttribute('stroke', 'rgba(0,0,0,0.7)');
+                    text.setAttribute('stroke-width', '3');
+                    text.setAttribute('stroke-linecap', 'round');
+                    text.setAttribute('stroke-linejoin', 'round');
+                    text.textContent = label;
+                    svg.appendChild(text);
+                }
+            }
+
+            // Dibujar texto interior del polígono
+            function drawPolygonInteriorText(svg, screenPoints, text) {
+                var sumX = 0, sumY = 0, count = 0;
+                screenPoints.forEach(function(p) {
+                    if (p) { sumX += p.x; sumY += p.y; count++; }
+                });
+                if (count < 3) return;
+
+                var cx = sumX / count;
+                var cy = sumY / count;
+
+                var textEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                textEl.setAttribute('x', cx);
+                textEl.setAttribute('y', cy);
+                textEl.setAttribute('fill', '#FFFFFF');
+                textEl.setAttribute('font-size', '14');
+                textEl.setAttribute('font-weight', 'bold');
+                textEl.setAttribute('font-family', 'Arial, sans-serif');
+                textEl.setAttribute('text-anchor', 'middle');
+                textEl.setAttribute('dominant-baseline', 'middle');
+                textEl.setAttribute('paint-order', 'stroke');
+                textEl.setAttribute('stroke', 'rgba(0,0,0,0.7)');
+                textEl.setAttribute('stroke-width', '4');
+                textEl.setAttribute('stroke-linecap', 'round');
+                textEl.setAttribute('stroke-linejoin', 'round');
+                textEl.textContent = text;
+                svg.appendChild(textEl);
             }
 
             // Actualizar polígonos periódicamente mientras se navega

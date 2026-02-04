@@ -15,11 +15,14 @@ class ScenePolygon extends Model
         'fill_opacity',
         'stroke_color',
         'stroke_width',
-        'points'
+        'points',
+        'edge_labels',
+        'interior_text'
     ];
 
     protected $casts = [
         'points' => 'array',
+        'edge_labels' => 'array',
         'fill_opacity' => 'float',
         'stroke_width' => 'integer'
     ];
