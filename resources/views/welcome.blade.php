@@ -431,24 +431,41 @@
 
             // --- SVG Overlay para polígonos de terreno ---
             var polygonSvgEl = null;
+            console.log('[Polygons] Data:', JSON.stringify(scenePolygons));
 
             function ensurePolygonSvg() {
-                // Remover SVG anterior si existe
-                var old = document.getElementById('polygon-overlay');
-                if (old) old.parentNode.removeChild(old);
+                // Si el SVG ya existe en el DOM, no recrear
+                if (polygonSvgEl && document.contains(polygonSvgEl)) {
+                    return true;
+                }
 
-                // Buscar el contenedor real de Pannellum
-                var pnlmContainer = document.querySelector('#pannellum .pnlm-render-container');
-                if (pnlmContainer) {
-                    pnlmContainer = pnlmContainer.parentNode;
-                } else {
+                // Remover SVG huérfano si existe
+                var old = document.getElementById('polygon-overlay');
+                if (old && old.parentNode) old.parentNode.removeChild(old);
+                polygonSvgEl = null;
+
+                // Buscar el contenedor .pnlm-container (Pannellum agrega esta clase al #pannellum)
+                var pnlmContainer = document.querySelector('#pannellum.pnlm-container');
+                if (!pnlmContainer) {
+                    pnlmContainer = document.querySelector('#pannellum .pnlm-render-container');
+                    if (pnlmContainer) {
+                        pnlmContainer = pnlmContainer.parentNode;
+                    }
+                }
+                if (!pnlmContainer) {
                     pnlmContainer = document.getElementById('pannellum');
+                }
+                if (!pnlmContainer) {
+                    console.warn('[Polygons] No se encontró contenedor para SVG');
+                    return false;
                 }
 
                 polygonSvgEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
                 polygonSvgEl.setAttribute('id', 'polygon-overlay');
                 polygonSvgEl.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:2;';
                 pnlmContainer.appendChild(polygonSvgEl);
+                console.log('[Polygons] SVG creado en:', pnlmContainer.id || pnlmContainer.className);
+                return true;
             }
 
             // Función para obtener coordenadas de pantalla desde yaw/pitch
@@ -463,6 +480,8 @@
                     var container = document.getElementById('pannellum');
                     var width = container.clientWidth;
                     var height = container.clientHeight;
+
+                    if (width === 0 || height === 0) return null;
 
                     var yawRad = (targetYaw - vYaw) * Math.PI / 180;
                     var pitchRad = targetPitch * Math.PI / 180;
@@ -490,29 +509,41 @@
                     }
 
                     return { x: screenX, y: screenY };
-                } catch(e) {}
+                } catch(e) {
+                    console.warn('[Polygons] Error en coordenadas:', e);
+                }
                 return null;
             }
 
             // Función para renderizar polígonos de la escena actual
             function renderScenePolygons() {
-                if (!polygonSvgEl) return;
+                // Auto-crear SVG si no existe o fue removido del DOM
+                if (!polygonSvgEl || !document.contains(polygonSvgEl)) {
+                    if (!ensurePolygonSvg()) return;
+                }
+
                 var svg = polygonSvgEl;
                 // Limpiar SVG
                 while (svg.firstChild) {
                     svg.removeChild(svg.firstChild);
                 }
 
-                var currentSceneId = viewer.getScene();
+                var currentSceneId = String(viewer.getScene());
                 var polygons = scenePolygons[currentSceneId] || [];
 
                 polygons.forEach(function(poly) {
-                    if (!poly.points || poly.points.length < 3) return;
+                    // Manejar points como string o array
+                    var points = poly.points;
+                    if (!points) return;
+                    if (typeof points === 'string') {
+                        try { points = JSON.parse(points); } catch(e) { return; }
+                    }
+                    if (!Array.isArray(points) || points.length < 3) return;
 
                     var pathData = '';
                     var validPoints = 0;
 
-                    poly.points.forEach(function(p, i) {
+                    points.forEach(function(p, i) {
                         var screenCoords = getPolygonScreenCoords(p.yaw, p.pitch);
                         if (screenCoords) {
                             if (validPoints === 0) {
@@ -615,6 +646,8 @@
             viewer.on('load', function() {
                 // Recrear SVG de polígonos dentro del contenedor Pannellum
                 ensurePolygonSvg();
+                console.log('[Polygons] Escena cargada:', viewer.getScene(), '- Polígonos disponibles:', (scenePolygons[String(viewer.getScene())] || []).length);
+                renderScenePolygons();
 
                 if (pendingOrientation) {
                     // Aplicar orientación y mantener zoom cercano
