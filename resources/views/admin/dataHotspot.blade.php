@@ -106,14 +106,14 @@
                             <div class="form-group col-md-4 video-pos-add" style="display:none;">
                                 <label for="posXAdd">Posición X (%)</label>
                                 <input id="posXAdd" name="pos_x"
-                                    class="form-control form-control-lg input-rounded mb-4" type="number"
+                                    class="form-control form-control-lg input-rounded mb-4" type="text"
                                     step="0.1" min="0" max="100" value="">
                             </div>
 
                             <div class="form-group col-md-4 video-pos-add" style="display:none;">
                                 <label for="posYAdd">Posición Y (%)</label>
                                 <input id="posYAdd" name="pos_y"
-                                    class="form-control form-control-lg input-rounded mb-4" type="number"
+                                    class="form-control form-control-lg input-rounded mb-4" type="text"
                                     step="0.1" min="0" max="100" value="">
                             </div>
 
@@ -305,14 +305,14 @@
                                 <div class="form-group col-md-4 video-pos-edit-{{ $hotspot->id }}" style="{{ !$isVideoHotspot ? 'display:none;' : '' }}">
                                     <label for="posX-{{ $hotspot->id }}">Posición X (%)</label>
                                     <input id="posX-{{ $hotspot->id }}" name="pos_x"
-                                        class="form-control form-control-lg input-rounded mb-4" type="number"
+                                        class="form-control form-control-lg input-rounded mb-4" type="text"
                                         step="0.1" min="0" max="100" value="{{ $hotspot->pos_x }}">
                                 </div>
 
                                 <div class="form-group col-md-4 video-pos-edit-{{ $hotspot->id }}" style="{{ !$isVideoHotspot ? 'display:none;' : '' }}">
                                     <label for="posY-{{ $hotspot->id }}">Posición Y (%)</label>
                                     <input id="posY-{{ $hotspot->id }}" name="pos_y"
-                                        class="form-control form-control-lg input-rounded mb-4" type="number"
+                                        class="form-control form-control-lg input-rounded mb-4" type="text"
                                         step="0.1" min="0" max="100" value="{{ $hotspot->pos_y }}">
                                 </div>
 
