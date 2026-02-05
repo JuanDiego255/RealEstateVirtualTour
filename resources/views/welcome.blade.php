@@ -783,6 +783,11 @@
                     svg.removeChild(svg.firstChild);
                 }
 
+                // Ocultar tooltip al re-renderizar polígonos
+                if (polygonTooltip) {
+                    polygonTooltip.classList.remove('visible');
+                }
+
                 var currentSceneId = String(viewer.getScene());
                 var polygons = scenePolygons[currentSceneId] || [];
 
@@ -1414,6 +1419,11 @@
                 if (isTransitioning) return;
                 isTransitioning = true;
 
+                // Ocultar tooltip de polígonos al iniciar transición
+                if (polygonTooltip) {
+                    polygonTooltip.classList.remove('visible');
+                }
+
                 // Si el destino es video, usar transición fade en lugar de zoom
                 if (isVideoScene(targetSceneId)) {
                     $transitionOverlay.css({ opacity: 0, transition: 'opacity 0.4s ease' });
@@ -1492,6 +1502,11 @@
             // --- Cuando la escena carga, continuar el zoom out ---
             viewer.on('load', function() {
                 var loadedSceneId = String(viewer.getScene());
+
+                // Ocultar tooltip de polígonos al cambiar de escena
+                if (polygonTooltip) {
+                    polygonTooltip.classList.remove('visible');
+                }
 
                 // Las escenas de video ya no se cargan a través de Pannellum
                 // Solo manejar escenas panorámicas aquí
@@ -1597,6 +1612,11 @@
 
                 if (sceneId && window.viewer && !isTransitioning) {
                     isTransitioning = true;
+
+                    // Ocultar tooltip de polígonos
+                    if (polygonTooltip) {
+                        polygonTooltip.classList.remove('visible');
+                    }
 
                     // Cerrar el menú lateral
                     $('#menu-trigger-ctrl').removeClass('is-clicked');
