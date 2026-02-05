@@ -686,7 +686,15 @@
             // --- SVG Overlay para polígonos de terreno ---
             var polygonSvgEl = null;
             var polygonTooltip = document.getElementById('polygon-tooltip');
+            var hoveredPolygonId = null;  // Track qué polígono está en hover
+            var lastMousePos = { x: 0, y: 0 };  // Última posición del mouse
             console.log('[Polygons] Data:', JSON.stringify(scenePolygons));
+
+            // Actualizar posición del mouse globalmente
+            document.addEventListener('mousemove', function(e) {
+                lastMousePos.x = e.clientX;
+                lastMousePos.y = e.clientY;
+            });
 
             function ensurePolygonSvg() {
                 // Si el SVG ya existe en el DOM, no recrear
@@ -783,13 +791,9 @@
                     svg.removeChild(svg.firstChild);
                 }
 
-                // Ocultar tooltip al re-renderizar polígonos
-                if (polygonTooltip) {
-                    polygonTooltip.classList.remove('visible');
-                }
-
                 var currentSceneId = String(viewer.getScene());
                 var polygons = scenePolygons[currentSceneId] || [];
+                var createdPaths = [];  // Para restaurar hover después
 
                 polygons.forEach(function(poly) {
                     // Manejar points como string o array
@@ -820,20 +824,25 @@
                     if (validPoints >= 3) {
                         pathData += 'Z';
 
+                        var isHovered = (hoveredPolygonId === poly.id);
+
                         var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
                         path.setAttribute('d', pathData);
                         path.setAttribute('fill', poly.fillColor);
-                        path.setAttribute('fill-opacity', poly.fillOpacity);
+                        // Aplicar estado hover si corresponde
+                        path.setAttribute('fill-opacity', isHovered ? Math.min(1, poly.fillOpacity + 0.3) : poly.fillOpacity);
                         path.setAttribute('stroke', poly.strokeColor);
-                        path.setAttribute('stroke-width', poly.strokeWidth);
+                        path.setAttribute('stroke-width', isHovered ? poly.strokeWidth + 2 : poly.strokeWidth);
                         path.setAttribute('data-polygon-id', poly.id);
                         path.setAttribute('data-polygon-name', poly.name || '');
+                        path.setAttribute('data-base-opacity', poly.fillOpacity);
+                        path.setAttribute('data-base-stroke', poly.strokeWidth);
                         path.style.pointerEvents = 'auto';
                         path.style.cursor = 'pointer';
-                        path.style.transition = 'fill-opacity 0.2s ease, stroke-width 0.2s ease';
 
                         // Eventos de hover para tooltip
                         path.addEventListener('mouseenter', function(e) {
+                            hoveredPolygonId = poly.id;
                             // Resaltar polígono
                             path.setAttribute('fill-opacity', Math.min(1, poly.fillOpacity + 0.3));
                             path.setAttribute('stroke-width', poly.strokeWidth + 2);
@@ -842,18 +851,21 @@
                             var name = path.getAttribute('data-polygon-name');
                             if (name && polygonTooltip) {
                                 polygonTooltip.textContent = name;
+                                polygonTooltip.style.left = e.clientX + 'px';
+                                polygonTooltip.style.top = (e.clientY - 45) + 'px';
                                 polygonTooltip.classList.add('visible');
                             }
                         });
 
                         path.addEventListener('mousemove', function(e) {
-                            if (polygonTooltip && polygonTooltip.classList.contains('visible')) {
+                            if (polygonTooltip && hoveredPolygonId === poly.id) {
                                 polygonTooltip.style.left = e.clientX + 'px';
                                 polygonTooltip.style.top = (e.clientY - 45) + 'px';
                             }
                         });
 
                         path.addEventListener('mouseleave', function(e) {
+                            hoveredPolygonId = null;
                             // Restaurar estilo original
                             path.setAttribute('fill-opacity', poly.fillOpacity);
                             path.setAttribute('stroke-width', poly.strokeWidth);
@@ -865,6 +877,7 @@
                         });
 
                         svg.appendChild(path);
+                        createdPaths.push({ path: path, poly: poly });
 
                         // Dibujar medidas en los lados
                         var edgeLabels = poly.edgeLabels;
@@ -881,6 +894,12 @@
                         }
                     }
                 });
+
+                // Mantener tooltip visible si hay un polígono en hover
+                if (hoveredPolygonId && polygonTooltip) {
+                    polygonTooltip.style.left = lastMousePos.x + 'px';
+                    polygonTooltip.style.top = (lastMousePos.y - 45) + 'px';
+                }
             }
 
             // Dibujar medidas en los lados del polígono
@@ -1419,7 +1438,8 @@
                 if (isTransitioning) return;
                 isTransitioning = true;
 
-                // Ocultar tooltip de polígonos al iniciar transición
+                // Resetear estado de hover de polígonos al iniciar transición
+                hoveredPolygonId = null;
                 if (polygonTooltip) {
                     polygonTooltip.classList.remove('visible');
                 }
@@ -1503,7 +1523,8 @@
             viewer.on('load', function() {
                 var loadedSceneId = String(viewer.getScene());
 
-                // Ocultar tooltip de polígonos al cambiar de escena
+                // Resetear estado de hover de polígonos al cambiar de escena
+                hoveredPolygonId = null;
                 if (polygonTooltip) {
                     polygonTooltip.classList.remove('visible');
                 }
@@ -1613,7 +1634,8 @@
                 if (sceneId && window.viewer && !isTransitioning) {
                     isTransitioning = true;
 
-                    // Ocultar tooltip de polígonos
+                    // Resetear estado de hover de polígonos
+                    hoveredPolygonId = null;
                     if (polygonTooltip) {
                         polygonTooltip.classList.remove('visible');
                     }
