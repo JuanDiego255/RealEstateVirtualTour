@@ -295,6 +295,41 @@
         .video-pos-hotspot:hover .circular-hotspot-img {
             transform: scale(1.1);
         }
+
+        /* Tooltip para polígonos */
+        #polygon-tooltip {
+            position: fixed;
+            background: rgba(0, 0, 0, 0.85);
+            color: #fff;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            pointer-events: none;
+            z-index: 1001;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            white-space: nowrap;
+            max-width: 250px;
+            text-overflow: ellipsis;
+            overflow: hidden;
+        }
+
+        #polygon-tooltip.visible {
+            opacity: 1;
+        }
+
+        #polygon-tooltip::after {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 6px 6px 0 6px;
+            border-style: solid;
+            border-color: rgba(0, 0, 0, 0.85) transparent transparent transparent;
+        }
     </style>
 </head>
 
@@ -382,6 +417,9 @@
     {{-- Nombre de escena --}}
     <div class="current-scene-name"></div>
 
+    {{-- Tooltip para polígonos --}}
+    <div id="polygon-tooltip"></div>
+
     <div id="preloader">
         <div id="loader"></div>
     </div>
@@ -404,9 +442,21 @@
         // 1) Opciones JSON pre-calculadas (evita usar "|" dentro de @json)
         $jsonOptions = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE;
 
+        // Detectar si la primera escena es de tipo video
+        $firstSceneIsVideo = $fscene->type === 'video';
+
+        // Si la primera escena es video, buscar la primera escena panorama como fallback para Pannellum
+        $pannellumFirstScene = $fscene;
+        if ($firstSceneIsVideo) {
+            $firstPanorama = $scenes->firstWhere('type', '!=', 'video');
+            if ($firstPanorama) {
+                $pannellumFirstScene = $firstPanorama;
+            }
+        }
+
         // 2) Default Pannellum - Configuración para efecto de caminar con zoom
         $pannellumDefault = [
-            'firstScene' => (string) $fscene->id,
+            'firstScene' => (string) $pannellumFirstScene->id,
             'hfov' => 100,
             'minHfov' => 2,                       // Permitir zoom extremo para transición de caminar
             'maxHfov' => 120,
@@ -422,6 +472,9 @@
             'showZoomCtrl' => false,
             'keyboardZoom' => true,
         ];
+
+        // Guardar el ID real de la primera escena (puede ser video)
+        $realFirstSceneId = (string) $fscene->id;
 
         // 3) Scenes + hotspots (misma lógica tuya, sólo formateado)
         $scenesConfig = [];
@@ -559,6 +612,10 @@
             // --- Polígonos por escena ---
             const scenePolygons = @json($polygonsConfig ?? [], $jsonOptions);
 
+            // --- Primera escena real (puede ser video) ---
+            const realFirstSceneId = @json($realFirstSceneId);
+            const firstSceneIsVideo = @json($firstSceneIsVideo);
+
             // --- Reconectar strings -> funciones reales (evita TypeError) ---
             Object.keys(pannellumConfig.scenes || {}).forEach(sceneId => {
                 const hs = pannellumConfig.scenes[sceneId].hotSpots || [];
@@ -628,6 +685,7 @@
 
             // --- SVG Overlay para polígonos de terreno ---
             var polygonSvgEl = null;
+            var polygonTooltip = document.getElementById('polygon-tooltip');
             console.log('[Polygons] Data:', JSON.stringify(scenePolygons));
 
             function ensurePolygonSvg() {
@@ -764,7 +822,43 @@
                         path.setAttribute('stroke', poly.strokeColor);
                         path.setAttribute('stroke-width', poly.strokeWidth);
                         path.setAttribute('data-polygon-id', poly.id);
-                        path.setAttribute('data-polygon-name', poly.name);
+                        path.setAttribute('data-polygon-name', poly.name || '');
+                        path.style.pointerEvents = 'auto';
+                        path.style.cursor = 'pointer';
+                        path.style.transition = 'fill-opacity 0.2s ease, stroke-width 0.2s ease';
+
+                        // Eventos de hover para tooltip
+                        path.addEventListener('mouseenter', function(e) {
+                            // Resaltar polígono
+                            path.setAttribute('fill-opacity', Math.min(1, poly.fillOpacity + 0.3));
+                            path.setAttribute('stroke-width', poly.strokeWidth + 2);
+
+                            // Mostrar tooltip
+                            var name = path.getAttribute('data-polygon-name');
+                            if (name && polygonTooltip) {
+                                polygonTooltip.textContent = name;
+                                polygonTooltip.classList.add('visible');
+                            }
+                        });
+
+                        path.addEventListener('mousemove', function(e) {
+                            if (polygonTooltip && polygonTooltip.classList.contains('visible')) {
+                                polygonTooltip.style.left = e.clientX + 'px';
+                                polygonTooltip.style.top = (e.clientY - 45) + 'px';
+                            }
+                        });
+
+                        path.addEventListener('mouseleave', function(e) {
+                            // Restaurar estilo original
+                            path.setAttribute('fill-opacity', poly.fillOpacity);
+                            path.setAttribute('stroke-width', poly.strokeWidth);
+
+                            // Ocultar tooltip
+                            if (polygonTooltip) {
+                                polygonTooltip.classList.remove('visible');
+                            }
+                        });
+
                         svg.appendChild(path);
 
                         // Dibujar medidas en los lados
@@ -968,8 +1062,8 @@
                 var totalFrames = Math.min(200, Math.max(30, Math.round(duration * targetFps)));
                 frameCache.totalFrames = totalFrames;
 
-                // Canvas offscreen para extracción (resolución reducida para memoria)
-                var maxW = 960;
+                // Canvas offscreen para extracción (resolución alta para mejor calidad)
+                var maxW = 1920; // Full HD
                 var vw = videoEl.videoWidth || 1920;
                 var vh = videoEl.videoHeight || 1080;
                 var scale = Math.min(1, maxW / vw);
@@ -1023,7 +1117,7 @@
                     offCtx.drawImage(videoEl, 0, 0, ew, eh);
 
                     // Crear Image desde data URL (JPEG comprimido)
-                    var dataUrl = offscreen.toDataURL('image/jpeg', 0.7);
+                    var dataUrl = offscreen.toDataURL('image/jpeg', 0.85);
                     var img = new Image();
                     img.onload = function() {
                         frameCache.frames[extracted] = img;
@@ -1320,6 +1414,29 @@
                 if (isTransitioning) return;
                 isTransitioning = true;
 
+                // Si el destino es video, usar transición fade en lugar de zoom
+                if (isVideoScene(targetSceneId)) {
+                    $transitionOverlay.css({ opacity: 0, transition: 'opacity 0.4s ease' });
+                    setTimeout(function() {
+                        $transitionOverlay.css('opacity', 1);
+                    }, 10);
+
+                    setTimeout(function() {
+                        showVideoViewer(targetSceneId);
+                        var sceneName = pannellumConfig.scenes[targetSceneId]?.title || 'Escena';
+                        showSceneName(sceneName);
+                        $transitionOverlay.css({ transition: 'opacity 0.6s ease' });
+                        setTimeout(function() {
+                            $transitionOverlay.css('opacity', 0);
+                            setTimeout(function() {
+                                $transitionOverlay.css('transition', 'none');
+                                isTransitioning = false;
+                            }, 600);
+                        }, 100);
+                    }, 500);
+                    return;
+                }
+
                 var startHfov = viewer.getHfov();
 
                 // Zoom muy profundo para simular caminar hasta casi llegar a la escena
@@ -1376,23 +1493,10 @@
             viewer.on('load', function() {
                 var loadedSceneId = String(viewer.getScene());
 
-                // Verificar si es una escena de video
-                if (isVideoScene(loadedSceneId)) {
-                    console.log('[Video] Escena de video cargada:', loadedSceneId);
-                    showVideoViewer(loadedSceneId);
-                    // Mostrar nombre de escena
-                    var sceneName = pannellumConfig.scenes[loadedSceneId]?.title || 'Escena';
-                    showSceneName(sceneName);
-                    // Completar transición pendiente
-                    if (pendingOrientation) {
-                        $transitionOverlay.css('opacity', 0);
-                        isTransitioning = false;
-                        pendingOrientation = null;
-                    }
-                    return;
-                }
+                // Las escenas de video ya no se cargan a través de Pannellum
+                // Solo manejar escenas panorámicas aquí
 
-                // Escena 360 normal - ocultar video si estaba activo
+                // Si hay video activo, ocultarlo al cargar una escena panorámica
                 if (currentVideoSceneId) {
                     hideVideoViewer();
                 }
@@ -1467,11 +1571,12 @@
             $(document).on('click', '#btn-start-tour', function(e) {
                 e.preventDefault();
                 $('.home-content-table').fadeOut(800, function() {
-                    var firstSceneId = pannellumConfig.default.firstScene;
+                    // Usar el ID real de la primera escena (puede ser video)
+                    var firstSceneId = realFirstSceneId;
                     if (pannellumConfig.scenes[firstSceneId]) {
                         showSceneName(pannellumConfig.scenes[firstSceneId].title);
                         // Si la primera escena es video, mostrar el visor de video
-                        if (isVideoScene(firstSceneId)) {
+                        if (firstSceneIsVideo) {
                             showVideoViewer(firstSceneId);
                         }
                     }
@@ -1497,16 +1602,16 @@
                     $('#menu-trigger-ctrl').removeClass('is-clicked');
                     $('body').removeClass('menu-is-open');
 
-                    // Si estamos en un video scene, navegar con fade en vez de zoom
-                    if (currentVideoSceneId) {
+                    var targetIsVideo = isVideoScene(sceneId);
+
+                    // Función para transición fade (usada para video)
+                    function fadeTransition(onMiddle) {
                         $transitionOverlay.css({ opacity: 0, transition: 'opacity 0.4s ease' });
                         setTimeout(function() {
                             $transitionOverlay.css('opacity', 1);
                         }, 10);
                         setTimeout(function() {
-                            hideVideoViewer();
-                            pendingOrientation = null;
-                            viewer.loadScene(sceneId);
+                            onMiddle();
                             $transitionOverlay.css({ transition: 'opacity 0.6s ease' });
                             setTimeout(function() {
                                 $transitionOverlay.css('opacity', 0);
@@ -1516,10 +1621,35 @@
                                 }, 600);
                             }, 100);
                         }, 500);
+                    }
+
+                    // Si estamos en un video scene
+                    if (currentVideoSceneId) {
+                        fadeTransition(function() {
+                            hideVideoViewer();
+                            pendingOrientation = null;
+                            if (targetIsVideo) {
+                                // Video → Video
+                                showVideoViewer(sceneId);
+                                showSceneName(pannellumConfig.scenes[sceneId]?.title || 'Escena');
+                            } else {
+                                // Video → Panorama
+                                viewer.loadScene(sceneId);
+                            }
+                        });
                         return;
                     }
 
-                    // Guardar orientación para zoom out
+                    // Si el destino es video (Panorama → Video)
+                    if (targetIsVideo) {
+                        fadeTransition(function() {
+                            showVideoViewer(sceneId);
+                            showSceneName(pannellumConfig.scenes[sceneId]?.title || 'Escena');
+                        });
+                        return;
+                    }
+
+                    // Panorama → Panorama: usar zoom
                     pendingOrientation = {
                         yaw: viewer.getYaw(),
                         pitch: viewer.getPitch(),
