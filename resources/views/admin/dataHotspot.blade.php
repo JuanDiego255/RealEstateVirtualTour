@@ -99,7 +99,7 @@
                             <div class="form-group col-md-4 video-pos-add" style="display:none;">
                                 <label for="videoTimeAdd"><i class="fa fa-clock-o"></i> Tiempo en video (seg)</label>
                                 <input id="videoTimeAdd" name="video_time"
-                                    class="form-control form-control-lg input-rounded mb-4" type="number"
+                                    class="form-control form-control-lg input-rounded mb-4" type="text"
                                     step="0.1" value="">
                             </div>
 
@@ -298,7 +298,7 @@
                                 <div class="form-group col-md-4 video-pos-edit-{{ $hotspot->id }}" style="{{ !$isVideoHotspot ? 'display:none;' : '' }}">
                                     <label for="videoTime-{{ $hotspot->id }}"><i class="fa fa-clock-o"></i> Tiempo en video (seg)</label>
                                     <input id="videoTime-{{ $hotspot->id }}" name="video_time"
-                                        class="form-control form-control-lg input-rounded mb-4" type="number"
+                                        class="form-control form-control-lg input-rounded mb-4" type="text"
                                         step="0.1" value="{{ $hotspot->video_time }}">
                                 </div>
 
