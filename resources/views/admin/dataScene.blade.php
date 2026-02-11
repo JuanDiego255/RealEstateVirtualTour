@@ -503,8 +503,10 @@
                     $('#video-ready-add').show();
                     $('#video-upload-status-add').html('<i class="fa fa-check text-success"></i> Video listo');
 
-                    // Limpiar el input de archivo (el video ya está en el servidor)
-                    // No limpiamos para mantener la vista previa, pero deshabilitamos el required
+                    // IMPORTANTE: Limpiar el input de archivo para evitar que el form envíe el video
+                    // (el video ya está en el servidor vía chunks, solo necesitamos video_path)
+                    // La vista previa se mantiene porque usa un Object URL separado
+                    $('#video-upload-add').val('');
                     videoUploadState.uploading = false;
 
                     return { success: true, videoPath: completeResponse.videoPath };
