@@ -46,6 +46,11 @@ Route::middleware([
         Route::post('/changePassword', [PasswordController::class, 'store'])->name('changePassword');
         Route::post('/addScene', [SceneController::class, 'store'])->name('addScene');
         Route::post('/addHotspot', [HotspotController::class, 'store'])->name('addHotspot');
+
+        // Rutas para subida de video en chunks (archivos grandes)
+        Route::post('/upload-video-chunk', [SceneController::class, 'uploadVideoChunk'])->name('uploadVideoChunk');
+        Route::post('/complete-video-upload', [SceneController::class, 'completeVideoUpload'])->name('completeVideoUpload');
+        Route::post('/cancel-video-upload', [SceneController::class, 'cancelVideoUpload'])->name('cancelVideoUpload');
         
         Route::get('/showScene/{id}', [SceneController::class, 'show'])->name('showScene');
         Route::get('/showHotspot/{id}', [HotspotController::class, 'show'])->name('showHotspot');

@@ -454,7 +454,7 @@
 
                 try {
                     var response = await $.ajax({
-                        url: '{{ route("uploadVideoChunk") }}',
+                        url: '{{ url("/upload-video-chunk") }}',
                         type: 'POST',
                         data: formData,
                         processData: false,

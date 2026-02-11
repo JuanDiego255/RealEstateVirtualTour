@@ -374,7 +374,7 @@ class SceneController extends Controller
 
         $uploadId = $request->uploadId;
         $fileName = $request->fileName;
-        $totalChunks = $request->totalChunks;
+        $totalChunks = (int) $request->totalChunks;
 
         $tempDir = storage_path('app/chunks/' . $uploadId);
 
