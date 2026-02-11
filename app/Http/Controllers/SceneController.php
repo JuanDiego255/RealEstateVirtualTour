@@ -9,6 +9,7 @@ use App\Hotspot;
 use App\Properties;
 use Datatables;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\File;
 use Yajra\DataTables\DataTables as YajraDataTables;
 
 class SceneController extends Controller
@@ -157,6 +158,8 @@ class SceneController extends Controller
     public function store(Request $request)
     {
         $isVideo = $request->type === 'video';
+        // video_path viene de la subida en chunks (ya está en el servidor)
+        $hasChunkedVideo = $isVideo && $request->filled('video_path');
 
         $rules = [
             'title' => 'required|max:255',
@@ -165,7 +168,12 @@ class SceneController extends Controller
         ];
 
         if ($isVideo) {
-            $rules['video'] = 'required|file|mimetypes:video/mp4,video/webm,video/ogg,video/quicktime';
+            // Si se subió por chunks, video_path es requerido; sino, video file es requerido
+            if ($hasChunkedVideo) {
+                $rules['video_path'] = 'required|string';
+            } else {
+                $rules['video'] = 'required|file|mimetypes:video/mp4,video/webm,video/ogg,video/quicktime';
+            }
         } else {
             $rules['hfov'] = 'required|numeric|min:-360|max:360';
             $rules['yaw'] = 'required|numeric|min:-360|max:360';
@@ -182,9 +190,14 @@ class SceneController extends Controller
         if ($request->hasFile('image')) {
             $image = $request->file('image')->store('uploads', 'public');
         }
-        if ($request->hasFile('video')) {
+
+        // Video: desde chunks o desde file upload tradicional
+        if ($hasChunkedVideo) {
+            $video = $request->video_path;
+        } elseif ($request->hasFile('video')) {
             $video = $request->file('video')->store('uploads', 'public');
         }
+
         if ($request->hasFile('image_ref')) {
             $imageRef = $request->file('image_ref')->store('uploads', 'public');
         }
@@ -304,5 +317,134 @@ class SceneController extends Controller
         $property_id = $request['property_id'];
         return redirect()->route('config', $property_id)->with('success', '
         Escena eliminada exitosamente');
+    }
+
+    /**
+     * Recibe un chunk de video y lo guarda temporalmente.
+     * Permite subir videos grandes en fragmentos pequeños.
+     */
+    public function uploadVideoChunk(Request $request)
+    {
+        $request->validate([
+            'chunk' => 'required|file',
+            'chunkIndex' => 'required|integer|min:0',
+            'totalChunks' => 'required|integer|min:1',
+            'uploadId' => 'required|string',
+            'fileName' => 'required|string'
+        ]);
+
+        $uploadId = $request->uploadId;
+        $chunkIndex = $request->chunkIndex;
+        $totalChunks = $request->totalChunks;
+
+        // Directorio temporal para chunks
+        $tempDir = storage_path('app/chunks/' . $uploadId);
+        if (!File::exists($tempDir)) {
+            File::makeDirectory($tempDir, 0755, true);
+        }
+
+        // Guardar chunk
+        $chunk = $request->file('chunk');
+        $chunkPath = $tempDir . '/chunk_' . str_pad($chunkIndex, 5, '0', STR_PAD_LEFT);
+        $chunk->move($tempDir, 'chunk_' . str_pad($chunkIndex, 5, '0', STR_PAD_LEFT));
+
+        // Verificar progreso
+        $uploadedChunks = count(File::files($tempDir));
+        $progress = round(($uploadedChunks / $totalChunks) * 100);
+
+        return response()->json([
+            'success' => true,
+            'chunkIndex' => $chunkIndex,
+            'uploadedChunks' => $uploadedChunks,
+            'totalChunks' => $totalChunks,
+            'progress' => $progress
+        ]);
+    }
+
+    /**
+     * Ensambla todos los chunks en el archivo final de video.
+     */
+    public function completeVideoUpload(Request $request)
+    {
+        $request->validate([
+            'uploadId' => 'required|string',
+            'fileName' => 'required|string',
+            'totalChunks' => 'required|integer|min:1'
+        ]);
+
+        $uploadId = $request->uploadId;
+        $fileName = $request->fileName;
+        $totalChunks = $request->totalChunks;
+
+        $tempDir = storage_path('app/chunks/' . $uploadId);
+
+        // Verificar que existan todos los chunks
+        if (!File::exists($tempDir)) {
+            return response()->json(['success' => false, 'error' => 'Upload no encontrado'], 404);
+        }
+
+        $chunks = File::files($tempDir);
+        if (count($chunks) !== $totalChunks) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Faltan chunks: ' . count($chunks) . ' de ' . $totalChunks
+            ], 400);
+        }
+
+        // Ordenar chunks por nombre
+        $chunkFiles = [];
+        foreach ($chunks as $chunk) {
+            $chunkFiles[] = $chunk->getPathname();
+        }
+        sort($chunkFiles);
+
+        // Generar nombre único para el archivo final
+        $extension = pathinfo($fileName, PATHINFO_EXTENSION);
+        $finalFileName = 'uploads/' . uniqid('video_') . '.' . $extension;
+        $finalPath = storage_path('app/public/' . $finalFileName);
+
+        // Asegurar que existe el directorio de destino
+        $uploadsDir = storage_path('app/public/uploads');
+        if (!File::exists($uploadsDir)) {
+            File::makeDirectory($uploadsDir, 0755, true);
+        }
+
+        // Ensamblar archivo final
+        $finalFile = fopen($finalPath, 'wb');
+        if (!$finalFile) {
+            return response()->json(['success' => false, 'error' => 'No se pudo crear archivo final'], 500);
+        }
+
+        foreach ($chunkFiles as $chunkFile) {
+            $chunkContent = file_get_contents($chunkFile);
+            fwrite($finalFile, $chunkContent);
+        }
+        fclose($finalFile);
+
+        // Limpiar directorio temporal
+        File::deleteDirectory($tempDir);
+
+        return response()->json([
+            'success' => true,
+            'videoPath' => $finalFileName,
+            'message' => 'Video ensamblado correctamente'
+        ]);
+    }
+
+    /**
+     * Cancela una subida en progreso y limpia los chunks temporales.
+     */
+    public function cancelVideoUpload(Request $request)
+    {
+        $uploadId = $request->uploadId;
+
+        if ($uploadId) {
+            $tempDir = storage_path('app/chunks/' . $uploadId);
+            if (File::exists($tempDir)) {
+                File::deleteDirectory($tempDir);
+            }
+        }
+
+        return response()->json(['success' => true, 'message' => 'Upload cancelado']);
     }
 }

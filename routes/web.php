@@ -30,6 +30,11 @@ Route::group(['middleware' => 'auth'], function () {
     Route::post('/addScene', 'SceneController@store')->name('addScene');
     Route::post('/addHotspot', 'HotspotController@store')->name('addHotspot');
 
+    // Rutas para subida de video en chunks (archivos grandes)
+    Route::post('/upload-video-chunk', 'SceneController@uploadVideoChunk')->name('uploadVideoChunk');
+    Route::post('/complete-video-upload', 'SceneController@completeVideoUpload')->name('completeVideoUpload');
+    Route::post('/cancel-video-upload', 'SceneController@cancelVideoUpload')->name('cancelVideoUpload');
+
     Route::get('/showScene/{id}', 'SceneController@show')->name('showScene');
     Route::get('/showHotspot/{id}', 'HotspotController@show')->name('showHotspot');
 
