@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Properties;
+use App\Category;
+use App\Sector;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -27,9 +29,10 @@ class PropertiesController extends Controller
      */
     public function indexAdmin()
     {
-        //
-        $properties = Properties::get();
-        return view('admin.properties.property', compact('properties'));
+        $properties = Properties::with('category')->get();
+        // Get categories that belong to a real-estate sector (sector with slug containing 'inmobiliario' or all if none)
+        $categories = Category::whereHas('sector')->with('sector')->get();
+        return view('admin.properties.property', compact('properties', 'categories'));
     }
 
     /**
@@ -68,6 +71,7 @@ class PropertiesController extends Controller
             }
             $property->name = $request->name;
             $property->code = $request->code;
+            $property->category_id = $request->category_id;
             $property->rooms = $request->rooms;
             $property->bathrooms = $request->bathrooms;
             $property->garage = $request->garage;
@@ -123,6 +127,7 @@ class PropertiesController extends Controller
             }
             $property->name = $request->name;
             $property->code = $request->code;
+            $property->category_id = $request->category_id;
             $property->rooms = $request->rooms;
             $property->bathrooms = $request->bathrooms;
             $property->garage = $request->garage;

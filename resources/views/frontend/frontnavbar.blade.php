@@ -72,9 +72,22 @@
 
         <div class="collapse navbar-collapse" id="ftco-nav">
             <ul class="navbar-nav ml-auto">
-                <li class="nav-item active">
-                    <a href="{{ url('/') }}" class="nav-link"><i class="fas fa-home mr-2"></i> Propiedades</a>
+                <li class="nav-item {{ request()->is('/') ? 'active' : '' }}">
+                    <a href="{{ url('/') }}" class="nav-link"><i class="fas fa-home mr-2"></i> Inicio</a>
                 </li>
+                @php
+                    $navSectors = \App\Sector::where('status', true)->get();
+                @endphp
+                @foreach ($navSectors as $navSector)
+                    <li class="nav-item {{ request()->is('sector/' . $navSector->slug . '*') ? 'active' : '' }}">
+                        <a href="{{ route('sector.show', $navSector->slug) }}" class="nav-link">
+                            @if ($navSector->icon)
+                                <i class="fa {{ $navSector->icon }} mr-1"></i>
+                            @endif
+                            {{ $navSector->name }}
+                        </a>
+                    </li>
+                @endforeach
 
                 @guest
                     <li class="nav-item">
