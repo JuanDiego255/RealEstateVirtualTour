@@ -33,6 +33,17 @@
                             <input class="form-control form-control-lg input-rounded mb-4" required type="text"
                                 name="code">
                         </div>
+                        <div class="form-group col-md-12">
+                            <label for="category_id">Categoría</label>
+                            <select class="form-control form-control-lg input-rounded mb-4" name="category_id">
+                                <option value="">-- Sin categoría --</option>
+                                @if(isset($categories))
+                                    @foreach ($categories as $cat)
+                                        <option value="{{ $cat->id }}">{{ $cat->sector->name ?? '' }} → {{ $cat->name }}</option>
+                                    @endforeach
+                                @endif
+                            </select>
+                        </div>
                         <div class="form-group col-md-6">
                             <label for="text">Dormitorios</label>
                             <input class="form-control form-control-lg input-rounded mb-4" required type="number"

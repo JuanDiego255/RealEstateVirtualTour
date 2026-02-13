@@ -83,6 +83,7 @@
     <script>
         $(document).ready(function() {
             var propertyId = $('input[name="property_id"]').val();
+            var itemType = $('input[name="item_type"]').val() || 'property';
             var table = $('.sceneTable').DataTable({
                 processing: true,
                 serverSide: true,
@@ -90,7 +91,8 @@
                     url: "{{ route('dataScene') }}",
                     type: 'GET',
                     data: {
-                        property_id: propertyId // Pasar el valor del input como parámetro
+                        property_id: propertyId,
+                        type: itemType
                     }
                 },
                 columns: [{
@@ -145,6 +147,7 @@
     <script>
         $(document).ready(function() {
             var propertyId = $('input[name="property_id"]').val();
+            var itemType = $('input[name="item_type"]').val() || 'property';
             var hotspotTable = $('.hotspotTable').DataTable({
                 processing: true,
                 serverSide: true,
@@ -152,7 +155,8 @@
                     url: "{{ route('dataHotspot') }}",
                     type: 'GET',
                     data: {
-                        property_id: propertyId // Pasar el valor del input como parámetro
+                        property_id: propertyId,
+                        type: itemType
                     }
                 },
                 columns: [{
