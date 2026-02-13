@@ -64,7 +64,9 @@
 </div> --}}
 <nav class="navbar navbar-expand-lg navbar-dark ftco_navbar bg-dark ftco-navbar-light" id="ftco-navbar">
     <div class="container">
-        <a class="navbar-brand" href="{{ url('/') }}">Synergy Real Estate</a>
+        <a class="navbar-brand" href="{{ url('/') }}">
+            <img class="logo" src="{{ url('virtualtour/images/logo-space.png') }}" alt="">
+        </a>
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#ftco-nav"
             aria-controls="ftco-nav" aria-expanded="false" aria-label="Toggle navigation">
             <span class="oi oi-menu"></span> Menu
@@ -91,7 +93,8 @@
 
                 @guest
                     <li class="nav-item">
-                        <a href="{{ route('register') }}" class="nav-link"><i class="fa fa-user-plus mr-2"></i> Registrarse</a>
+                        <a href="{{ route('register') }}" class="nav-link"><i class="fa fa-user-plus mr-2"></i>
+                            Registrarse</a>
                     </li>
                     <li class="nav-item">
                         <a href="{{ route('login') }}" class="nav-link"><i class="fa fa-sign-in mr-2"></i> Ingresar</a>
@@ -117,4 +120,3 @@
         </div>
     </div>
 </nav>
-
