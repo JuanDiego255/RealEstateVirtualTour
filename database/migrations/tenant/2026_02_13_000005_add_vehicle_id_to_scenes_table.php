@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 class AddVehicleIdToScenesTable extends Migration
 {
@@ -10,13 +11,14 @@ class AddVehicleIdToScenesTable extends Migration
     {
         Schema::table('scenes', function (Blueprint $table) {
             $table->unsignedBigInteger('vehicle_id')->nullable()->after('property_id');
-            $table->foreign('vehicle_id')->references('id')->on('vehicles')->onDelete('cascade');
+            $table->foreign('vehicle_id')
+                ->references('id')
+                ->on('vehicles')
+                ->onDelete('cascade');
         });
 
-        // Make property_id nullable so scenes can belong to vehicles instead
-        Schema::table('scenes', function (Blueprint $table) {
-            $table->unsignedBigInteger('property_id')->nullable()->change();
-        });
+        // Modificar property_id a nullable SIN doctrine/dbal
+        DB::statement('ALTER TABLE scenes MODIFY property_id BIGINT UNSIGNED NULL');
     }
 
     public function down()
@@ -25,5 +27,8 @@ class AddVehicleIdToScenesTable extends Migration
             $table->dropForeign(['vehicle_id']);
             $table->dropColumn('vehicle_id');
         });
+
+        // Volver property_id a NOT NULL si lo deseas
+        DB::statement('ALTER TABLE scenes MODIFY property_id BIGINT UNSIGNED NOT NULL');
     }
 }
