@@ -5,7 +5,7 @@
     <html lang="en">
 
     <body>
-        <div class="hero-wrap ftco-degree-bg" style="background-image: url('virtualtour/images/bg_1.jpg')"
+        <div class="hero-wrap ftco-degree-bg" style="background-image: url('virtualtour/images/bg_1.png')"
             data-stellar-background-ratio="0.5">
             <div class="overlay"></div>
             <div class="container">
