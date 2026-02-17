@@ -33,7 +33,7 @@ class CategoryController extends Controller
                 ->paginate(20);
         }
 
-        return view('admin.categories.index', compact('categories'));
+        return view('admin.mycategories.index', compact('categories'));
     }
 
     /**
@@ -52,7 +52,7 @@ class CategoryController extends Controller
 
         $sectors = Sector::active()->ordered()->get();
 
-        return view('admin.categories.create', compact('sectors'));
+        return view('admin.mycategories.create', compact('sectors'));
     }
 
     /**
@@ -127,7 +127,7 @@ class CategoryController extends Controller
             $query->latest()->limit(10);
         }]);
 
-        return view('admin.categories.show', compact('category'));
+        return view('admin.mycategories.show', compact('category'));
     }
 
     /**
@@ -139,7 +139,7 @@ class CategoryController extends Controller
 
         $sectors = Sector::active()->ordered()->get();
 
-        return view('admin.categories.edit', compact('category', 'sectors'));
+        return view('admin.mycategories.edit', compact('category', 'sectors'));
     }
 
     /**
