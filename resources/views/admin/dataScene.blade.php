@@ -23,6 +23,7 @@
                             @endforeach
                         @endif
                         <input type="hidden" name="property_id" value="{{ $id }}">
+                        <input type="hidden" name="item_type" value="{{ $type ?? 'property' }}">
 
                         <div class="row">
                             <div class="form-group col-md-6">
@@ -235,6 +236,7 @@
                             @endforeach
                         @endif
                         <input type="hidden" name="property_id" value="{{ $id }}">
+                        <input type="hidden" name="item_type" value="{{ $type ?? 'property' }}">
 
                         <div class="row">
                             <div class="form-group col-md-6">
@@ -350,6 +352,7 @@
                         @csrf
                         @method('DELETE')
                         <input type="hidden" name="property_id" value="{{ $id }}">
+                        <input type="hidden" name="item_type" value="{{ $type ?? 'property' }}">
                         <div class="modal-footer justify-content-center">
                             <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
                             <button type="submit" class="btn btn-danger">Eliminar</button>
@@ -454,7 +457,7 @@
 
                 try {
                     var response = await $.ajax({
-                        url: '{{ route("uploadVideoChunk") }}',
+                        url: '{{ url("/upload-video-chunk") }}',
                         type: 'POST',
                         data: formData,
                         processData: false,

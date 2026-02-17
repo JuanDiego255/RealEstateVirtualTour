@@ -8,77 +8,106 @@ class UpdatePropertiesTable extends Migration
 {
     /**
      * Run the migrations.
-     *
-     * @return void
+     * Note: category_id already added by 2026_02_13_000003_add_category_id_to_properties_table
      */
     public function up()
     {
         Schema::table('properties', function (Blueprint $table) {
-            // Relaciones
-            $table->foreignId('category_id')->nullable()->after('id')->constrained('categories')->onDelete('set null');
-            $table->foreignId('user_id')->nullable()->after('category_id')->constrained('users')->onDelete('set null');
+            // User relationship
+            if (!Schema::hasColumn('properties', 'user_id')) {
+                $table->foreignId('user_id')->nullable()->after('category_id')->constrained('users')->onDelete('set null');
+            }
 
             // Tipo de propiedad y descripción
-            $table->enum('property_type', ['house', 'apartment', 'land', 'vehicle', 'commercial', 'other'])->default('house')->after('name');
-            $table->text('description')->nullable()->after('property_type');
+            if (!Schema::hasColumn('properties', 'property_type')) {
+                $table->enum('property_type', ['house', 'apartment', 'land', 'vehicle', 'commercial', 'other'])->default('house')->after('name');
+            }
+            if (!Schema::hasColumn('properties', 'description')) {
+                $table->text('description')->nullable()->after('property_type');
+            }
 
             // Ubicación
-            $table->string('location')->nullable()->after('image'); // Ubicación general
-            $table->string('address')->nullable()->after('location'); // Dirección exacta
-            $table->decimal('latitude', 10, 8)->nullable()->after('address');
-            $table->decimal('longitude', 11, 8)->nullable()->after('latitude');
+            if (!Schema::hasColumn('properties', 'location')) {
+                $table->string('location')->nullable()->after('image');
+            }
+            if (!Schema::hasColumn('properties', 'address')) {
+                $table->string('address')->nullable()->after('location');
+            }
+            if (!Schema::hasColumn('properties', 'latitude')) {
+                $table->decimal('latitude', 10, 8)->nullable()->after('address');
+            }
+            if (!Schema::hasColumn('properties', 'longitude')) {
+                $table->decimal('longitude', 11, 8)->nullable()->after('latitude');
+            }
 
             // Moneda y estado
-            $table->enum('currency', ['CRC', 'USD'])->default('CRC')->after('price');
-            $table->enum('status', ['available', 'reserved', 'negotiating', 'sold', 'rented', 'inactive'])->default('available')->after('currency');
+            if (!Schema::hasColumn('properties', 'currency')) {
+                $table->enum('currency', ['CRC', 'USD'])->default('CRC')->after('price');
+            }
+            if (!Schema::hasColumn('properties', 'status')) {
+                $table->enum('status', ['available', 'reserved', 'negotiating', 'sold', 'rented', 'inactive'])->default('available')->after('currency');
+            }
 
             // Sistema de comisiones
-            $table->boolean('is_exclusive')->default(true)->after('status'); // ¿Exclusivo del propietario?
-            $table->decimal('commission_percentage', 5, 2)->nullable()->after('is_exclusive'); // % comisión para externos
-            $table->text('commission_notes')->nullable()->after('commission_percentage'); // Notas sobre comisión
+            if (!Schema::hasColumn('properties', 'is_exclusive')) {
+                $table->boolean('is_exclusive')->default(true)->after('status');
+            }
+            if (!Schema::hasColumn('properties', 'commission_percentage')) {
+                $table->decimal('commission_percentage', 5, 2)->nullable()->after('is_exclusive');
+            }
+            if (!Schema::hasColumn('properties', 'commission_notes')) {
+                $table->text('commission_notes')->nullable()->after('commission_percentage');
+            }
 
             // Flags y contadores
-            $table->boolean('has_virtual_tour')->default(false)->after('commission_notes');
-            $table->boolean('is_featured')->default(false)->after('has_virtual_tour');
-            $table->unsignedInteger('views_count')->default(0)->after('is_featured');
+            if (!Schema::hasColumn('properties', 'has_virtual_tour')) {
+                $table->boolean('has_virtual_tour')->default(false)->after('commission_notes');
+            }
+            if (!Schema::hasColumn('properties', 'is_featured')) {
+                $table->boolean('is_featured')->default(false)->after('has_virtual_tour');
+            }
+            if (!Schema::hasColumn('properties', 'views_count')) {
+                $table->unsignedInteger('views_count')->default(0)->after('is_featured');
+            }
 
             // Fechas
-            $table->timestamp('published_at')->nullable()->after('views_count');
-            $table->timestamp('sold_at')->nullable()->after('published_at');
+            if (!Schema::hasColumn('properties', 'published_at')) {
+                $table->timestamp('published_at')->nullable()->after('views_count');
+            }
+            if (!Schema::hasColumn('properties', 'sold_at')) {
+                $table->timestamp('sold_at')->nullable()->after('published_at');
+            }
         });
     }
 
     /**
      * Reverse the migrations.
-     *
-     * @return void
      */
     public function down()
     {
         Schema::table('properties', function (Blueprint $table) {
-            $table->dropForeign(['category_id']);
-            $table->dropForeign(['user_id']);
+            if (Schema::hasColumn('properties', 'user_id')) {
+                $table->dropForeign(['user_id']);
+            }
 
-            $table->dropColumn([
-                'category_id',
-                'user_id',
-                'property_type',
-                'description',
-                'location',
-                'address',
-                'latitude',
-                'longitude',
-                'currency',
-                'status',
-                'is_exclusive',
-                'commission_percentage',
-                'commission_notes',
-                'has_virtual_tour',
-                'is_featured',
-                'views_count',
-                'published_at',
-                'sold_at'
-            ]);
+            $columns = [
+                'user_id', 'property_type', 'description',
+                'location', 'address', 'latitude', 'longitude',
+                'currency', 'status',
+                'is_exclusive', 'commission_percentage', 'commission_notes',
+                'has_virtual_tour', 'is_featured', 'views_count',
+                'published_at', 'sold_at'
+            ];
+
+            $existing = [];
+            foreach ($columns as $col) {
+                if (Schema::hasColumn('properties', $col)) {
+                    $existing[] = $col;
+                }
+            }
+            if (!empty($existing)) {
+                $table->dropColumn($existing);
+            }
         });
     }
 }

@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\DB;
 use App\Scene;
 use App\Hotspot;
 use App\Properties;
+use App\Sector;
+use App\Vehicle;
 use Datatables;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\File;
@@ -15,58 +17,89 @@ use Yajra\DataTables\DataTables as YajraDataTables;
 class SceneController extends Controller
 {
     /**
-     * Display a listing of the resource.
-     *
-     * @return \Illuminate\Http\Response
+     * Display a listing of the resource (admin scene config).
+     * Supports both property and vehicle contexts.
      */
-    public function index($id)
+    public function index($typeOrId, Request $request, $id = null)
     {
-        $scene = Scene::where('property_id', $id)->get();
+        // Support both /scene/{id} (legacy) and /scene-config/{type}/{id} (new)
+        if ($id !== null) {
+            // Called from configTyped route: /scene-config/{type}/{id}
+            $type = $typeOrId;
+        } else {
+            // Called from legacy config route: /scene/{id}
+            $id = $typeOrId;
+            $type = $request->query('type', 'property');
+        }
+
+        if ($type === 'vehicle') {
+            $scene = Scene::where('vehicle_id', $id)->get();
+        } else {
+            $scene = Scene::where('property_id', $id)->get();
+        }
+
         $sceneIds = $scene->pluck('id')->toArray();
         $hotspots = Hotspot::whereIn('sourceScene', $sceneIds)->get();
-        return view('admin.config', compact('hotspots', 'scene', 'id'));
+        return view('admin.config', compact('hotspots', 'scene', 'id', 'type'));
     }
+
     /**
-     * Display a listing of the resource.
-     *
-     * @return \Illuminate\Http\Response
+     * Display frontend landing page with sectors
      */
     public function frontendIndex()
     {
+        $sectors = Sector::where('status', true)
+            ->with(['categories' => function ($q) {
+                $q->where('status', true);
+            }])
+            ->get();
+
+        // Keep backward compat: also load properties for legacy usage
         $properties = Properties::all();
-        return view('frontend.index', compact('properties'));
+
+        return view('frontend.index', compact('sectors', 'properties'));
     }
 
     public function dataScene(Request $request)
     {
         if ($request->ajax()) {
-            $propertyId = $request->input('property_id');
-            $data = Scene::where('property_id', $propertyId)->select('*');
+            $type = $request->input('type', 'property');
+            $itemId = $request->input('property_id');
+
+            if ($type === 'vehicle') {
+                $data = Scene::where('vehicle_id', $itemId)->select('*');
+            } else {
+                $data = Scene::where('property_id', $itemId)->select('*');
+            }
+
             return YajraDataTables::of($data)
-                ->addColumn('status', function ($row) {
+                ->addColumn('status', function ($row) use ($type) {
                     $sendData = route('changeFScene', $row->id);
                     $csrf = csrf_token();
+                    $idValue = $type === 'vehicle' ? $row->vehicle_id : $row->property_id;
                     if ($row->status != 0)
                         return '<form method="post" id="status' . $row->id . '" action=' . $sendData . '>
                                     <input name="_token" type="hidden" value=' . $csrf . '>
-                                    <input name="property_id" type="hidden" value=' . $row->property_id . '>
+                                    <input name="property_id" type="hidden" value=' . $idValue . '>
+                                    <input name="type" type="hidden" value=' . $type . '>
                                     <input name="_method" type="hidden" value="PUT">
                                     <input type="checkbox" id="' . $row->id . '" name="check" checked value="1"/>
                                 </form>';
                     else
                         return '<form method="post" id="status' . $row->id . '" action=' . $sendData . '>
                                     <input name="_token" type="hidden" value=' . $csrf . '>
-                                    <input name="property_id" type="hidden" value=' . $row->property_id . '>
-                                    <input name="_method" type="hidden" value="PUT">            
+                                    <input name="property_id" type="hidden" value=' . $idValue . '>
+                                    <input name="type" type="hidden" value=' . $type . '>
+                                    <input name="_method" type="hidden" value="PUT">
                                     <input type="checkbox" id="' . $row->id . '" name="check" value="1"/>
                                 </form>';
                 })
                 ->addColumn('action', function ($row) {
-                    return '<a href="#" class="text-success" data-toggle="modal" 
+                    return '<a href="#" class="text-success" data-toggle="modal"
                         data-target="#detailScene' . $row->id . '"><i class="ti-eye"></i></a>
-                            <a href="#" class="text-info" data-toggle="modal" 
+                            <a href="#" class="text-info" data-toggle="modal"
                         data-target="#editModal' . $row->id . '"><i class="ti-pencil"></i></a>
-                            <a href="#" class="text-danger" data-toggle="modal" 
+                            <a href="#" class="text-danger" data-toggle="modal"
                         data-target="#deleteModal' . $row->id . '"><i class="ti-trash"></i></a>';
                 })
                 ->rawColumns(['status', 'action'])
@@ -76,11 +109,20 @@ class SceneController extends Controller
 
     public function dataHotspot(Request $request)
     {
-        $propertyId = $request->input('property_id');
-        $hotspots = DB::table('hotspots')->where('sc1.property_id',$propertyId)
-            ->join('scenes as sc1', 'hotspots.sourceScene', '=', 'sc1.id')
-            ->leftJoin('scenes as sc2', 'hotspots.targetScene', '=', 'sc2.id')
-            ->select('sc1.title as sourceSceneName', 'sc2.title as targetSceneName', 'hotspots.*');
+        $type = $request->input('type', 'property');
+        $itemId = $request->input('property_id');
+
+        if ($type === 'vehicle') {
+            $hotspots = DB::table('hotspots')->where('sc1.vehicle_id', $itemId)
+                ->join('scenes as sc1', 'hotspots.sourceScene', '=', 'sc1.id')
+                ->leftJoin('scenes as sc2', 'hotspots.targetScene', '=', 'sc2.id')
+                ->select('sc1.title as sourceSceneName', 'sc2.title as targetSceneName', 'hotspots.*');
+        } else {
+            $hotspots = DB::table('hotspots')->where('sc1.property_id', $itemId)
+                ->join('scenes as sc1', 'hotspots.sourceScene', '=', 'sc1.id')
+                ->leftJoin('scenes as sc2', 'hotspots.targetScene', '=', 'sc2.id')
+                ->select('sc1.title as sourceSceneName', 'sc2.title as targetSceneName', 'hotspots.*');
+        }
 
         return YajraDataTables::of($hotspots)
             ->addColumn('action', function ($row) {
@@ -98,37 +140,56 @@ class SceneController extends Controller
             ->make(true);
     }
 
-    public function pannellum($id)
+    /**
+     * Virtual tour viewer - supports both property and vehicle
+     */
+    public function pannellum($id, Request $request)
     {
-        $fscene = DB::table('scenes')
-            ->join('properties', 'scenes.property_id', '=', 'properties.id')
-            ->where('scenes.property_id', $id)
-            ->where('scenes.status', '1')
-            ->select(
-                'scenes.*',
-                'properties.name as property_name'
-            )
-            ->first();
+        $type = $request->query('type', 'property');
 
+        if ($type === 'vehicle') {
+            $fscene = DB::table('scenes')
+                ->join('vehicles', 'scenes.vehicle_id', '=', 'vehicles.id')
+                ->where('scenes.vehicle_id', $id)
+                ->where('scenes.status', '1')
+                ->select('scenes.*', 'vehicles.name as property_name')
+                ->first();
 
-        $scenes = DB::table('scenes')
-            ->where('property_id', $id)
-            ->join('properties', 'scenes.property_id', '=', 'properties.id')
-            ->select(
-                'scenes.*',
-                'properties.name as property_name'
-            )
-            ->get();
+            $scenes = DB::table('scenes')
+                ->where('vehicle_id', $id)
+                ->join('vehicles', 'scenes.vehicle_id', '=', 'vehicles.id')
+                ->select('scenes.*', 'vehicles.name as property_name')
+                ->get();
 
-        // Obtener hotspots con nombre de escena destino
-        $hotspots = DB::table('hotspots')
-            ->where('sc1.property_id', $id)
-            ->join('scenes as sc1', 'sc1.id', '=', 'hotspots.sourceScene')
-            ->leftJoin('scenes as sc2', 'sc2.id', '=', 'hotspots.targetScene')
-            ->select('hotspots.*', 'sc2.title as targetSceneName')
-            ->get();
+            $hotspots = DB::table('hotspots')
+                ->where('sc1.vehicle_id', $id)
+                ->join('scenes as sc1', 'sc1.id', '=', 'hotspots.sourceScene')
+                ->leftJoin('scenes as sc2', 'sc2.id', '=', 'hotspots.targetScene')
+                ->select('hotspots.*', 'sc2.title as targetSceneName')
+                ->get();
+        } else {
+            $fscene = DB::table('scenes')
+                ->join('properties', 'scenes.property_id', '=', 'properties.id')
+                ->where('scenes.property_id', $id)
+                ->where('scenes.status', '1')
+                ->select('scenes.*', 'properties.name as property_name')
+                ->first();
 
-        // Obtener polígonos de todas las escenas de esta propiedad
+            $scenes = DB::table('scenes')
+                ->where('property_id', $id)
+                ->join('properties', 'scenes.property_id', '=', 'properties.id')
+                ->select('scenes.*', 'properties.name as property_name')
+                ->get();
+
+            $hotspots = DB::table('hotspots')
+                ->where('sc1.property_id', $id)
+                ->join('scenes as sc1', 'sc1.id', '=', 'hotspots.sourceScene')
+                ->leftJoin('scenes as sc2', 'sc2.id', '=', 'hotspots.targetScene')
+                ->select('hotspots.*', 'sc2.title as targetSceneName')
+                ->get();
+        }
+
+        // Get polygons from all scenes
         $sceneIds = $scenes->pluck('id')->toArray();
         $polygons = DB::table('scene_polygons')
             ->whereIn('scene_id', $sceneIds)
@@ -151,15 +212,13 @@ class SceneController extends Controller
 
     /**
      * Store a newly created resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
+     * Supports both property_id and vehicle_id contexts.
      */
     public function store(Request $request)
     {
         $isVideo = $request->type === 'video';
-        // video_path viene de la subida en chunks (ya está en el servidor)
         $hasChunkedVideo = $isVideo && $request->filled('video_path');
+        $type = $request->input('item_type', 'property');
 
         $rules = [
             'title' => 'required|max:255',
@@ -168,7 +227,6 @@ class SceneController extends Controller
         ];
 
         if ($isVideo) {
-            // Si se subió por chunks, video_path es requerido; sino, video file es requerido
             if ($hasChunkedVideo) {
                 $rules['video_path'] = 'required|string';
             } else {
@@ -191,7 +249,6 @@ class SceneController extends Controller
             $image = $request->file('image')->store('uploads', 'public');
         }
 
-        // Video: desde chunks o desde file upload tradicional
         if ($hasChunkedVideo) {
             $video = $request->video_path;
         } elseif ($request->hasFile('video')) {
@@ -202,11 +259,8 @@ class SceneController extends Controller
             $imageRef = $request->file('image_ref')->store('uploads', 'public');
         }
 
-        $property_id = $request['property_id'];
-
-        Scene::create([
+        $sceneData = [
             'title' => $request['title'],
-            'property_id' => $property_id,
             'type' => $request['type'],
             'hfov' => $isVideo ? 100 : $request['hfov'],
             'yaw' => $isVideo ? 0 : $request['yaw'],
@@ -214,16 +268,24 @@ class SceneController extends Controller
             'image' => $image ?? $imageRef,
             'video' => $video,
             'image_ref' => $imageRef
-        ]);
+        ];
 
-        return redirect()->route('config', $property_id)->with('success', 'Escena guardada con éxito!');
+        $itemId = $request['property_id'];
+
+        if ($type === 'vehicle') {
+            $sceneData['vehicle_id'] = $itemId;
+        } else {
+            $sceneData['property_id'] = $itemId;
+        }
+
+        Scene::create($sceneData);
+
+        return redirect()->route('config', ['id' => $itemId, 'type' => $type])
+            ->with('success', 'Escena guardada con éxito!');
     }
 
     /**
      * Display the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
      */
     public function show($id)
     {
@@ -235,6 +297,7 @@ class SceneController extends Controller
     {
         $scene = Scene::find($id);
         $isVideo = $request->type === 'video';
+        $type = $request->input('item_type', 'property');
 
         $rules = [
             'title' => 'required|max:255',
@@ -252,9 +315,9 @@ class SceneController extends Controller
         }
 
         $request->validate($rules);
-        $property_id = $request['property_id'];
+        $itemId = $request['property_id'];
 
-        // Mantener archivos existentes si no se suben nuevos
+        // Keep existing files if no new ones uploaded
         $image = $scene->image;
         $imageRef = $scene->image_ref;
         $video = $scene->video;
@@ -275,7 +338,6 @@ class SceneController extends Controller
         $updateData = [
             'title' => $request['title'],
             'type' => $request['type'],
-            'property_id' => $property_id,
             'hfov' => $isVideo ? 100 : $request['hfov'],
             'yaw' => $isVideo ? 0 : $request['yaw'],
             'pitch' => $isVideo ? 0 : $request['pitch'],
@@ -284,26 +346,35 @@ class SceneController extends Controller
             'image_ref' => $imageRef
         ];
 
+        if ($type === 'vehicle') {
+            $updateData['vehicle_id'] = $itemId;
+            $updateData['property_id'] = null;
+        } else {
+            $updateData['property_id'] = $itemId;
+            $updateData['vehicle_id'] = null;
+        }
+
         Scene::where('id', $id)->update($updateData);
 
-        return redirect()->route('config', $property_id)->with('success', 'Escena editada con éxito');
+        return redirect()->route('config', ['id' => $itemId, 'type' => $type])
+            ->with('success', 'Escena editada con éxito');
     }
 
     public function status(Request $request, $id)
     {
         $property_id = $request['property_id'];
+        $type = $request->input('type', 'property');
         $scene = Scene::find($id);
         $updated = Scene::where('id', $id)->update([
             'status' => $request['check']
         ]);
 
-        return redirect()->route('config', $property_id)->with('success', 'La escena principal cambió con éxito');
+        return redirect()->route('config', ['id' => $property_id, 'type' => $type])
+            ->with('success', 'La escena principal cambió con éxito');
     }
+
     /**
      * Remove the specified resource from storage.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
      */
     public function destroy($id, Request $request)
     {
@@ -315,13 +386,13 @@ class SceneController extends Controller
         }
         Scene::destroy($id);
         $property_id = $request['property_id'];
-        return redirect()->route('config', $property_id)->with('success', '
-        Escena eliminada exitosamente');
+        $type = $request->input('item_type', 'property');
+        return redirect()->route('config', ['id' => $property_id, 'type' => $type])
+            ->with('success', 'Escena eliminada exitosamente');
     }
 
     /**
      * Recibe un chunk de video y lo guarda temporalmente.
-     * Permite subir videos grandes en fragmentos pequeños.
      */
     public function uploadVideoChunk(Request $request)
     {
@@ -337,18 +408,15 @@ class SceneController extends Controller
         $chunkIndex = $request->chunkIndex;
         $totalChunks = $request->totalChunks;
 
-        // Directorio temporal para chunks
         $tempDir = storage_path('app/chunks/' . $uploadId);
         if (!File::exists($tempDir)) {
             File::makeDirectory($tempDir, 0755, true);
         }
 
-        // Guardar chunk
         $chunk = $request->file('chunk');
         $chunkPath = $tempDir . '/chunk_' . str_pad($chunkIndex, 5, '0', STR_PAD_LEFT);
         $chunk->move($tempDir, 'chunk_' . str_pad($chunkIndex, 5, '0', STR_PAD_LEFT));
 
-        // Verificar progreso
         $uploadedChunks = count(File::files($tempDir));
         $progress = round(($uploadedChunks / $totalChunks) * 100);
 
@@ -374,11 +442,10 @@ class SceneController extends Controller
 
         $uploadId = $request->uploadId;
         $fileName = $request->fileName;
-        $totalChunks = $request->totalChunks;
+        $totalChunks = (int) $request->totalChunks;
 
         $tempDir = storage_path('app/chunks/' . $uploadId);
 
-        // Verificar que existan todos los chunks
         if (!File::exists($tempDir)) {
             return response()->json(['success' => false, 'error' => 'Upload no encontrado'], 404);
         }
@@ -391,25 +458,21 @@ class SceneController extends Controller
             ], 400);
         }
 
-        // Ordenar chunks por nombre
         $chunkFiles = [];
         foreach ($chunks as $chunk) {
             $chunkFiles[] = $chunk->getPathname();
         }
         sort($chunkFiles);
 
-        // Generar nombre único para el archivo final
         $extension = pathinfo($fileName, PATHINFO_EXTENSION);
         $finalFileName = 'uploads/' . uniqid('video_') . '.' . $extension;
         $finalPath = storage_path('app/public/' . $finalFileName);
 
-        // Asegurar que existe el directorio de destino
         $uploadsDir = storage_path('app/public/uploads');
         if (!File::exists($uploadsDir)) {
             File::makeDirectory($uploadsDir, 0755, true);
         }
 
-        // Ensamblar archivo final
         $finalFile = fopen($finalPath, 'wb');
         if (!$finalFile) {
             return response()->json(['success' => false, 'error' => 'No se pudo crear archivo final'], 500);
@@ -421,7 +484,6 @@ class SceneController extends Controller
         }
         fclose($finalFile);
 
-        // Limpiar directorio temporal
         File::deleteDirectory($tempDir);
 
         return response()->json([

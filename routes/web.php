@@ -1,10 +1,13 @@
 <?php
 
 use App\Http\Controllers\PropertiesController;
-use App\Http\Controllers\Admin\SectorController;
+use App\Http\Controllers\SectorController;
+use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\VehicleController;
+use App\Http\Controllers\Admin\SectorController as AdminSectorController;
 use App\Http\Controllers\Admin\PackageController;
 use App\Http\Controllers\Admin\SubscriptionController;
-use App\Http\Controllers\Admin\CategoryController;
+use App\Http\Controllers\Admin\CategoryController as AdminCategoryController;
 use App\Http\Controllers\Admin\BolsaController;
 use App\Http\Controllers\Admin\SaleController;
 use Illuminate\Support\Facades\Route;
@@ -59,25 +62,47 @@ Route::group(['middleware' => 'auth'], function () {
     Route::put('/polygon/{id}', 'ScenePolygonController@update')->name('editPolygon');
     Route::delete('/polygon/{id}', 'ScenePolygonController@destroy')->name('delPolygon');
 
-    //Rutas para propiedades
+    // Propiedades
     Route::post('property/store', [PropertiesController::class, 'store'])->name('addProperty');
     Route::put('/property/update/{id}', [PropertiesController::class, 'update']);
     Route::get('/property', [PropertiesController::class, 'indexAdmin'])->name('property');
     Route::delete('/delete/property/{id}', [PropertiesController::class, 'destroy']);
 
+    // Sectores CRUD (existente)
+    Route::get('/sectors', [SectorController::class, 'indexAdmin'])->name('sectors');
+    Route::post('/sector/store', [SectorController::class, 'store'])->name('addSector');
+    Route::put('/sector/update/{id}', [SectorController::class, 'update']);
+    Route::delete('/delete/sector/{id}', [SectorController::class, 'destroy']);
+
+    // Categorías CRUD (existente)
+    Route::get('/categories', [CategoryController::class, 'indexAdmin'])->name('categories');
+    Route::post('/category/store', [CategoryController::class, 'store'])->name('addCategory');
+    Route::put('/category/update/{id}', [CategoryController::class, 'update']);
+    Route::delete('/delete/category/{id}', [CategoryController::class, 'destroy']);
+
+    // Vehículos CRUD
+    Route::get('/vehicles', [VehicleController::class, 'indexAdmin'])->name('vehicles');
+    Route::post('/vehicle/store', [VehicleController::class, 'store'])->name('addVehicle');
+    Route::put('/vehicle/update/{id}', [VehicleController::class, 'update']);
+    Route::delete('/delete/vehicle/{id}', [VehicleController::class, 'destroy']);
+
+    // Scene config typed route for vehicles
+    Route::get('/scene-config/{type}/{id}', 'SceneController@index')->name('configTyped')
+        ->where('type', 'property|vehicle');
+
     // =====================================================
     // NUEVOS MÓDULOS: Suscripciones, Paquetes, Bolsa Inmobiliaria
     // =====================================================
 
-    // --- SECTORES (Solo super_admin) ---
+    // --- SECTORES ADMIN (Solo super_admin) ---
     Route::group(['prefix' => 'admin/sectors', 'middleware' => 'role:super_admin'], function () {
-        Route::get('/', [SectorController::class, 'index'])->name('admin.sectors.index');
-        Route::get('/create', [SectorController::class, 'create'])->name('admin.sectors.create');
-        Route::post('/', [SectorController::class, 'store'])->name('admin.sectors.store');
-        Route::get('/{sector}/edit', [SectorController::class, 'edit'])->name('admin.sectors.edit');
-        Route::put('/{sector}', [SectorController::class, 'update'])->name('admin.sectors.update');
-        Route::delete('/{sector}', [SectorController::class, 'destroy'])->name('admin.sectors.destroy');
-        Route::post('/{sector}/toggle-status', [SectorController::class, 'toggleStatus'])->name('admin.sectors.toggle-status');
+        Route::get('/', [AdminSectorController::class, 'index'])->name('admin.sectors.index');
+        Route::get('/create', [AdminSectorController::class, 'create'])->name('admin.sectors.create');
+        Route::post('/', [AdminSectorController::class, 'store'])->name('admin.sectors.store');
+        Route::get('/{sector}/edit', [AdminSectorController::class, 'edit'])->name('admin.sectors.edit');
+        Route::put('/{sector}', [AdminSectorController::class, 'update'])->name('admin.sectors.update');
+        Route::delete('/{sector}', [AdminSectorController::class, 'destroy'])->name('admin.sectors.destroy');
+        Route::post('/{sector}/toggle-status', [AdminSectorController::class, 'toggleStatus'])->name('admin.sectors.toggle-status');
     });
 
     // --- PAQUETES (Solo super_admin) ---
@@ -123,17 +148,17 @@ Route::group(['middleware' => 'auth'], function () {
         return view('admin.subscriptions.required');
     })->name('subscription.required');
 
-    // --- CATEGORÍAS (Con suscripción activa) ---
+    // --- CATEGORÍAS ADMIN (Con suscripción activa) ---
     Route::group(['prefix' => 'admin/categories', 'middleware' => ['subscription']], function () {
-        Route::get('/', [CategoryController::class, 'index'])->name('admin.categories.index');
-        Route::get('/create', [CategoryController::class, 'create'])->name('admin.categories.create');
-        Route::post('/', [CategoryController::class, 'store'])->name('admin.categories.store');
-        Route::get('/{category}', [CategoryController::class, 'show'])->name('admin.categories.show');
-        Route::get('/{category}/edit', [CategoryController::class, 'edit'])->name('admin.categories.edit');
-        Route::put('/{category}', [CategoryController::class, 'update'])->name('admin.categories.update');
-        Route::delete('/{category}', [CategoryController::class, 'destroy'])->name('admin.categories.destroy');
-        Route::post('/{category}/toggle-status', [CategoryController::class, 'toggleStatus'])->name('admin.categories.toggle-status');
-        Route::post('/{category}/regenerate-token', [CategoryController::class, 'regenerateToken'])->name('admin.categories.regenerate-token');
+        Route::get('/', [AdminCategoryController::class, 'index'])->name('admin.categories.index');
+        Route::get('/create', [AdminCategoryController::class, 'create'])->name('admin.categories.create');
+        Route::post('/', [AdminCategoryController::class, 'store'])->name('admin.categories.store');
+        Route::get('/{category}', [AdminCategoryController::class, 'show'])->name('admin.categories.show');
+        Route::get('/{category}/edit', [AdminCategoryController::class, 'edit'])->name('admin.categories.edit');
+        Route::put('/{category}', [AdminCategoryController::class, 'update'])->name('admin.categories.update');
+        Route::delete('/{category}', [AdminCategoryController::class, 'destroy'])->name('admin.categories.destroy');
+        Route::post('/{category}/toggle-status', [AdminCategoryController::class, 'toggleStatus'])->name('admin.categories.toggle-status');
+        Route::post('/{category}/regenerate-token', [AdminCategoryController::class, 'regenerateToken'])->name('admin.categories.regenerate-token');
     });
 
     // --- BOLSA INMOBILIARIA (Con suscripción que permite comisiones) ---
@@ -174,12 +199,16 @@ Route::group(['middleware' => 'auth'], function () {
 // =====================================================
 // RUTAS PÚBLICAS
 // =====================================================
-
-Route::get('/', 'SceneController@frontendIndex')->name('welcome');
+Route::get('/', [SectorController::class, 'index'])->name('welcome');
+Route::get('/sector/{slug}', [SectorController::class, 'show'])->name('sector.show');
+Route::get('/category/{slug}', [CategoryController::class, 'show'])->name('category.show');
 Route::get('virtual-tour/{id}', 'SceneController@pannellum')->name('virtual-tour');
 
 // Enlace compartible de categoría
-Route::get('/c/{shareToken}', 'LandingController@category')->name('category.share');
+Route::get('/c/{shareToken}', function ($shareToken) {
+    $category = \App\Category::where('share_token', $shareToken)->firstOrFail();
+    return redirect()->route('category.show', $category->slug);
+})->name('category.share');
 
 // Archivo desde storage
 Route::get('/file/{filename}', function ($filename) {

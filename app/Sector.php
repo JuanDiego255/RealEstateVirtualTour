@@ -2,31 +2,50 @@
 
 namespace App;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class Sector extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
-        'name',
-        'slug',
-        'description',
-        'icon',
-        'image',
-        'color',
-        'is_active',
-        'sort_order',
+        'name', 'slug', 'icon', 'description', 'image',
+        'color', 'status', 'is_active', 'sort_order',
     ];
 
     protected $casts = [
+        'status' => 'boolean',
         'is_active' => 'boolean',
     ];
 
     /**
-     * Categorías del sector
+     * Auto-generate slug from name
+     */
+    public static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($sector) {
+            if (empty($sector->slug)) {
+                $sector->slug = Str::slug($sector->name);
+            }
+        });
+
+        static::updating(function ($sector) {
+            if ($sector->isDirty('name')) {
+                $sector->slug = Str::slug($sector->name);
+            }
+        });
+    }
+
+    /**
+     * Get the categories for this sector
      */
     public function categories()
     {
-        return $this->hasMany(Category::class);
+        return $this->hasMany('App\Category', 'sector_id');
     }
 
     /**
@@ -34,7 +53,9 @@ class Sector extends Model
      */
     public function activeCategories()
     {
-        return $this->categories()->where('is_active', true);
+        return $this->categories()->where(function ($q) {
+            $q->where('is_active', true)->orWhere('status', true);
+        });
     }
 
     /**
@@ -43,14 +64,6 @@ class Sector extends Model
     public function getPropertiesCountAttribute(): int
     {
         return Properties::whereIn('category_id', $this->categories()->pluck('id'))->count();
-    }
-
-    /**
-     * Obtener cantidad de categorías activas
-     */
-    public function getActiveCategoriesCountAttribute(): int
-    {
-        return $this->activeCategories()->count();
     }
 
     /**
@@ -69,7 +82,9 @@ class Sector extends Model
      */
     public function scopeActive($query)
     {
-        return $query->where('is_active', true);
+        return $query->where(function ($q) {
+            $q->where('status', true)->orWhere('is_active', true);
+        });
     }
 
     /**
@@ -85,7 +100,7 @@ class Sector extends Model
      */
     public static function generateUniqueSlug(string $name, ?int $excludeId = null): string
     {
-        $slug = \Illuminate\Support\Str::slug($name);
+        $slug = Str::slug($name);
         $originalSlug = $slug;
         $counter = 1;
 

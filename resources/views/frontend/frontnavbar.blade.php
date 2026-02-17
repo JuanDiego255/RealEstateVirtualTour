@@ -64,7 +64,9 @@
 </div> --}}
 <nav class="navbar navbar-expand-lg navbar-dark ftco_navbar bg-dark ftco-navbar-light" id="ftco-navbar">
     <div class="container">
-        <a class="navbar-brand" href="{{ url('/') }}">Synergy Real Estate</a>
+        <a class="navbar-brand" href="{{ url('/') }}">
+            <img class="logo" src="{{ url('virtualtour/images/logo-space.png') }}" alt="">
+        </a>
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#ftco-nav"
             aria-controls="ftco-nav" aria-expanded="false" aria-label="Toggle navigation">
             <span class="oi oi-menu"></span> Menu
@@ -72,13 +74,27 @@
 
         <div class="collapse navbar-collapse" id="ftco-nav">
             <ul class="navbar-nav ml-auto">
-                <li class="nav-item active">
-                    <a href="{{ url('/') }}" class="nav-link"><i class="fas fa-home mr-2"></i> Propiedades</a>
+                <li class="nav-item {{ request()->is('/') ? 'active' : '' }}">
+                    <a href="{{ url('/') }}" class="nav-link"><i class="fas fa-home mr-2"></i> Inicio</a>
                 </li>
+                @php
+                    $navSectors = \App\Sector::where('status', true)->get();
+                @endphp
+                @foreach ($navSectors as $navSector)
+                    <li class="nav-item {{ request()->is('sector/' . $navSector->slug . '*') ? 'active' : '' }}">
+                        <a href="{{ route('sector.show', $navSector->slug) }}" class="nav-link">
+                            @if ($navSector->icon)
+                                <i class="fa {{ $navSector->icon }} mr-1"></i>
+                            @endif
+                            {{ $navSector->name }}
+                        </a>
+                    </li>
+                @endforeach
 
                 @guest
                     <li class="nav-item">
-                        <a href="{{ route('register') }}" class="nav-link"><i class="fa fa-user-plus mr-2"></i> Registrarse</a>
+                        <a href="{{ route('register') }}" class="nav-link"><i class="fa fa-user-plus mr-2"></i>
+                            Registrarse</a>
                     </li>
                     <li class="nav-item">
                         <a href="{{ route('login') }}" class="nav-link"><i class="fa fa-sign-in mr-2"></i> Ingresar</a>
@@ -104,4 +120,3 @@
         </div>
     </div>
 </nav>
-

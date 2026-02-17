@@ -75,11 +75,11 @@ class Properties extends Model
     const STATUS_INACTIVE = 'inactive';
 
     /**
-     * Categoría de la propiedad
+     * Get the category this property belongs to
      */
     public function category()
     {
-        return $this->belongsTo(Category::class);
+        return $this->belongsTo('App\Category', 'category_id');
     }
 
     /**
@@ -91,11 +91,11 @@ class Properties extends Model
     }
 
     /**
-     * Escenas del tour virtual
+     * Get the scenes for this property
      */
     public function scenes()
     {
-        return $this->hasMany(Scene::class, 'property_id');
+        return $this->hasMany('App\Scene', 'property_id');
     }
 
     /**
@@ -103,15 +103,7 @@ class Properties extends Model
      */
     public function images()
     {
-        return $this->hasMany(PropertyImage::class, 'property_id')->ordered();
-    }
-
-    /**
-     * Imagen principal de las adicionales
-     */
-    public function primaryImage()
-    {
-        return $this->images()->primary()->first();
+        return $this->hasMany(PropertyImage::class, 'property_id')->orderBy('sort_order');
     }
 
     /**
@@ -120,14 +112,6 @@ class Properties extends Model
     public function commissionRequests()
     {
         return $this->hasMany(CommissionRequest::class, 'property_id');
-    }
-
-    /**
-     * Solicitudes de comisión activas
-     */
-    public function activeCommissionRequests()
-    {
-        return $this->commissionRequests()->active();
     }
 
     /**
@@ -145,15 +129,6 @@ class Properties extends Model
     {
         $symbol = $this->currency === 'USD' ? '$' : '₡';
         return $symbol . number_format((float)$this->price, 0, ',', '.');
-    }
-
-    /**
-     * Obtener mantenimiento formateado
-     */
-    public function getFormattedMaintenanceAttribute(): string
-    {
-        $symbol = $this->currency === 'USD' ? '$' : '₡';
-        return $symbol . number_format((float)$this->maintenance, 0, ',', '.');
     }
 
     /**
@@ -260,15 +235,6 @@ class Properties extends Model
     }
 
     /**
-     * Despublicar propiedad
-     */
-    public function unpublish(): bool
-    {
-        $this->status = self::STATUS_INACTIVE;
-        return $this->save();
-    }
-
-    /**
      * Scope para propiedades publicadas
      */
     public function scopePublished($query)
@@ -309,14 +275,6 @@ class Properties extends Model
     public function scopeFeatured($query)
     {
         return $query->where('is_featured', true);
-    }
-
-    /**
-     * Scope por categoría
-     */
-    public function scopeInCategory($query, $categoryId)
-    {
-        return $query->where('category_id', $categoryId);
     }
 
     /**

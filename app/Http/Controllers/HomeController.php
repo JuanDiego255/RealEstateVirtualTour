@@ -6,6 +6,9 @@ use Illuminate\Http\Request;
 use App\Scene;
 use App\Hotspot;
 use App\Properties;
+use App\Sector;
+use App\Category;
+use App\Vehicle;
 
 class HomeController extends Controller
 {
@@ -29,7 +32,10 @@ class HomeController extends Controller
         $scenes = Scene::all();
         $hotspots = Hotspot::all();
         $properties = Properties::all();
+        $sectors = Sector::all();
+        $categories = Category::all();
+        $vehicles = Vehicle::all();
 
-        return view('admin.index', compact('scenes', 'hotspots','properties'));
+        return view('admin.index', compact('scenes', 'hotspots', 'properties', 'sectors', 'categories', 'vehicles'));
     }
 }

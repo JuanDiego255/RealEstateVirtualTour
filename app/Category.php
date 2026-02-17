@@ -2,17 +2,25 @@
 
 namespace App;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
 class Category extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'company_id',
         'sector_id',
         'name',
         'slug',
         'description',
+        'location',
+        'facilities',
+        'notes',
+        'features',
+        'image',
         'logo',
         'cover_image',
         'contact_name',
@@ -26,21 +34,23 @@ class Category extends Model
         'social_facebook',
         'social_instagram',
         'share_token',
+        'status',
         'is_active',
         'views_count',
     ];
 
     protected $casts = [
+        'status' => 'boolean',
+        'is_active' => 'boolean',
         'latitude' => 'decimal:8',
         'longitude' => 'decimal:8',
-        'is_active' => 'boolean',
         'views_count' => 'integer',
     ];
 
     /**
      * Boot del modelo
      */
-    protected static function boot()
+    public static function boot()
     {
         parent::boot();
 
@@ -49,7 +59,13 @@ class Category extends Model
                 $category->share_token = Str::random(32);
             }
             if (empty($category->slug)) {
-                $category->slug = static::generateUniqueSlug($category->name, $category->company_id);
+                $category->slug = Str::slug($category->name);
+            }
+        });
+
+        static::updating(function ($category) {
+            if ($category->isDirty('name')) {
+                $category->slug = Str::slug($category->name);
             }
         });
     }
@@ -63,19 +79,27 @@ class Category extends Model
     }
 
     /**
-     * Sector de la categoría
+     * Get the sector this category belongs to
      */
     public function sector()
     {
-        return $this->belongsTo(Sector::class);
+        return $this->belongsTo('App\Sector', 'sector_id');
     }
 
     /**
-     * Propiedades de la categoría
+     * Get the properties for this category
      */
     public function properties()
     {
-        return $this->hasMany(Properties::class, 'category_id');
+        return $this->hasMany('App\Properties', 'category_id');
+    }
+
+    /**
+     * Get the vehicles for this category
+     */
+    public function vehicles()
+    {
+        return $this->hasMany('App\Vehicle', 'category_id');
     }
 
     /**
@@ -89,22 +113,6 @@ class Category extends Model
     }
 
     /**
-     * Obtener cantidad de propiedades
-     */
-    public function getPropertiesCountAttribute(): int
-    {
-        return $this->properties()->count();
-    }
-
-    /**
-     * Obtener cantidad de propiedades activas
-     */
-    public function getActivePropertiesCountAttribute(): int
-    {
-        return $this->activeProperties()->count();
-    }
-
-    /**
      * URL del logo
      */
     public function getLogoUrlAttribute(): ?string
@@ -112,8 +120,7 @@ class Category extends Model
         if ($this->logo) {
             return asset('storage/' . $this->logo);
         }
-        // Fallback al logo de la empresa
-        return $this->company?->logo_url;
+        return $this->company ? $this->company->logo_url : null;
     }
 
     /**
@@ -132,7 +139,10 @@ class Category extends Model
      */
     public function getShareUrlAttribute(): string
     {
-        return route('category.share', $this->share_token);
+        if ($this->share_token) {
+            return url('/c/' . $this->share_token);
+        }
+        return route('category.show', $this->slug);
     }
 
     /**
@@ -152,11 +162,14 @@ class Category extends Model
      */
     public function canAddProperty(): bool
     {
-        $package = $this->company?->getCurrentPackage();
+        if (!$this->company) {
+            return true; // Categorías sin empresa no tienen límite
+        }
+        $package = $this->company->getCurrentPackage();
         if (!$package) {
             return false;
         }
-        return $this->properties_count < $package->max_posts_per_category;
+        return $this->properties()->count() < $package->max_posts_per_category;
     }
 
     /**
@@ -172,7 +185,9 @@ class Category extends Model
      */
     public function scopeActive($query)
     {
-        return $query->where('is_active', true);
+        return $query->where(function ($q) {
+            $q->where('status', true)->orWhere('is_active', true);
+        });
     }
 
     /**
@@ -186,22 +201,28 @@ class Category extends Model
     }
 
     /**
-     * Generar slug único dentro de la empresa
+     * Generar slug único
      */
-    public static function generateUniqueSlug(string $name, int $companyId, ?int $excludeId = null): string
+    public static function generateUniqueSlug(string $name, ?int $companyId = null, ?int $excludeId = null): string
     {
         $slug = Str::slug($name);
         $originalSlug = $slug;
         $counter = 1;
 
-        $query = static::where('slug', $slug)->where('company_id', $companyId);
+        $query = static::where('slug', $slug);
+        if ($companyId) {
+            $query->where('company_id', $companyId);
+        }
         if ($excludeId) {
             $query->where('id', '!=', $excludeId);
         }
 
         while ($query->exists()) {
             $slug = $originalSlug . '-' . $counter;
-            $query = static::where('slug', $slug)->where('company_id', $companyId);
+            $query = static::where('slug', $slug);
+            if ($companyId) {
+                $query->where('company_id', $companyId);
+            }
             if ($excludeId) {
                 $query->where('id', '!=', $excludeId);
             }
