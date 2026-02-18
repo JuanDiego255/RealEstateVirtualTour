@@ -160,14 +160,34 @@
                         </div>
                     </div>
 
-                    {{-- Imagen --}}
-                    <h6 class="text-muted mb-3 mt-3"><i class="fa fa-image"></i> Imagen</h6>
+                    {{-- Imagen principal --}}
+                    <h6 class="text-muted mb-3 mt-3"><i class="fa fa-image"></i> Imagen principal</h6>
                     <div class="form-group">
                         <img class="card-img-top img-fluid w-50 mb-2" src="{{ isset($property->image) ? route('file', $property->image) : url('images/producto-sin-imagen.PNG') }}" style="max-height: 200px; object-fit: cover;">
                         <div class="custom-file">
                             <input type="file" class="form-control-file" name="image" accept="image/*">
                             <small class="form-text text-muted">Dejar vacío para mantener la imagen actual</small>
                         </div>
+                    </div>
+
+                    {{-- Galería de imágenes adicionales --}}
+                    <h6 class="text-muted mb-3 mt-3"><i class="fa fa-images"></i> Galería adicional</h6>
+                    @if($property->images && $property->images->count() > 0)
+                        <div class="row mb-2">
+                            @foreach($property->images as $img)
+                                <div class="col-3 mb-2 text-center">
+                                    <img src="{{ $img->url }}" class="img-thumbnail" style="height: 80px; object-fit: cover;">
+                                    <form action="{{ url('/property/' . $property->id . '/image/' . $img->id) }}" method="POST" class="d-inline">
+                                        @csrf @method('DELETE')
+                                        <button type="submit" class="btn btn-sm btn-outline-danger mt-1" title="Eliminar"><i class="fa fa-trash"></i></button>
+                                    </form>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+                    <div class="form-group">
+                        <input type="file" class="form-control-file" name="additional_images[]" accept="image/*" multiple>
+                        <small class="form-text text-muted">Puede seleccionar múltiples imágenes</small>
                     </div>
 
                     <div class="modal-footer">

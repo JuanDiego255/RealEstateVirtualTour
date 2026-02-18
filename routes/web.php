@@ -69,6 +69,7 @@ Route::group(['middleware' => 'auth'], function () {
     Route::put('/property/update/{id}', [PropertiesController::class, 'update']);
     Route::get('/property', [PropertiesController::class, 'indexAdmin'])->name('property');
     Route::delete('/delete/property/{id}', [PropertiesController::class, 'destroy']);
+    Route::delete('/property/{propertyId}/image/{imageId}', [PropertiesController::class, 'destroyImage'])->name('deletePropertyImage');
 
     // Sectores CRUD (existente)
     Route::get('/sectors', [SectorController::class, 'indexAdmin'])->name('sectors');

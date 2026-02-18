@@ -167,14 +167,21 @@
                         </div>
                     </div>
 
-                    {{-- Imagen --}}
-                    <h6 class="text-muted mb-3 mt-3"><i class="fa fa-image"></i> Imagen</h6>
+                    {{-- Imagen principal --}}
+                    <h6 class="text-muted mb-3 mt-3"><i class="fa fa-image"></i> Imagen principal</h6>
                     <div class="form-group">
                         <img class="card-img-top img-fluid" id="image-preview" alt="Image Preview" style="max-height: 200px; object-fit: cover;" />
                         <div class="custom-file mt-2">
                             <input type="file" class="form-control-file" id="image-upload" name="image"
                                 required onchange="previewImage()" accept="image/*">
                         </div>
+                    </div>
+
+                    {{-- Galería adicional --}}
+                    <h6 class="text-muted mb-3 mt-3"><i class="fa fa-images"></i> Galería adicional</h6>
+                    <div class="form-group">
+                        <input type="file" class="form-control-file" name="additional_images[]" accept="image/*" multiple>
+                        <small class="form-text text-muted">Puede seleccionar múltiples imágenes (opcional)</small>
                     </div>
 
                     <div class="modal-footer">

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Properties;
+use App\PropertyImage;
 use App\Category;
 use App\Sector;
 use Illuminate\Http\Request;
@@ -29,7 +30,7 @@ class PropertiesController extends Controller
      */
     public function indexAdmin()
     {
-        $properties = Properties::with('category')->get();
+        $properties = Properties::with(['category', 'images'])->get();
         // Get categories that belong to a real-estate sector (sector with slug containing 'inmobiliario' or all if none)
         $categories = Category::whereHas('sector')->with('sector')->get();
         return view('admin.properties.property', compact('properties', 'categories'));
@@ -92,6 +93,18 @@ class PropertiesController extends Controller
             $property->is_exclusive = $request->is_exclusive ?? false;
             $property->user_id = auth()->id();
             $property->save();
+
+            // Guardar imágenes adicionales
+            if ($request->hasFile('additional_images')) {
+                foreach ($request->file('additional_images') as $index => $file) {
+                    PropertyImage::create([
+                        'property_id' => $property->id,
+                        'image' => $file->store('uploads/gallery', 'public'),
+                        'sort_order' => $index,
+                    ]);
+                }
+            }
+
             DB::commit();
             return redirect('/property')->with('success', 'Propiedad guardada con éxito!');
         } catch (\Exception $th) {
@@ -157,6 +170,19 @@ class PropertiesController extends Controller
             $property->commission_notes = $request->commission_notes;
             $property->is_exclusive = $request->is_exclusive ?? false;
             $property->update();
+
+            // Guardar imágenes adicionales
+            if ($request->hasFile('additional_images')) {
+                $maxOrder = $property->images()->max('sort_order') ?? 0;
+                foreach ($request->file('additional_images') as $index => $file) {
+                    PropertyImage::create([
+                        'property_id' => $property->id,
+                        'image' => $file->store('uploads/gallery', 'public'),
+                        'sort_order' => $maxOrder + $index + 1,
+                    ]);
+                }
+            }
+
             DB::commit();
             return redirect('/property')->with('success', 'Propiedad editada con éxito!');
         } catch (\Exception $th) {
@@ -190,5 +216,20 @@ class PropertiesController extends Controller
             //throw $th;
             DB::rollBack();
         }
+    }
+
+    /**
+     * Remove a gallery image from a property.
+     */
+    public function destroyImage($propertyId, $imageId)
+    {
+        $image = PropertyImage::where('property_id', $propertyId)
+            ->where('id', $imageId)
+            ->firstOrFail();
+
+        Storage::delete('public/' . $image->image);
+        $image->delete();
+
+        return redirect('/property')->with('success', 'Imagen eliminada con éxito!');
     }
 }

@@ -7,6 +7,9 @@ use App\Company;
 use App\Package;
 use App\Subscription;
 use App\SubscriptionPayment;
+use App\User;
+use App\Notifications\SubscriptionApproved;
+use App\Notifications\PaymentReceived;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
@@ -160,7 +163,10 @@ class SubscriptionController extends Controller
 
         $subscription->approve(Auth::user());
 
-        // TODO: Send notification email to company
+        // Notificar al owner de la empresa
+        if ($subscription->company && $subscription->company->owner) {
+            $subscription->company->owner->notify(new SubscriptionApproved($subscription));
+        }
 
         return redirect()->back()
             ->with('success', 'Suscripción aprobada correctamente.');
@@ -180,8 +186,6 @@ class SubscriptionController extends Controller
             'notes' => $subscription->notes . "\n\nSuspendida: " . ($request->reason ?? 'Sin razón especificada'),
         ]);
 
-        // TODO: Send notification email
-
         return redirect()->back()
             ->with('success', 'Suscripción suspendida.');
     }
@@ -192,8 +196,6 @@ class SubscriptionController extends Controller
     public function cancel(Request $request, Subscription $subscription)
     {
         $subscription->update(['status' => 'cancelled']);
-
-        // TODO: Send notification email
 
         return redirect()->back()
             ->with('success', 'Suscripción cancelada.');
@@ -271,6 +273,14 @@ class SubscriptionController extends Controller
 
         $payment = SubscriptionPayment::create($data);
 
+        // Notificar a super admins sobre el nuevo pago
+        if (!Auth::user()->isSuperAdmin()) {
+            $admins = User::where('role', 'super_admin')->get();
+            foreach ($admins as $admin) {
+                $admin->notify(new PaymentReceived($payment));
+            }
+        }
+
         // Auto-approve if super admin
         if ($request->has('auto_approve') && Auth::user()->isSuperAdmin()) {
             $payment->approve(Auth::user());
@@ -309,6 +319,11 @@ class SubscriptionController extends Controller
         $subscription = $payment->subscription;
         if ($subscription->status === 'pending') {
             $subscription->approve(Auth::user());
+
+            // Notificar al owner de la empresa
+            if ($subscription->company && $subscription->company->owner) {
+                $subscription->company->owner->notify(new SubscriptionApproved($subscription));
+            }
         }
 
         return redirect()->back()
@@ -325,8 +340,6 @@ class SubscriptionController extends Controller
         ]);
 
         $payment->reject(Auth::user(), $request->rejection_reason);
-
-        // TODO: Send notification email
 
         return redirect()->back()
             ->with('success', 'Pago rechazado.');
@@ -348,6 +361,6 @@ class SubscriptionController extends Controller
         $subscription = $company->activeSubscription();
         $payments = $subscription ? $subscription->payments()->orderBy('created_at', 'desc')->limit(10)->get() : collect();
 
-        return view('admin.subscriptions.my-subscription', compact('company', 'subscription', 'payments'));
+        return view('admin.subscriptions.my', compact('company', 'subscription', 'payments'));
     }
 }

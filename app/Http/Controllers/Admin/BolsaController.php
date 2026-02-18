@@ -7,6 +7,9 @@ use App\CommissionRequest;
 use App\CommissionNegotiation;
 use App\Properties;
 use App\Sale;
+use App\User;
+use App\Notifications\CommissionRequestReceived;
+use App\Notifications\CommissionRequestUpdated;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
@@ -175,10 +178,14 @@ class BolsaController extends Controller
             'proposed_commission' => $request->proposed_commission,
             'initial_message' => $request->initial_message,
             'status' => 'pending',
-            'expires_at' => Carbon::now()->addDays(7), // Expira en 7 días
+            'expires_at' => Carbon::now()->addDays(7),
         ]);
 
-        // TODO: Send notification email to property owner
+        // Notificar al propietario del inmueble
+        $owner = User::find($property->user_id);
+        if ($owner) {
+            $owner->notify(new CommissionRequestReceived($commissionRequest));
+        }
 
         return redirect()->route('admin.bolsa.negotiation', $commissionRequest)
             ->with('success', 'Solicitud enviada correctamente. Espere la respuesta del propietario.');
@@ -248,9 +255,13 @@ class BolsaController extends Controller
         // Update proposed commission if counter offer
         if ($request->filled('proposed_percentage')) {
             $commissionRequest->update(['proposed_commission' => $request->proposed_percentage]);
-        }
 
-        // TODO: Send notification email
+            // Notificar contra-oferta
+            $recipient = User::find($toUserId);
+            if ($recipient) {
+                $recipient->notify(new CommissionRequestUpdated($commissionRequest, 'counter_offer'));
+            }
+        }
 
         return redirect()->back()
             ->with('success', 'Mensaje enviado.');
@@ -280,7 +291,11 @@ class BolsaController extends Controller
         $finalCommission = $request->final_commission ?? $commissionRequest->proposed_commission;
         $commissionRequest->accept($finalCommission);
 
-        // TODO: Send notification email to requester
+        // Notificar al solicitante que fue aceptada
+        $requester = User::find($commissionRequest->requester_id);
+        if ($requester) {
+            $requester->notify(new CommissionRequestUpdated($commissionRequest, 'accepted'));
+        }
 
         return redirect()->back()
             ->with('success', 'Solicitud aceptada. El agente ahora puede vender su inmueble.');
@@ -319,7 +334,11 @@ class BolsaController extends Controller
             ]);
         }
 
-        // TODO: Send notification email
+        // Notificar al solicitante que fue rechazada
+        $requester = User::find($commissionRequest->requester_id);
+        if ($requester) {
+            $requester->notify(new CommissionRequestUpdated($commissionRequest, 'rejected'));
+        }
 
         return redirect()->route('admin.bolsa.incoming')
             ->with('success', 'Solicitud rechazada.');
