@@ -1,11 +1,22 @@
 @extends('frontend.front')
+@php
+    $imagePath = null;
+
+    if (!empty($category->image)) {
+        $imagePath = $category->image;
+    } elseif (!empty($category->cover_image)) {
+        // Por si viene como URL completa
+        $imagePath = str_replace(url('/storage') . '/', '', $category->cover_image);
+    }
+@endphp
 
 @section('content')
     <!DOCTYPE html>
     <html lang="en">
 
     <body>
-        <div class="hero-wrap ftco-degree-bg" style="background-image: url('{{ isset($category->image) ? route('file', $category->image) : url('virtualtour/images/bg_1.jpg') }}')"
+        <div class="hero-wrap ftco-degree-bg"
+            style="background-image: url('{{ $imagePath ? route('file', ['filename' => $imagePath]) : url('images/producto-sin-imagen.PNG') }}')"
             data-stellar-background-ratio="0.5">
             <div class="overlay"></div>
             <div class="container">
@@ -47,7 +58,8 @@
                             <div class="col-md-4 ftco-animate mb-3">
                                 <div class="card h-100 border-0 shadow-sm">
                                     <div class="card-body">
-                                        <h5 class="card-title"><i class="fa fa-building mr-2 text-primary"></i>Facilidades</h5>
+                                        <h5 class="card-title"><i class="fa fa-building mr-2 text-primary"></i>Facilidades
+                                        </h5>
                                         <p class="card-text text-muted">{{ $category->facilities }}</p>
                                     </div>
                                 </div>
@@ -57,7 +69,8 @@
                             <div class="col-md-4 ftco-animate mb-3">
                                 <div class="card h-100 border-0 shadow-sm">
                                     <div class="card-body">
-                                        <h5 class="card-title"><i class="fa fa-star mr-2 text-warning"></i>Características</h5>
+                                        <h5 class="card-title"><i class="fa fa-star mr-2 text-warning"></i>Características
+                                        </h5>
                                         <p class="card-text text-muted">{{ $category->features }}</p>
                                     </div>
                                 </div>
@@ -97,15 +110,19 @@
                                     <div class="text">
                                         <p class="price">
                                             <span class="old-price">₡{{ number_format($property->price) }}</span>
-                                            <span class="orig-price">₡{{ number_format($property->maintenance) }}<small>/mo</small></span>
+                                            <span
+                                                class="orig-price">₡{{ number_format($property->maintenance) }}<small>/mo</small></span>
                                         </p>
                                         <ul class="property_list">
                                             <li><span class="flaticon-bed"></span>{{ $property->rooms }}</li>
                                             <li><span class="flaticon-bathtub"></span>{{ $property->bathrooms }}</li>
-                                            <li><span class="flaticon-floor-plan"></span>{{ $property->construction }} Mt2</li>
+                                            <li><span class="flaticon-floor-plan"></span>{{ $property->construction }} Mt2
+                                            </li>
                                         </ul>
-                                        <h3><a href="{{ route('virtual-tour', $property->id) }}">{{ $property->name }}</a></h3>
-                                        <span class="location">{{ $property->location ?? 'Ubicación no disponible' }}</span>
+                                        <h3><a href="{{ route('virtual-tour', $property->id) }}">{{ $property->name }}</a>
+                                        </h3>
+                                        <span
+                                            class="location">{{ $property->location ?? 'Ubicación no disponible' }}</span>
                                         <a href="{{ route('virtual-tour', $property->id) }}"
                                             class="d-flex align-items-center justify-content-center btn-custom">
                                             <span class="ion-ios-link mr-2"></span> Virtual Tour
@@ -145,7 +162,8 @@
                                             <li><i class="fa fa-tint mr-1"></i>{{ $vehicle->fuel_type }}</li>
                                         </ul>
                                         <h3>
-                                            <a href="{{ route('virtual-tour', ['id' => $vehicle->id, 'type' => 'vehicle']) }}">
+                                            <a
+                                                href="{{ route('virtual-tour', ['id' => $vehicle->id, 'type' => 'vehicle']) }}">
                                                 {{ $vehicle->brand }} {{ $vehicle->model }} {{ $vehicle->year }}
                                             </a>
                                         </h3>
@@ -159,7 +177,8 @@
                                             </small>
                                         </div>
                                         @if ($vehicle->condition)
-                                            <span class="badge {{ $vehicle->condition == 'Nuevo' ? 'badge-success' : 'badge-secondary' }} mb-2">
+                                            <span
+                                                class="badge {{ $vehicle->condition == 'Nuevo' ? 'badge-success' : 'badge-secondary' }} mb-2">
                                                 {{ $vehicle->condition }}
                                             </span>
                                         @endif
@@ -201,8 +220,10 @@
         <!-- loader -->
         <div id="ftco-loader" class="show fullscreen">
             <svg class="circular" width="48px" height="48px">
-                <circle class="path-bg" cx="24" cy="24" r="22" fill="none" stroke-width="4" stroke="#eeeeee" />
-                <circle class="path" cx="24" cy="24" r="22" fill="none" stroke-width="4" stroke-miterlimit="10" stroke="#F96D00" />
+                <circle class="path-bg" cx="24" cy="24" r="22" fill="none" stroke-width="4"
+                    stroke="#eeeeee" />
+                <circle class="path" cx="24" cy="24" r="22" fill="none" stroke-width="4"
+                    stroke-miterlimit="10" stroke="#F96D00" />
             </svg>
         </div>
         @include('frontend.footer')

@@ -5,7 +5,8 @@
     <html lang="en">
 
     <body>
-        <div class="hero-wrap ftco-degree-bg" style="background-image: url('{{ isset($sector->image) ? route('file', $sector->image) : url('virtualtour/images/bg_1.jpg') }}')"
+        <div class="hero-wrap ftco-degree-bg"
+            style="background-image: url('{{ isset($sector->image) ? route('file', $sector->image) : url('virtualtour/images/bg_1.jpg') }}')"
             data-stellar-background-ratio="0.5">
             <div class="overlay"></div>
             <div class="container">
@@ -47,11 +48,23 @@
                 @if (count($categories) > 0)
                     <div class="row">
                         @foreach ($categories as $category)
+                            @php
+                                $imagePath = null;
+
+                                if (!empty($category->image)) {
+                                    $imagePath = $category->image;
+                                } elseif (!empty($category->cover_image)) {
+                                    // Por si viene como URL completa
+                                    $imagePath = str_replace(url('/storage') . '/', '', $category->cover_image);
+                                }
+                            @endphp
+
                             <div class="col-md-{{ count($categories) <= 2 ? '6' : '4' }} mb-4">
                                 <a href="{{ route('category.show', $category->slug) }}" class="text-decoration-none">
-                                    <div class="property-wrap ftco-animate" style="border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); transition: transform 0.3s;">
+                                    <div class="property-wrap ftco-animate"
+                                        style="border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); transition: transform 0.3s;">
                                         <div class="img"
-                                            style="background-image: url('{{ isset($category->image) ? route('file', $category->image) : url('virtualtour/images/bg_1.jpg') }}');
+                                            style="background-image: url('{{ $imagePath ? route('file', ['filename' => $imagePath]) : url('images/producto-sin-imagen.PNG') }}');
                                                    height: 300px; background-size: cover; background-position: center;
                                                    position: relative;">
                                             <div
@@ -67,7 +80,8 @@
                                                     </p>
                                                 @endif
                                                 @if ($category->description)
-                                                    <p class="text-white-50 mb-2 small">{{ Str::limit($category->description, 80) }}</p>
+                                                    <p class="text-white-50 mb-2 small">
+                                                        {{ Str::limit($category->description, 80) }}</p>
                                                 @endif
                                                 <div class="d-flex flex-wrap">
                                                     @if ($category->properties_count > 0)
@@ -117,8 +131,10 @@
         <!-- loader -->
         <div id="ftco-loader" class="show fullscreen">
             <svg class="circular" width="48px" height="48px">
-                <circle class="path-bg" cx="24" cy="24" r="22" fill="none" stroke-width="4" stroke="#eeeeee" />
-                <circle class="path" cx="24" cy="24" r="22" fill="none" stroke-width="4" stroke-miterlimit="10" stroke="#F96D00" />
+                <circle class="path-bg" cx="24" cy="24" r="22" fill="none" stroke-width="4"
+                    stroke="#eeeeee" />
+                <circle class="path" cx="24" cy="24" r="22" fill="none" stroke-width="4"
+                    stroke-miterlimit="10" stroke="#F96D00" />
             </svg>
         </div>
         @include('frontend.footer')
