@@ -18,6 +18,7 @@ class Package extends Model
         'max_posts_per_category',
         'tour_price',
         'allows_tours',
+        'included_tours',
         'allows_commission',
         'trial_days',
         'features',
