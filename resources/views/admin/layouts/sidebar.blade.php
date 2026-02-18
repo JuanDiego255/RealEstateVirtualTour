@@ -58,6 +58,13 @@
                         </li>
                         @endif
 
+                        {{-- Gestión de Usuarios (para company_admin) --}}
+                        @if(Auth::user()->role === 'company_admin')
+                        <li class="{{ Request::routeIs('admin.users.*') ? 'active' : '' }}">
+                            <a href="{{ route('admin.users.index') }}"><i class="fa fa-users"></i><span>Mi Equipo</span></a>
+                        </li>
+                        @endif
+
                         {{-- Mi Suscripción (para usuarios normales) --}}
                         @if(method_exists(Auth::user(), 'isSuperAdmin') && !Auth::user()->isSuperAdmin())
                         <li class="{{ Request::routeIs('admin.subscriptions.my') ? 'active' : '' }}">
@@ -73,6 +80,16 @@
                             <span style="color: #ffc107; font-size: 11px; text-transform: uppercase;">
                                 <i class="fa fa-cog"></i> Administración
                             </span>
+                        </li>
+
+                        {{-- Empresas --}}
+                        <li class="{{ Request::routeIs('admin.companies.*') ? 'active' : '' }}">
+                            <a href="{{ route('admin.companies.index') }}"><i class="fa fa-building"></i><span>Empresas</span></a>
+                        </li>
+
+                        {{-- Usuarios --}}
+                        <li class="{{ Request::routeIs('admin.users.*') ? 'active' : '' }}">
+                            <a href="{{ route('admin.users.index') }}"><i class="fa fa-users"></i><span>Usuarios</span></a>
                         </li>
 
                         {{-- Paquetes --}}

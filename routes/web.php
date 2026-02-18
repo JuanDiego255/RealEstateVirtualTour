@@ -10,6 +10,8 @@ use App\Http\Controllers\Admin\SubscriptionController;
 use App\Http\Controllers\Admin\CategoryController as AdminCategoryController;
 use App\Http\Controllers\Admin\BolsaController;
 use App\Http\Controllers\Admin\SaleController;
+use App\Http\Controllers\Admin\UserController as AdminUserController;
+use App\Http\Controllers\Admin\CompanyController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 
@@ -192,6 +194,29 @@ Route::group(['middleware' => 'auth'], function () {
         Route::get('/{sale}', [SaleController::class, 'show'])->name('admin.sales.show');
         Route::post('/{sale}/confirm', [SaleController::class, 'confirm'])->name('admin.sales.confirm');
         Route::post('/{sale}/cancel', [SaleController::class, 'cancel'])->name('admin.sales.cancel');
+    });
+
+    // --- USUARIOS (Admin de empresa: solo su empresa, Super admin: todos) ---
+    Route::group(['prefix' => 'admin/users', 'middleware' => 'role:company_admin,super_admin'], function () {
+        Route::get('/', [AdminUserController::class, 'index'])->name('admin.users.index');
+        Route::get('/create', [AdminUserController::class, 'create'])->name('admin.users.create');
+        Route::post('/', [AdminUserController::class, 'store'])->name('admin.users.store');
+        Route::get('/{user}/edit', [AdminUserController::class, 'edit'])->name('admin.users.edit');
+        Route::put('/{user}', [AdminUserController::class, 'update'])->name('admin.users.update');
+        Route::post('/{user}/toggle-status', [AdminUserController::class, 'toggleStatus'])->name('admin.users.toggle-status');
+        Route::delete('/{user}', [AdminUserController::class, 'destroy'])->name('admin.users.destroy');
+    });
+
+    // --- EMPRESAS (Solo super_admin) ---
+    Route::group(['prefix' => 'admin/companies', 'middleware' => 'role:super_admin'], function () {
+        Route::get('/', [CompanyController::class, 'index'])->name('admin.companies.index');
+        Route::get('/create', [CompanyController::class, 'create'])->name('admin.companies.create');
+        Route::post('/', [CompanyController::class, 'store'])->name('admin.companies.store');
+        Route::get('/{company}', [CompanyController::class, 'show'])->name('admin.companies.show');
+        Route::get('/{company}/edit', [CompanyController::class, 'edit'])->name('admin.companies.edit');
+        Route::put('/{company}', [CompanyController::class, 'update'])->name('admin.companies.update');
+        Route::post('/{company}/toggle-status', [CompanyController::class, 'toggleStatus'])->name('admin.companies.toggle-status');
+        Route::delete('/{company}', [CompanyController::class, 'destroy'])->name('admin.companies.destroy');
     });
 
 });
