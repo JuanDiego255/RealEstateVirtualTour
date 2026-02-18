@@ -207,6 +207,12 @@ Route::group(['middleware' => 'auth'], function () {
         Route::delete('/{user}', [AdminUserController::class, 'destroy'])->name('admin.users.destroy');
     });
 
+    // --- NOTIFICACIONES ---
+    Route::post('/admin/notifications/mark-read', function () {
+        auth()->user()->unreadNotifications->markAsRead();
+        return back()->with('success', 'Notificaciones marcadas como leídas');
+    })->name('admin.notifications.mark-read');
+
     // --- EMPRESAS (Solo super_admin) ---
     Route::group(['prefix' => 'admin/companies', 'middleware' => 'role:super_admin'], function () {
         Route::get('/', [CompanyController::class, 'index'])->name('admin.companies.index');

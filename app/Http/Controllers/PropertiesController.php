@@ -72,6 +72,8 @@ class PropertiesController extends Controller
             $property->name = $request->name;
             $property->code = $request->code;
             $property->category_id = $request->category_id;
+            $property->property_type = $request->property_type ?? 'house';
+            $property->description = $request->description;
             $property->rooms = $request->rooms;
             $property->bathrooms = $request->bathrooms;
             $property->garage = $request->garage;
@@ -81,6 +83,14 @@ class PropertiesController extends Controller
             $property->construction_year = $request->construction_year;
             $property->maintenance = $request->maintenance;
             $property->price = $request->price;
+            $property->currency = $request->currency ?? 'CRC';
+            $property->status = $request->status ?? 'available';
+            $property->location = $request->location;
+            $property->address = $request->address;
+            $property->commission_percentage = $request->commission_percentage;
+            $property->commission_notes = $request->commission_notes;
+            $property->is_exclusive = $request->is_exclusive ?? false;
+            $property->user_id = auth()->id();
             $property->save();
             DB::commit();
             return redirect('/property')->with('success', 'Propiedad guardada con éxito!');
@@ -128,6 +138,8 @@ class PropertiesController extends Controller
             $property->name = $request->name;
             $property->code = $request->code;
             $property->category_id = $request->category_id;
+            $property->property_type = $request->property_type ?? $property->property_type;
+            $property->description = $request->description;
             $property->rooms = $request->rooms;
             $property->bathrooms = $request->bathrooms;
             $property->garage = $request->garage;
@@ -137,6 +149,13 @@ class PropertiesController extends Controller
             $property->construction_year = $request->construction_year;
             $property->maintenance = $request->maintenance;
             $property->price = $request->price;
+            $property->currency = $request->currency ?? $property->currency;
+            $property->status = $request->status ?? $property->status;
+            $property->location = $request->location;
+            $property->address = $request->address;
+            $property->commission_percentage = $request->commission_percentage;
+            $property->commission_notes = $request->commission_notes;
+            $property->is_exclusive = $request->is_exclusive ?? false;
             $property->update();
             DB::commit();
             return redirect('/property')->with('success', 'Propiedad editada con éxito!');

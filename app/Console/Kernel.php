@@ -24,7 +24,8 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        // $schedule->command('inspire')->hourly();
+        // Verificar suscripciones por vencer (diariamente a las 8am)
+        $schedule->command('subscriptions:check-expiring --days=7')->dailyAt('08:00');
     }
 
     /**
