@@ -206,6 +206,19 @@
     padding-left: 37px;
 }
 
+/*
+ * Fix: Override Bootstrap 4's .collapse { display: none } for MetisMenu submenus.
+ * MetisMenu v2.7.8 uses .collapse + .in (not .show), so Bootstrap hides them.
+ */
+.metismenu li ul.collapse.in {
+    display: block;
+}
+.metismenu li ul.collapsing {
+    display: block;
+    overflow: hidden;
+    transition: height 0.35s ease;
+}
+
 .metismenu >li:hover>a,
 .metismenu >li.active>a {
     color: #fff;
