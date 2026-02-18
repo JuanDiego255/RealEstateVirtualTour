@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Company;
 use App\Package;
 use App\Subscription;
+use App\SubscriptionPayment;
 use App\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -43,7 +44,10 @@ class RegisterCompanyController extends Controller
      */
     public function register(Request $request)
     {
-        $request->validate([
+        $package = Package::active()->find($request->package_id);
+        $hasTrial = $package && $package->trial_days > 0;
+
+        $rules = [
             'company_name' => 'required|string|max:255',
             'company_phone' => 'required|string|max:50',
             'company_email' => 'required|email|max:255',
@@ -54,7 +58,12 @@ class RegisterCompanyController extends Controller
             'phone' => 'nullable|string|max:50',
             'password' => 'required|string|min:6|confirmed',
             'package_id' => 'required|exists:packages,id',
-        ], [
+            'payment_method' => 'nullable|in:transfer,sinpe',
+            'payment_reference' => 'nullable|string|max:255',
+            'proof_image' => ($hasTrial ? 'nullable' : 'nullable') . '|image|max:5120',
+        ];
+
+        $request->validate($rules, [
             'company_name.required' => 'El nombre de la empresa es requerido.',
             'company_phone.required' => 'El teléfono de la empresa es requerido.',
             'company_email.required' => 'El correo de la empresa es requerido.',
@@ -65,6 +74,8 @@ class RegisterCompanyController extends Controller
             'password.min' => 'La contraseña debe tener al menos 6 caracteres.',
             'password.confirmed' => 'Las contraseñas no coinciden.',
             'package_id.required' => 'Debe seleccionar un plan.',
+            'proof_image.image' => 'El comprobante debe ser una imagen.',
+            'proof_image.max' => 'El comprobante no debe superar 5MB.',
         ]);
 
         $package = Package::active()->findOrFail($request->package_id);
@@ -106,6 +117,8 @@ class RegisterCompanyController extends Controller
 
             $status = $package->trial_days > 0 ? 'trial' : 'pending';
 
+            $paymentMethod = $request->input('payment_method', 'transfer');
+
             $subscription = Subscription::create([
                 'company_id' => $company->id,
                 'package_id' => $package->id,
@@ -114,9 +127,28 @@ class RegisterCompanyController extends Controller
                     ? $startsAt->copy()->addDays($package->trial_days)
                     : $endsAt,
                 'status' => $status,
-                'payment_method' => 'transfer',
+                'payment_method' => $paymentMethod,
                 'created_by' => $user->id,
             ]);
+
+            // Crear registro de pago si se adjuntó comprobante
+            if ($request->hasFile('proof_image') || $request->filled('payment_reference')) {
+                $paymentData = [
+                    'subscription_id' => $subscription->id,
+                    'amount' => $package->price,
+                    'currency' => $package->currency,
+                    'payment_method' => $paymentMethod,
+                    'payment_reference' => $request->payment_reference,
+                    'payment_date' => Carbon::now()->toDateString(),
+                    'status' => 'pending',
+                ];
+
+                if ($request->hasFile('proof_image')) {
+                    $paymentData['proof_image'] = $request->file('proof_image')->store('payment-proofs', 'public');
+                }
+
+                SubscriptionPayment::create($paymentData);
+            }
 
             // Si tiene trial, iniciar trial
             if ($package->trial_days > 0 && method_exists($subscription, 'startTrial')) {
@@ -134,7 +166,7 @@ class RegisterCompanyController extends Controller
             }
 
             return redirect()->route('home')
-                ->with('success', '¡Bienvenido! Su empresa ha sido registrada. Su suscripción está pendiente de aprobación.');
+                ->with('success', '¡Bienvenido! Su empresa ha sido registrada. Su pago está pendiente de aprobación por el administrador.');
 
         } catch (\Exception $e) {
             DB::rollBack();

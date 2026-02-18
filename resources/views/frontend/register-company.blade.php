@@ -46,7 +46,7 @@
                             </div>
                         @endif
 
-                        <form action="{{ route('register.company.store') }}" method="POST">
+                        <form action="{{ route('register.company.store') }}" method="POST" enctype="multipart/form-data">
                             @csrf
 
                             {{-- Paso 1: Selección de Plan --}}
@@ -79,7 +79,7 @@
                                                         </div>
                                                         <small class="text-muted d-block">
                                                             {{ $package->max_users }} usuarios &middot;
-                                                            {{ $package->max_categories }} categorías
+                                                            {{ $package->max_categories }} sucursales
                                                         </small>
                                                         @if ($package->trial_days > 0)
                                                             <small class="d-block mt-1" style="color: #c2ac1f;">
@@ -206,13 +206,79 @@
                                 </div>
                             </div>
 
+                            {{-- Paso 4: Pago por Transferencia --}}
+                            <div class="card mb-4" id="payment-section" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                                <div class="card-header text-white" style="background: linear-gradient(135deg, #343a40, #495057); border-radius: 12px 12px 0 0;">
+                                    <h5 class="mb-0"><i class="fa fa-credit-card mr-2"></i> 4. Pago por Transferencia</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="alert alert-info mb-3">
+                                        <i class="fa fa-info-circle mr-2"></i>
+                                        <strong>Instrucciones:</strong> Realice una transferencia o SINPE al siguiente número de cuenta y adjunte el comprobante.
+                                        Su suscripción será activada una vez aprobado el pago por el administrador.
+                                    </div>
+
+                                    <div class="card mb-3" style="background: #f8f9fa; border: 1px dashed #c2ac1f;">
+                                        <div class="card-body text-center">
+                                            <h6 class="font-weight-bold mb-2">Datos para transferencia</h6>
+                                            <p class="mb-1"><strong>SINPE Móvil:</strong> 8888-8888</p>
+                                            <p class="mb-1"><strong>Cuenta IBAN:</strong> CR00 0000 0000 0000 0000 00</p>
+                                            <p class="mb-0"><strong>A nombre de:</strong> Virtual Tour CR</p>
+                                        </div>
+                                    </div>
+
+                                    <div id="payment-trial-note" style="display: none;">
+                                        <div class="alert alert-success mb-3">
+                                            <i class="fa fa-gift mr-2"></i>
+                                            <strong>Este plan incluye un período de prueba gratuito.</strong>
+                                            El comprobante de pago es opcional. Puede pagarlo después desde su panel de administración.
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="payment_method">Método de Pago <span class="text-danger payment-required">*</span></label>
+                                            <select class="form-control @error('payment_method') is-invalid @enderror"
+                                                id="payment_method" name="payment_method">
+                                                <option value="transfer" {{ old('payment_method', 'transfer') == 'transfer' ? 'selected' : '' }}>Transferencia Bancaria</option>
+                                                <option value="sinpe" {{ old('payment_method') == 'sinpe' ? 'selected' : '' }}>SINPE Móvil</option>
+                                            </select>
+                                            @error('payment_method')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="payment_reference">Número de Comprobante</label>
+                                            <input type="text" class="form-control @error('payment_reference') is-invalid @enderror"
+                                                id="payment_reference" name="payment_reference" value="{{ old('payment_reference') }}"
+                                                placeholder="Ej: 123456789">
+                                            @error('payment_reference')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                        </div>
+                                        <div class="col-md-12 mb-3">
+                                            <label for="proof_image">Comprobante de Pago (imagen) <span class="text-danger payment-required">*</span></label>
+                                            <input type="file" class="form-control-file @error('proof_image') is-invalid @enderror"
+                                                id="proof_image" name="proof_image" accept="image/*">
+                                            <small class="text-muted">Adjunte captura o foto del comprobante de transferencia. Máx. 5MB.</small>
+                                            @error('proof_image')
+                                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                                            @enderror
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             {{-- Botones --}}
                             <div class="text-center mb-5">
                                 <button type="submit" class="btn btn-lg px-5 py-3"
                                     style="background: #c2ac1f; color: #fff; border-radius: 30px; font-weight: 600; font-size: 1.1rem;">
-                                    <i class="fa fa-check-circle mr-2"></i> Registrar Empresa
+                                    <i class="fa fa-check-circle mr-2"></i> Registrar Empresa y Enviar Pago
                                 </button>
-                                <p class="text-muted mt-3">
+                                <p class="text-muted mt-3 small">
+                                    Su suscripción quedará pendiente de aprobación por el administrador.
+                                </p>
+                                <p class="text-muted mt-1">
                                     ¿Ya tiene una cuenta?
                                     <a href="{{ route('login') }}" style="color: #c2ac1f;">Ingresar aquí</a>
                                 </p>
@@ -254,6 +320,29 @@
                 box-shadow: 0 0 0 3px rgba(194, 172, 31, 0.2);
             }
         </style>
+        <script>
+            $(document).ready(function() {
+                var packageTrialDays = {
+                    @foreach ($packages as $p)
+                        '{{ $p->id }}': {{ $p->trial_days }},
+                    @endforeach
+                };
+
+                function checkTrialPackage() {
+                    var selected = $('input[name="package_id"]:checked').val();
+                    if (selected && packageTrialDays[selected] > 0) {
+                        $('#payment-trial-note').show();
+                        $('.payment-required').hide();
+                    } else {
+                        $('#payment-trial-note').hide();
+                        $('.payment-required').show();
+                    }
+                }
+
+                $('input[name="package_id"]').on('change', checkTrialPackage);
+                checkTrialPackage();
+            });
+        </script>
     </body>
 
     </html>
