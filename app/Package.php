@@ -16,6 +16,7 @@ class Package extends Model
         'max_users',
         'max_categories',
         'max_posts_per_category',
+        'max_subcategories_per_category',
         'tour_price',
         'allows_tours',
         'included_tours',
