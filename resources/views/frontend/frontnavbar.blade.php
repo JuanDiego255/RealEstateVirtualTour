@@ -91,10 +91,14 @@
                     </li>
                 @endforeach
 
+                <li class="nav-item {{ request()->is('planes') ? 'active' : '' }}">
+                    <a href="{{ route('pricing') }}" class="nav-link"><i class="fa fa-cube mr-2"></i> Planes</a>
+                </li>
+
                 @guest
-                    <li class="nav-item">
-                        <a href="{{ route('register') }}" class="nav-link"><i class="fa fa-user-plus mr-2"></i>
-                            Registrarse</a>
+                    <li class="nav-item {{ request()->is('registro-empresa') ? 'active' : '' }}">
+                        <a href="{{ route('register.company') }}" class="nav-link"><i class="fa fa-building mr-2"></i>
+                            Registrar Empresa</a>
                     </li>
                     <li class="nav-item">
                         <a href="{{ route('login') }}" class="nav-link"><i class="fa fa-sign-in mr-2"></i> Ingresar</a>

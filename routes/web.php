@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\BolsaController;
 use App\Http\Controllers\Admin\SaleController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\CompanyController;
+use App\Http\Controllers\RegisterCompanyController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 
@@ -235,6 +236,11 @@ Route::get('/', [SectorController::class, 'index'])->name('welcome');
 Route::get('/sector/{slug}', [SectorController::class, 'show'])->name('sector.show');
 Route::get('/category/{slug}', [CategoryController::class, 'show'])->name('category.show');
 Route::get('virtual-tour/{id}', 'SceneController@pannellum')->name('virtual-tour');
+
+// Planes y registro de empresa
+Route::get('/planes', [RegisterCompanyController::class, 'pricing'])->name('pricing');
+Route::get('/registro-empresa', [RegisterCompanyController::class, 'showForm'])->name('register.company');
+Route::post('/registro-empresa', [RegisterCompanyController::class, 'register'])->name('register.company.store');
 
 // Enlace compartible de categoría
 Route::get('/c/{shareToken}', function ($shareToken) {
