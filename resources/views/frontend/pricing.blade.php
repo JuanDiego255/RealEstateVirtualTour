@@ -93,21 +93,23 @@
                                                 <i class="fa fa-check-circle mr-2" style="color: #c2ac1f;"></i>
                                                 <span><strong>{{ $package->max_posts_per_category }}</strong> propiedades por categoría</span>
                                             </li>
-                                            <li class="d-flex align-items-center mb-3">
-                                                @if ($package->allows_tours)
+                                            @if ($package->allows_tours)
+                                                <li class="d-flex align-items-center mb-3">
                                                     <i class="fa fa-check-circle mr-2" style="color: #c2ac1f;"></i>
-                                                    <span>Tours virtuales 360°
-                                                        @if ($package->tour_price > 0)
-                                                            ({{ $package->formatted_tour_price }} c/u)
-                                                        @else
-                                                            incluidos
-                                                        @endif
-                                                    </span>
-                                                @else
+                                                    <span>Tours incluidos: <strong>{{ $package->included_tours > 0 ? $package->included_tours : 'Ilimitados' }}</strong></span>
+                                                </li>
+                                                @if ($package->tour_price > 0)
+                                                    <li class="d-flex align-items-center mb-3">
+                                                        <i class="fa fa-info-circle mr-2" style="color: #6c757d;"></i>
+                                                        <span class="text-muted">Tour después de límite: <strong>{{ $package->formatted_tour_price }} c/u</strong></span>
+                                                    </li>
+                                                @endif
+                                            @else
+                                                <li class="d-flex align-items-center mb-3">
                                                     <i class="fa fa-times-circle mr-2" style="color: #ccc;"></i>
                                                     <span class="text-muted">Tours virtuales 360°</span>
-                                                @endif
-                                            </li>
+                                                </li>
+                                            @endif
                                             <li class="d-flex align-items-center mb-3">
                                                 @if ($package->allows_commission)
                                                     <i class="fa fa-check-circle mr-2" style="color: #c2ac1f;"></i>

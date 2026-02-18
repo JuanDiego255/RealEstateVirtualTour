@@ -78,10 +78,16 @@
         </div>
     </div>
 
+    <div class="form-group col-md-3" id="included-tours-group">
+        <label>Tours incluidos</label>
+        <input type="number" class="form-control" name="included_tours" value="{{ old('included_tours', $package->included_tours ?? 0) }}" min="0" placeholder="0 = ilimitados">
+        <small class="text-muted">0 = ilimitados</small>
+    </div>
+
     <div class="form-group col-md-3" id="tour-price-group">
-        <label>Precio por tour</label>
+        <label>Precio tour adicional</label>
         <input type="number" class="form-control" name="tour_price" value="{{ old('tour_price', $package->tour_price ?? '') }}" min="0" step="0.01" placeholder="0 = incluido">
-        <small class="text-muted">0 o vacío = incluido en el plan</small>
+        <small class="text-muted">Después del límite</small>
     </div>
 
     <div class="form-group col-md-3">
