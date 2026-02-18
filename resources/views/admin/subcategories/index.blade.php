@@ -32,7 +32,7 @@
                     <div class="col-md-6 col-lg-4 mb-4">
                         <div class="card h-100 {{ !$sub->is_active ? 'border-secondary' : '' }}">
                             @if($sub->image)
-                                <img src="{{ asset('storage/' . $sub->image) }}" class="card-img-top" style="height: 180px; object-fit: cover;" alt="{{ $sub->name }}">
+                                <img src="{{ route('file', ['filename' => $sub->image]) }}" class="card-img-top" style="height: 180px; object-fit: cover;" alt="{{ $sub->name }}">
                             @else
                                 <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 180px;">
                                     <i class="fa fa-image fa-3x text-muted"></i>
