@@ -8,8 +8,8 @@
     <div class="container-fluid">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h4>
-                @if($category->logo_url)
-                    <img src="{{ $category->logo_url }}" style="height: 30px;" class="mr-2">
+                @if($category->logo)
+                    <img src="{{ route('file', $category->logo) }}" style="height: 30px;" class="mr-2">
                 @endif
                 {{ $category->name }}
                 @if(!$category->is_active) <span class="badge badge-secondary">Inactiva</span> @endif
@@ -23,8 +23,8 @@
         <div class="row">
             {{-- Info Principal --}}
             <div class="col-md-8">
-                @if($category->cover_url)
-                    <img src="{{ $category->cover_url }}" class="img-fluid rounded mb-3" style="max-height: 250px; width: 100%; object-fit: cover;">
+                @if($category->cover_image)
+                    <img src="{{ route('file', $category->cover_image) }}" class="img-fluid rounded mb-3" style="max-height: 250px; width: 100%; object-fit: cover;">
                 @endif
 
                 <div class="card mb-3">

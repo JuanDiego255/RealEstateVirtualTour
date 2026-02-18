@@ -28,8 +28,7 @@
     <div class="container">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h4 class="text-dark"><i class="fa fa-folder-open mr-2"></i>Gestión de Categorías</h4>
-            <button type="button" class="btn btn-rounded btn-outline-info" data-toggle="modal"
-                data-target="#addCategory">
+            <button type="button" class="btn btn-rounded btn-outline-info" data-toggle="modal" data-target="#addCategory">
                 <i class="fa fa-plus mr-1"></i> Nueva Categoría
             </button>
         </div>
@@ -60,10 +59,21 @@
                     <div class="col-md-4 col-sm-6 mb-4">
                         <div class="card shadow-sm h-100">
                             <div class="position-relative">
+                                @php
+                                    $imagePath = null;
+
+                                    if (!empty($category->image)) {
+                                        $imagePath = $category->image;
+                                    } elseif (!empty($category->cover_image)) {
+                                        // Por si viene como URL completa
+                                        $imagePath = str_replace(url('/storage') . '/', '', $category->cover_image);
+                                    }
+                                @endphp
+
                                 <img class="card-img-top" style="height: 180px; object-fit: cover;"
-                                    src="{{ isset($category->image) ? route('file', $category->image) : url('images/producto-sin-imagen.PNG') }}">
-                                <span class="badge badge-primary position-absolute" style="top: 10px; left: 10px;">
-                                    {{ $category->sector->name ?? 'Sin sector' }}
+                                    src="{{ $imagePath ? route('file', ['filename' => $imagePath]) : url('images/producto-sin-imagen.PNG') }}">
+
+                                {{ $category->sector->name ?? 'Sin sector' }}
                                 </span>
                                 <span
                                     class="badge badge-{{ $category->status ? 'success' : 'secondary' }} position-absolute"

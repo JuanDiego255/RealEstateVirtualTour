@@ -16,6 +16,7 @@
     <link rel="stylesheet" href="{{asset('css/themify-icons.css')}}">
     <!-- Font Styling -->
     <link rel="stylesheet" href="{{asset('css/typography.css')}}">
+    <link href="{{ asset('css/font-awesome.min.css') }}" rel="stylesheet">
     <!-- Loader -->
     <link rel="stylesheet" href="{{asset('css/default-css.css')}}">
     <!-- Dashboard Styling -->
