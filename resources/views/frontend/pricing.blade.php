@@ -87,11 +87,15 @@
                                             </li>
                                             <li class="d-flex align-items-center mb-3">
                                                 <i class="fa fa-check-circle mr-2" style="color: #c2ac1f;"></i>
-                                                <span><strong>{{ $package->max_categories }}</strong> {{ $package->max_categories == 1 ? 'categoría' : 'categorías' }}</span>
+                                                <span><strong>{{ $package->max_categories }}</strong> {{ $package->max_categories == 1 ? 'sucursal' : 'sucursales' }}</span>
                                             </li>
                                             <li class="d-flex align-items-center mb-3">
                                                 <i class="fa fa-check-circle mr-2" style="color: #c2ac1f;"></i>
-                                                <span><strong>{{ $package->max_posts_per_category }}</strong> propiedades por categoría</span>
+                                                <span><strong>{{ $package->max_subcategories_per_category }}</strong> categorías por sucursal</span>
+                                            </li>
+                                            <li class="d-flex align-items-center mb-3">
+                                                <i class="fa fa-check-circle mr-2" style="color: #c2ac1f;"></i>
+                                                <span><strong>{{ $package->max_posts_per_category }}</strong> propiedades por sucursal</span>
                                             </li>
                                             @if ($package->allows_tours)
                                                 <li class="d-flex align-items-center mb-3">

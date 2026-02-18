@@ -62,9 +62,15 @@
         <small class="text-muted">Negocios/categorías por empresa</small>
     </div>
 
-    <div class="form-group col-md-4">
-        <label>Inmuebles por categoría <span class="text-danger">*</span></label>
+    <div class="form-group col-md-3">
+        <label>Inmuebles por sucursal <span class="text-danger">*</span></label>
         <input type="number" class="form-control" name="max_posts_per_category" value="{{ old('max_posts_per_category', $package->max_posts_per_category ?? 10) }}" required min="1">
+    </div>
+
+    <div class="form-group col-md-3">
+        <label>Categorías por sucursal <span class="text-danger">*</span></label>
+        <input type="number" class="form-control" name="max_subcategories_per_category" value="{{ old('max_subcategories_per_category', $package->max_subcategories_per_category ?? 5) }}" required min="1">
+        <small class="text-muted">Ej: SUV, Sedán, Apartamentos</small>
     </div>
 </div>
 

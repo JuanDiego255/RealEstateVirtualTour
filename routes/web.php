@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\BolsaController;
 use App\Http\Controllers\Admin\SaleController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\CompanyController;
+use App\Http\Controllers\Admin\SubcategoryController;
 use App\Http\Controllers\RegisterCompanyController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
@@ -163,6 +164,17 @@ Route::group(['middleware' => 'auth'], function () {
         Route::delete('/{category}', [AdminCategoryController::class, 'destroy'])->name('admin.categories.destroy');
         Route::post('/{category}/toggle-status', [AdminCategoryController::class, 'toggleStatus'])->name('admin.categories.toggle-status');
         Route::post('/{category}/regenerate-token', [AdminCategoryController::class, 'regenerateToken'])->name('admin.categories.regenerate-token');
+    });
+
+    // --- SUBCATEGORÍAS (Categorías por sucursal, con suscripción activa) ---
+    Route::group(['prefix' => 'admin/categories/{category}/subcategories', 'middleware' => ['subscription']], function () {
+        Route::get('/', [SubcategoryController::class, 'index'])->name('admin.subcategories.index');
+        Route::get('/create', [SubcategoryController::class, 'create'])->name('admin.subcategories.create');
+        Route::post('/', [SubcategoryController::class, 'store'])->name('admin.subcategories.store');
+        Route::get('/{subcategory}/edit', [SubcategoryController::class, 'edit'])->name('admin.subcategories.edit');
+        Route::put('/{subcategory}', [SubcategoryController::class, 'update'])->name('admin.subcategories.update');
+        Route::delete('/{subcategory}', [SubcategoryController::class, 'destroy'])->name('admin.subcategories.destroy');
+        Route::post('/{subcategory}/toggle-status', [SubcategoryController::class, 'toggleStatus'])->name('admin.subcategories.toggle-status');
     });
 
     // --- BOLSA INMOBILIARIA (Con suscripción que permite comisiones) ---

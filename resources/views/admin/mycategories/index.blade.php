@@ -61,6 +61,7 @@
 
                             <div class="d-flex justify-content-between text-muted small">
                                 <span><i class="fa fa-list"></i> {{ $cat->properties_count }} propiedades</span>
+                                <span><i class="fa fa-tags"></i> {{ $cat->subcategories_count ?? 0 }} categorías</span>
                                 <span><i class="fa fa-eye"></i> {{ $cat->views_count ?? 0 }} vistas</span>
                             </div>
                         </div>
@@ -79,12 +80,17 @@
                                     </button>
                                 </form>
                             </div>
-                            @if ($cat->share_token)
-                                <button class="btn btn-sm btn-outline-success"
-                                    onclick="copyShareLink('{{ $cat->share_url }}')" title="Copiar enlace">
-                                    <i class="fa fa-share-alt"></i>
-                                </button>
-                            @endif
+                            <div>
+                                <a href="{{ route('admin.subcategories.index', $cat) }}" class="btn btn-sm btn-outline-secondary" title="Categorías">
+                                    <i class="fa fa-tags"></i>
+                                </a>
+                                @if ($cat->share_token)
+                                    <button class="btn btn-sm btn-outline-success"
+                                        onclick="copyShareLink('{{ $cat->share_url }}')" title="Copiar enlace">
+                                        <i class="fa fa-share-alt"></i>
+                                    </button>
+                                @endif
+                            </div>
                         </div>
                     </div>
                 </div>

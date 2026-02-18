@@ -60,6 +60,33 @@
                     </div>
                 </div>
 
+                {{-- Categorías de esta sucursal --}}
+                <div class="card mb-3">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <strong><i class="fa fa-tags"></i> Categorías ({{ $category->subcategories->count() }})</strong>
+                        <a href="{{ route('admin.subcategories.index', $category) }}" class="btn btn-sm btn-outline-primary"><i class="fa fa-list"></i> Ver todas</a>
+                    </div>
+                    <div class="card-body">
+                        @if($category->subcategories->count())
+                            <div class="d-flex flex-wrap">
+                                @foreach($category->subcategories->take(8) as $sub)
+                                    <span class="badge badge-{{ $sub->is_active ? 'primary' : 'secondary' }} mr-2 mb-2 p-2">
+                                        {{ $sub->name }}
+                                    </span>
+                                @endforeach
+                                @if($category->subcategories->count() > 8)
+                                    <span class="badge badge-light mr-2 mb-2 p-2">+{{ $category->subcategories->count() - 8 }} más</span>
+                                @endif
+                            </div>
+                        @else
+                            <p class="text-muted text-center mb-0">
+                                No hay categorías.
+                                <a href="{{ route('admin.subcategories.create', $category) }}">Crear una</a>
+                            </p>
+                        @endif
+                    </div>
+                </div>
+
                 {{-- Propiedades recientes --}}
                 <div class="card">
                     <div class="card-header d-flex justify-content-between">

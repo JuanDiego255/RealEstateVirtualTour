@@ -40,6 +40,7 @@ class PackageController extends Controller
             'max_users' => 'required|integer|min:1',
             'max_categories' => 'required|integer|min:1',
             'max_posts_per_category' => 'required|integer|min:1',
+            'max_subcategories_per_category' => 'nullable|integer|min:1',
             'tour_price' => 'nullable|numeric|min:0',
             'included_tours' => 'nullable|integer|min:0',
             'trial_days' => 'nullable|integer|min:0',
@@ -48,7 +49,7 @@ class PackageController extends Controller
 
         $data = $request->only([
             'name', 'description', 'price', 'currency', 'billing_period',
-            'max_users', 'max_categories', 'max_posts_per_category',
+            'max_users', 'max_categories', 'max_posts_per_category', 'max_subcategories_per_category',
             'tour_price', 'included_tours', 'trial_days', 'sort_order'
         ]);
 
@@ -105,6 +106,7 @@ class PackageController extends Controller
             'max_users' => 'required|integer|min:1',
             'max_categories' => 'required|integer|min:1',
             'max_posts_per_category' => 'required|integer|min:1',
+            'max_subcategories_per_category' => 'nullable|integer|min:1',
             'tour_price' => 'nullable|numeric|min:0',
             'included_tours' => 'nullable|integer|min:0',
             'trial_days' => 'nullable|integer|min:0',
@@ -113,7 +115,7 @@ class PackageController extends Controller
 
         $data = $request->only([
             'name', 'description', 'price', 'currency', 'billing_period',
-            'max_users', 'max_categories', 'max_posts_per_category',
+            'max_users', 'max_categories', 'max_posts_per_category', 'max_subcategories_per_category',
             'tour_price', 'included_tours', 'trial_days', 'sort_order'
         ]);
 

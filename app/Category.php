@@ -95,6 +95,14 @@ class Category extends Model
     }
 
     /**
+     * Subcategorías de esta sucursal
+     */
+    public function subcategories()
+    {
+        return $this->hasMany(Subcategory::class);
+    }
+
+    /**
      * Get the vehicles for this category
      */
     public function vehicles()

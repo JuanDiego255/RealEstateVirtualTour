@@ -21,14 +21,14 @@ class CategoryController extends Controller
         if ($user->isSuperAdmin()) {
             // Super admin can see all categories
             $categories = Category::with(['company', 'sector'])
-                ->withCount('properties')
+                ->withCount(['properties', 'subcategories'])
                 ->orderBy('created_at', 'desc')
                 ->paginate(20);
         } else {
             // Regular users only see their company's categories
             $categories = Category::with(['sector'])
                 ->where('company_id', $user->company_id)
-                ->withCount('properties')
+                ->withCount(['properties', 'subcategories'])
                 ->orderBy('created_at', 'desc')
                 ->paginate(20);
         }
@@ -123,7 +123,7 @@ class CategoryController extends Controller
     {
         $this->authorizeCategory($category);
 
-        $category->load(['sector', 'company', 'properties' => function ($query) {
+        $category->load(['sector', 'company', 'subcategories', 'properties' => function ($query) {
             $query->latest()->limit(10);
         }]);
 
