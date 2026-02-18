@@ -50,62 +50,79 @@
                         @foreach ($categories as $category)
                             @php
                                 $imagePath = null;
-
                                 if (!empty($category->image)) {
                                     $imagePath = $category->image;
                                 } elseif (!empty($category->cover_image)) {
-                                    // Por si viene como URL completa
                                     $imagePath = str_replace(url('/storage') . '/', '', $category->cover_image);
                                 }
+                                $hasLongDesc = $category->description && strlen($category->description) > 100;
+                                $catId = 'cat-desc-' . $category->id;
                             @endphp
 
                             <div class="col-md-{{ count($categories) <= 2 ? '6' : '4' }} mb-4">
-                                <a href="{{ route('category.show', $category->slug) }}" class="text-decoration-none">
-                                    <div class="property-wrap ftco-animate"
-                                        style="border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); transition: transform 0.3s;">
-                                        <div class="img"
-                                            style="background-image: url('{{ $imagePath ? route('file', ['filename' => $imagePath]) : url('images/producto-sin-imagen.PNG') }}');
-                                                   height: 300px; background-size: cover; background-position: center;
-                                                   position: relative;">
-                                            <div
-                                                style="position: absolute; bottom: 0; left: 0; right: 0;
-                                                        background: linear-gradient(transparent, rgba(0,0,0,0.85));
-                                                        padding: 40px 20px 20px;">
-                                                <h3 class="text-white mb-1" style="font-size: 1.4rem;">
-                                                    {{ $category->name }}
-                                                </h3>
-                                                @if ($category->location)
-                                                    <p class="text-white-50 mb-2 small">
-                                                        <i class="fa fa-map-marker mr-1"></i> {{ $category->location }}
-                                                    </p>
+                                <div class="card ftco-animate h-100"
+                                    style="border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); transition: transform 0.3s; border: none;">
+                                    {{-- Imagen superior --}}
+                                    <a href="{{ route('category.show', $category->slug) }}">
+                                        <div style="background-image: url('{{ $imagePath ? route('file', ['filename' => $imagePath]) : url('images/producto-sin-imagen.PNG') }}');
+                                                    height: 220px; background-size: cover; background-position: center;">
+                                        </div>
+                                    </a>
+
+                                    {{-- Sección de contenido --}}
+                                    <div class="card-body d-flex flex-column" style="min-height: 220px;">
+                                        <a href="{{ route('category.show', $category->slug) }}" class="text-decoration-none text-dark">
+                                            <h5 class="card-title mb-2" style="font-weight: 700;">{{ $category->name }}</h5>
+                                        </a>
+
+                                        @if ($category->location)
+                                            <p class="text-muted small mb-2">
+                                                <i class="fa fa-map-marker mr-1" style="color: #c2ac1f;"></i> {{ $category->location }}
+                                            </p>
+                                        @endif
+
+                                        @if ($category->description)
+                                            <div class="mb-2">
+                                                @if ($hasLongDesc)
+                                                    <p class="text-muted small mb-1">{{ Str::limit($category->description, 100) }}</p>
+                                                    <div id="{{ $catId }}" style="display: none;">
+                                                        <p class="text-muted small mb-1">{{ $category->description }}</p>
+                                                    </div>
+                                                    <a href="javascript:void(0)" class="small toggle-desc" data-target="{{ $catId }}" style="color: #c2ac1f; font-weight: 600;">
+                                                        Ver m&aacute;s <i class="fa fa-chevron-down" style="font-size: 10px;"></i>
+                                                    </a>
+                                                @else
+                                                    <p class="text-muted small mb-1">{{ $category->description }}</p>
                                                 @endif
-                                                @if ($category->description)
-                                                    <p class="text-white-50 mb-2 small">
-                                                        {{ Str::limit($category->description, 80) }}</p>
-                                                @endif
-                                                <div class="d-flex flex-wrap">
-                                                    @if ($category->properties_count > 0)
-                                                        <span class="badge badge-primary mr-2 mt-1">
-                                                            <i class="fa fa-building mr-1"></i>
-                                                            {{ $category->properties_count }}
-                                                            {{ $category->properties_count == 1 ? 'propiedad' : 'propiedades' }}
-                                                        </span>
-                                                    @endif
-                                                    @if ($category->vehicles_count > 0)
-                                                        <span class="badge badge-info mr-2 mt-1">
-                                                            <i class="fa fa-car mr-1"></i>
-                                                            {{ $category->vehicles_count }}
-                                                            {{ $category->vehicles_count == 1 ? 'vehículo' : 'vehículos' }}
-                                                        </span>
-                                                    @endif
-                                                    @if ($category->properties_count == 0 && $category->vehicles_count == 0)
-                                                        <span class="badge badge-secondary mt-1">Sin items aún</span>
-                                                    @endif
-                                                </div>
                                             </div>
+                                        @endif
+
+                                        <div class="mt-auto">
+                                            <div class="d-flex flex-wrap mb-2">
+                                                @if ($category->properties_count > 0)
+                                                    <span class="badge badge-primary mr-2 mt-1" style="font-size: 0.8rem;">
+                                                        <i class="fa fa-building mr-1"></i>
+                                                        {{ $category->properties_count }}
+                                                        {{ $category->properties_count == 1 ? 'propiedad' : 'propiedades' }}
+                                                    </span>
+                                                @endif
+                                                @if ($category->vehicles_count > 0)
+                                                    <span class="badge badge-info mr-2 mt-1" style="font-size: 0.8rem;">
+                                                        <i class="fa fa-car mr-1"></i>
+                                                        {{ $category->vehicles_count }}
+                                                        {{ $category->vehicles_count == 1 ? 'veh&iacute;culo' : 'veh&iacute;culos' }}
+                                                    </span>
+                                                @endif
+                                                @if ($category->properties_count == 0 && $category->vehicles_count == 0)
+                                                    <span class="badge badge-secondary mt-1">Sin items a&uacute;n</span>
+                                                @endif
+                                            </div>
+                                            <a href="{{ route('category.show', $category->slug) }}" class="btn btn-sm btn-block" style="background-color: #c2ac1f; color: #fff; border-radius: 8px;">
+                                                Explorar <i class="fa fa-arrow-right ml-1"></i>
+                                            </a>
                                         </div>
                                     </div>
-                                </a>
+                                </div>
                             </div>
                         @endforeach
                     </div>
@@ -153,6 +170,26 @@
         <script src="{{ asset('virtualtour/js/jquery.timepicker.min.js') }}"></script>
         <script src="{{ asset('virtualtour/js/scrollax.min.js') }}"></script>
         <script src="{{ asset('virtualtour/js/main.js') }}"></script>
+        <script>
+            $(document).ready(function() {
+                $('.toggle-desc').on('click', function(e) {
+                    e.preventDefault();
+                    var target = $('#' + $(this).data('target'));
+                    var shortText = $(this).prev('p').length ? $(this).siblings('p').first() : $(this).parent().find('p').first();
+                    var icon = $(this).find('i');
+
+                    if (target.is(':visible')) {
+                        target.slideUp(200);
+                        shortText.show();
+                        $(this).html('Ver m&aacute;s <i class="fa fa-chevron-down" style="font-size: 10px;"></i>');
+                    } else {
+                        shortText.hide();
+                        target.slideDown(200);
+                        $(this).html('Ver menos <i class="fa fa-chevron-up" style="font-size: 10px;"></i>');
+                    }
+                });
+            });
+        </script>
     </body>
 
     </html>

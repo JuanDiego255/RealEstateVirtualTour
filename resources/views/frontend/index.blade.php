@@ -45,34 +45,40 @@
                     <div class="row justify-content-center">
                         @foreach ($sectors as $sector)
                             <div class="col-md-{{ count($sectors) <= 2 ? '5' : '4' }} mb-4">
-                                <a href="{{ route('sector.show', $sector->slug) }}" class="text-decoration-none">
-                                    <div class="property-wrap ftco-animate" style="border-radius: 12px; overflow: hidden;">
-                                        <div class="img"
-                                            style="background-image: url('{{ isset($sector->image) ? route('file', $sector->image) : url('virtualtour/images/bg_1.jpg') }}');
-                                                   height: 280px; background-size: cover; background-position: center;
-                                                   position: relative;">
-                                            <div
-                                                style="position: absolute; bottom: 0; left: 0; right: 0;
-                                                        background: linear-gradient(transparent, rgba(0,0,0,0.8));
-                                                        padding: 30px 20px 20px;">
-                                                <h3 class="text-white mb-1" style="font-size: 1.5rem;">
-                                                    @if ($sector->icon)
-                                                        <i class="fa {{ $sector->icon }} mr-2"></i>
-                                                    @endif
-                                                    {{ $sector->name }}
-                                                </h3>
-                                                @if ($sector->description)
-                                                    <p class="text-white-50 mb-0 small">{{ $sector->description }}</p>
+                                <div class="card ftco-animate h-100" style="border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: none; transition: transform 0.3s;">
+                                    {{-- Imagen superior --}}
+                                    <a href="{{ route('sector.show', $sector->slug) }}">
+                                        <div style="background-image: url('{{ isset($sector->image) ? route('file', $sector->image) : url('virtualtour/images/bg_1.jpg') }}');
+                                                    height: 220px; background-size: cover; background-position: center;">
+                                        </div>
+                                    </a>
+
+                                    {{-- Contenido --}}
+                                    <div class="card-body d-flex flex-column" style="min-height: 180px;">
+                                        <a href="{{ route('sector.show', $sector->slug) }}" class="text-decoration-none text-dark">
+                                            <h5 class="card-title mb-2" style="font-weight: 700;">
+                                                @if ($sector->icon)
+                                                    <i class="fa {{ $sector->icon }} mr-2" style="color: #c2ac1f;"></i>
                                                 @endif
-                                                <span class="badge badge-light mt-2">
-                                                    {{ $sector->categories->count() }}
-                                                    {{ $sector->categories->count() == 1 ? 'categoría' : 'categorías' }}
-                                                    disponibles
-                                                </span>
-                                            </div>
+                                                {{ $sector->name }}
+                                            </h5>
+                                        </a>
+                                        @if ($sector->description)
+                                            <p class="text-muted small mb-2">{{ $sector->description }}</p>
+                                        @endif
+
+                                        <div class="mt-auto">
+                                            <span class="badge badge-light mb-2" style="font-size: 0.8rem;">
+                                                {{ $sector->categories->count() }}
+                                                {{ $sector->categories->count() == 1 ? 'sucursal' : 'sucursales' }}
+                                                disponibles
+                                            </span>
+                                            <a href="{{ route('sector.show', $sector->slug) }}" class="btn btn-sm btn-block" style="background-color: #c2ac1f; color: #fff; border-radius: 8px;">
+                                                Explorar <i class="fa fa-arrow-right ml-1"></i>
+                                            </a>
                                         </div>
                                     </div>
-                                </a>
+                                </div>
                             </div>
                         @endforeach
                     </div>
