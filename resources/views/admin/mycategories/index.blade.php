@@ -1,5 +1,5 @@
 @extends('admin.main')
-@section('title', 'Mis Categorías')
+@section('title', 'Sucursales')
 @section('content')
     @if (Session::has('success'))
         <div class="alert alert-success alert-dismissible fade show"><strong>{{ Session::get('success') }}</strong><button
@@ -12,9 +12,9 @@
 
     <div class="container-fluid">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h4><i class="fa fa-folder-open"></i> Mis Categorías</h4>
+            <h4><i class="fa fa-map-marker"></i> Sucursales</h4>
             <a href="{{ route('admin.categories.create') }}" class="btn btn-primary">
-                <i class="fa fa-plus"></i> Nueva Categoría
+                <i class="fa fa-plus"></i> Nueva Sucursal
             </a>
         </div>
 
@@ -92,11 +92,11 @@
                 <div class="col-12">
                     <div class="card">
                         <div class="card-body text-center py-5">
-                            <i class="fa fa-folder-open fa-3x text-muted mb-3"></i>
-                            <h5>No tienes categorías aún</h5>
-                            <p class="text-muted">Crea tu primera categoría para empezar a publicar</p>
+                            <i class="fa fa-map-marker fa-3x text-muted mb-3"></i>
+                            <h5>No tienes sucursales aún</h5>
+                            <p class="text-muted">Crea tu primera sucursal para empezar a publicar</p>
                             <a href="{{ route('admin.categories.create') }}" class="btn btn-primary">
-                                <i class="fa fa-plus"></i> Crear Categoría
+                                <i class="fa fa-plus"></i> Crear Sucursal
                             </a>
                         </div>
                     </div>

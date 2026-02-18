@@ -47,7 +47,7 @@ class CategoryController extends Controller
         // Check if can create more categories
         if (!$user->isSuperAdmin() && !$company->canCreateCategory()) {
             return redirect()->route('admin.categories.index')
-                ->with('error', 'Ha alcanzado el límite de categorías de su plan. Actualice para crear más.');
+                ->with('error', 'Ha alcanzado el límite de sucursales de su plan. Actualice para crear más.');
         }
 
         $sectors = Sector::active()->ordered()->get();
@@ -66,7 +66,7 @@ class CategoryController extends Controller
         // Re-check limit
         if (!$user->isSuperAdmin() && !$company->canCreateCategory()) {
             return redirect()->route('admin.categories.index')
-                ->with('error', 'Ha alcanzado el límite de categorías de su plan.');
+                ->with('error', 'Ha alcanzado el límite de sucursales de su plan.');
         }
 
         $request->validate([
@@ -113,7 +113,7 @@ class CategoryController extends Controller
         Category::create($data);
 
         return redirect()->route('admin.categories.index')
-            ->with('success', 'Categoría creada correctamente.');
+            ->with('success', 'Sucursal creada correctamente.');
     }
 
     /**
@@ -202,7 +202,7 @@ class CategoryController extends Controller
         $category->update($data);
 
         return redirect()->route('admin.categories.index')
-            ->with('success', 'Categoría actualizada correctamente.');
+            ->with('success', 'Sucursal actualizada correctamente.');
     }
 
     /**
@@ -215,7 +215,7 @@ class CategoryController extends Controller
         // Check if category has properties
         if ($category->properties()->count() > 0) {
             return redirect()->route('admin.categories.index')
-                ->with('error', 'No se puede eliminar la categoría porque tiene propiedades asociadas.');
+                ->with('error', 'No se puede eliminar la sucursal porque tiene propiedades asociadas.');
         }
 
         // Delete images
@@ -229,7 +229,7 @@ class CategoryController extends Controller
         $category->delete();
 
         return redirect()->route('admin.categories.index')
-            ->with('success', 'Categoría eliminada correctamente.');
+            ->with('success', 'Sucursal eliminada correctamente.');
     }
 
     /**
@@ -242,7 +242,7 @@ class CategoryController extends Controller
         $category->update(['is_active' => !$category->is_active]);
 
         return redirect()->route('admin.categories.index')
-            ->with('success', 'Estado de la categoría actualizado.');
+            ->with('success', 'Estado de la sucursal actualizado.');
     }
 
     /**
@@ -266,7 +266,7 @@ class CategoryController extends Controller
         $user = Auth::user();
 
         if (!$user->isSuperAdmin() && $category->company_id !== $user->company_id) {
-            abort(403, 'No tiene permisos para acceder a esta categoría.');
+            abort(403, 'No tiene permisos para acceder a esta sucursal.');
         }
     }
 }

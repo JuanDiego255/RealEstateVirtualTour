@@ -1,9 +1,9 @@
 @extends('admin.main')
-@section('title', 'Nueva Categoría')
+@section('title', 'Nueva Sucursal')
 @section('content')
     <div class="container-fluid">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h4><i class="fa fa-plus"></i> Nueva Categoría</h4>
+            <h4><i class="fa fa-plus"></i> Nueva Sucursal</h4>
             <a href="{{ route('admin.categories.index') }}" class="btn btn-secondary btn-sm">
                 <i class="fa fa-arrow-left"></i> Volver
             </a>
@@ -16,7 +16,7 @@
                     @include('admin.mycategories._form')
                     <hr>
                     <button type="submit" class="btn btn-primary">
-                        <i class="fa fa-save"></i> Crear Categoría
+                        <i class="fa fa-save"></i> Crear Sucursal
                     </button>
                 </form>
             </div>

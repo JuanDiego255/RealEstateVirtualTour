@@ -203,10 +203,10 @@ Route::group(['middleware' => 'auth'], function () {
         Route::get('/', [AdminUserController::class, 'index'])->name('admin.users.index');
         Route::get('/create', [AdminUserController::class, 'create'])->name('admin.users.create');
         Route::post('/', [AdminUserController::class, 'store'])->name('admin.users.store');
-        Route::get('/{user}/edit', [AdminUserController::class, 'edit'])->name('admin.users.edit');
-        Route::put('/{user}', [AdminUserController::class, 'update'])->name('admin.users.update');
-        Route::post('/{user}/toggle-status', [AdminUserController::class, 'toggleStatus'])->name('admin.users.toggle-status');
-        Route::delete('/{user}', [AdminUserController::class, 'destroy'])->name('admin.users.destroy');
+        Route::get('/{targetUser}/edit', [AdminUserController::class, 'edit'])->name('admin.users.edit');
+        Route::put('/{targetUser}', [AdminUserController::class, 'update'])->name('admin.users.update');
+        Route::post('/{targetUser}/toggle-status', [AdminUserController::class, 'toggleStatus'])->name('admin.users.toggle-status');
+        Route::delete('/{targetUser}', [AdminUserController::class, 'destroy'])->name('admin.users.destroy');
     });
 
     // --- NOTIFICACIONES ---

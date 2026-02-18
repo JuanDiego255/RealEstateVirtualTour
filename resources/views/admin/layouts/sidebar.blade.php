@@ -11,16 +11,6 @@
                     <li class="{{ Request::routeIs('home') ? 'active' : '' }}">
                         <a href="{{ route('home') }}"><i class="fa fa-home"></i><span>Inicio</span></a>
                     </li>
-                    @if (method_exists(Auth::user(), 'isSuperAdmin') && Auth::user()->isSuperAdmin())
-                        <li class="{{ Request::routeIs('sectors') ? 'active' : '' }}">
-                            <a href="{{ route('sectors') }}"><i class="fa fa-th-large"></i><span>Sectores</span></a>
-                        </li>
-
-                        <li class="{{ Request::routeIs('categories') ? 'active' : '' }}">
-                            <a href="{{ route('categories') }}"><i
-                                    class="fa fa-folder-open"></i><span>Categorías</span></a>
-                        </li>
-                    @endif
 
                     <li class="{{ Request::routeIs('config') || Request::routeIs('property') ? 'active' : '' }}">
                         <a href="{{ route('property') }}"><i class="fa fa-building"></i><span>Propiedades</span></a>
@@ -31,13 +21,12 @@
                     </li>
 
                     @auth
-                        {{-- Categorías avanzadas (para usuarios con suscripción) --}}
+                        {{-- Sucursales (para usuarios con suscripción) --}}
                         @if (method_exists(Auth::user(), 'hasActiveSubscription') &&
                                 (Auth::user()->hasActiveSubscription() ||
                                     (method_exists(Auth::user(), 'isSuperAdmin') && Auth::user()->isSuperAdmin())))
                             <li class="{{ Request::routeIs('admin.categories.*') ? 'active' : '' }}">
-                                <a href="{{ route('admin.categories.index') }}"><i class="fa fa-folder"></i><span>Mis
-                                        Categorías</span></a>
+                                <a href="{{ route('admin.categories.index') }}"><i class="fa fa-map-marker"></i><span>Sucursales</span></a>
                             </li>
                         @endif
 
@@ -54,30 +43,26 @@
                             </ul>
                         </li>
 
-
                         {{-- Ventas --}}
                         @if (method_exists(Auth::user(), 'hasActiveSubscription') &&
                                 (Auth::user()->hasActiveSubscription() ||
                                     (method_exists(Auth::user(), 'isSuperAdmin') && Auth::user()->isSuperAdmin())))
                             <li class="{{ Request::routeIs('admin.sales.*') ? 'active' : '' }}">
-                                <a href="{{ route('admin.sales.index') }}"><i
-                                        class="fa fa-money"></i><span>Ventas</span></a>
+                                <a href="{{ route('admin.sales.index') }}"><i class="fa fa-money"></i><span>Ventas</span></a>
                             </li>
                         @endif
 
                         {{-- Gestión de Usuarios (para company_admin) --}}
                         @if (Auth::user()->role === 'company_admin')
                             <li class="{{ Request::routeIs('admin.users.*') ? 'active' : '' }}">
-                                <a href="{{ route('admin.users.index') }}"><i class="fa fa-users"></i><span>Mi
-                                        Equipo</span></a>
+                                <a href="{{ route('admin.users.index') }}"><i class="fa fa-users"></i><span>Mi Equipo</span></a>
                             </li>
                         @endif
 
                         {{-- Mi Suscripción (para usuarios normales) --}}
                         @if (method_exists(Auth::user(), 'isSuperAdmin') && !Auth::user()->isSuperAdmin())
                             <li class="{{ Request::routeIs('admin.subscriptions.my') ? 'active' : '' }}">
-                                <a href="{{ route('admin.subscriptions.my') }}"><i class="fa fa-credit-card"></i><span>Mi
-                                        Suscripción</span></a>
+                                <a href="{{ route('admin.subscriptions.my') }}"><i class="fa fa-credit-card"></i><span>Mi Suscripción</span></a>
                             </li>
                         @endif
 
@@ -91,22 +76,24 @@
                                 </span>
                             </li>
 
+                            {{-- Sectores --}}
+                            <li class="{{ Request::routeIs('sectors') ? 'active' : '' }}">
+                                <a href="{{ route('sectors') }}"><i class="fa fa-th-large"></i><span>Sectores</span></a>
+                            </li>
+
                             {{-- Empresas --}}
                             <li class="{{ Request::routeIs('admin.companies.*') ? 'active' : '' }}">
-                                <a href="{{ route('admin.companies.index') }}"><i
-                                        class="fa fa-building"></i><span>Empresas</span></a>
+                                <a href="{{ route('admin.companies.index') }}"><i class="fa fa-building"></i><span>Empresas</span></a>
                             </li>
 
                             {{-- Usuarios --}}
                             <li class="{{ Request::routeIs('admin.users.*') ? 'active' : '' }}">
-                                <a href="{{ route('admin.users.index') }}"><i
-                                        class="fa fa-users"></i><span>Usuarios</span></a>
+                                <a href="{{ route('admin.users.index') }}"><i class="fa fa-users"></i><span>Usuarios</span></a>
                             </li>
 
                             {{-- Paquetes --}}
                             <li class="{{ Request::routeIs('admin.packages.*') ? 'active' : '' }}">
-                                <a href="{{ route('admin.packages.index') }}"><i
-                                        class="fa fa-cube"></i><span>Paquetes</span></a>
+                                <a href="{{ route('admin.packages.index') }}"><i class="fa fa-cube"></i><span>Paquetes</span></a>
                             </li>
 
                             {{-- Suscripciones --}}

@@ -29,7 +29,7 @@ class BolsaController extends Controller
             'available_properties' => Properties::acceptsCommission()->count(),
             'my_requests_pending' => CommissionRequest::where('requester_id', $user->id)->active()->count(),
             'received_pending' => CommissionRequest::where('owner_id', $user->id)->active()->count(),
-            'my_sales' => Sale::forCompany($company)->confirmed()->count(),
+            'my_sales' => $company ? Sale::forCompany($company)->confirmed()->count() : 0,
         ];
 
         // Recent activity
@@ -126,7 +126,7 @@ class BolsaController extends Controller
                 ->with('error', 'No puede solicitar comisión de sus propios inmuebles.');
         }
 
-        if (!$property->acceptsCommission()) {
+        if (!$property->canAcceptCommission()) {
             return redirect()->back()
                 ->with('error', 'Este inmueble no acepta solicitudes de comisión.');
         }
@@ -164,7 +164,7 @@ class BolsaController extends Controller
                 ->with('error', 'No puede solicitar comisión de sus propios inmuebles.');
         }
 
-        if (!$property->acceptsCommission()) {
+        if (!$property->canAcceptCommission()) {
             return redirect()->back()
                 ->with('error', 'Este inmueble no acepta solicitudes de comisión.');
         }

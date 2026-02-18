@@ -201,7 +201,7 @@ class Properties extends Model
     /**
      * Verificar si acepta comisiones externas
      */
-    public function acceptsCommission(): bool
+    public function canAcceptCommission(): bool
     {
         return !$this->is_exclusive
             && $this->commission_percentage > 0

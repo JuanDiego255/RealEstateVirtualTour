@@ -1,5 +1,5 @@
 @extends('admin.main')
-@section('title', 'Editar Categoría')
+@section('title', 'Editar Sucursal')
 @section('content')
     <div class="container-fluid">
         <div class="d-flex justify-content-between align-items-center mb-4">
