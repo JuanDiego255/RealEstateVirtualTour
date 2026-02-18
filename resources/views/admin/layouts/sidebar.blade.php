@@ -43,12 +43,10 @@
 
                         {{-- Bolsa Inmobiliaria (solo si el paquete lo permite) --}}
                         <li class="{{ Request::routeIs('admin.bolsa.*') ? 'active' : '' }}">
-                            <a class="d-flex align-items-center" data-bs-toggle="collapse" href="#bolsaMenu" role="button"
-                                aria-expanded="false" aria-controls="bolsaMenu">
+                            <a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
                                 <i class="fa fa-exchange"></i><span>Bolsa Inmobiliaria</span>
                             </a>
-
-                            <ul class="collapse {{ Request::routeIs('admin.bolsa.*') ? 'show' : '' }}" id="bolsaMenu">
+                            <ul>
                                 <li><a href="{{ route('admin.bolsa.index') }}">Dashboard</a></li>
                                 <li><a href="{{ route('admin.bolsa.available') }}">Disponibles</a></li>
                                 <li><a href="{{ route('admin.bolsa.my-requests') }}">Mis Solicitudes</a></li>
@@ -112,9 +110,8 @@
                             </li>
 
                             {{-- Suscripciones --}}
-                            <li
-                                class="{{ Request::routeIs('admin.subscriptions.*') && !Request::routeIs('admin.subscriptions.my') ? 'active' : '' }}">
-                                <a href="javascript:void(0)" aria-expanded="false">
+                            <li class="{{ Request::routeIs('admin.subscriptions.*') && !Request::routeIs('admin.subscriptions.my') ? 'active' : '' }}">
+                                <a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
                                     <i class="fa fa-id-card"></i><span>Suscripciones</span>
                                     @php
                                         $pendingCount = \App\Subscription::where('status', 'pending')->count();
@@ -123,7 +120,7 @@
                                         <span class="badge badge-danger float-right">{{ $pendingCount }}</span>
                                     @endif
                                 </a>
-                                <ul class="collapse">
+                                <ul>
                                     <li><a href="{{ route('admin.subscriptions.index') }}">Todas</a></li>
                                     <li>
                                         <a href="{{ route('admin.subscriptions.pending') }}">
@@ -134,8 +131,7 @@
                                         </a>
                                     </li>
                                     <li><a href="{{ route('admin.subscriptions.expiring') }}">Por vencer</a></li>
-                                    <li><a href="{{ route('admin.subscriptions.pending-payments') }}">Pagos pendientes</a>
-                                    </li>
+                                    <li><a href="{{ route('admin.subscriptions.pending-payments') }}">Pagos pendientes</a></li>
                                     <li><a href="{{ route('admin.subscriptions.create') }}">Nueva suscripción</a></li>
                                 </ul>
                             </li>
