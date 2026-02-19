@@ -60,12 +60,12 @@
         <div class="col-md-4">
             <div class="single-report mb-xs-30">
                 <div class="s-report-inner pr--20 pt--30 mb-3">
-                    <div class="icon"><a class="text-white" href="{{ route('vehicles') }}"><i class="fa fa-car"></i></a></div>
+                    <div class="icon"><a class="text-white" href="{{ route('property') }}"><i class="fa fa-car"></i></a></div>
                     <div class="s-report-title d-flex justify-content-between">
                         <h3 class="header-title mb-0">Vehículos</h3>
                     </div>
                     <div class="d-flex justify-content-between pb-2">
-                        <h2>{{ $vehicles->count() }}</h2>
+                        <h2>{{ $properties->where('property_type', 'vehicle')->count() }}</h2>
                     </div>
                 </div>
                 <canvas height="50"></canvas>

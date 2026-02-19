@@ -3,7 +3,7 @@
 use App\Http\Controllers\PropertiesController;
 use App\Http\Controllers\SectorController;
 use App\Http\Controllers\CategoryController;
-use App\Http\Controllers\VehicleController;
+
 use App\Http\Controllers\Admin\SectorController as AdminSectorController;
 use App\Http\Controllers\Admin\PackageController;
 use App\Http\Controllers\Admin\SubscriptionController;
@@ -85,13 +85,7 @@ Route::group(['middleware' => 'auth'], function () {
     Route::put('/category/update/{id}', [CategoryController::class, 'update']);
     Route::delete('/delete/category/{id}', [CategoryController::class, 'destroy']);
 
-    // Vehículos CRUD
-    Route::get('/vehicles', [VehicleController::class, 'indexAdmin'])->name('vehicles');
-    Route::post('/vehicle/store', [VehicleController::class, 'store'])->name('addVehicle');
-    Route::put('/vehicle/update/{id}', [VehicleController::class, 'update']);
-    Route::delete('/delete/vehicle/{id}', [VehicleController::class, 'destroy']);
-
-    // Scene config typed route for vehicles
+    // Scene config typed route (legacy, mantener compatibilidad)
     Route::get('/scene-config/{type}/{id}', 'SceneController@index')->name('configTyped')
         ->where('type', 'property|vehicle');
 

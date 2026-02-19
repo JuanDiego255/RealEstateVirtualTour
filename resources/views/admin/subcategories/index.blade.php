@@ -47,24 +47,19 @@
                                     <p class="card-text text-muted small">{{ Str::limit($sub->description, 100) }}</p>
                                 @endif
                                 @php
-                                    $propCount = $sub->properties()->count();
-                                    $vehCount = $sub->vehicles()->count();
+                                    $pubCount = $sub->properties()->count();
                                 @endphp
                                 <div class="d-flex flex-wrap mt-2">
-                                    @if($propCount > 0)
-                                        <span class="badge badge-info mr-1 mb-1"><i class="fa fa-building mr-1"></i>{{ $propCount }} Propiedades</span>
-                                    @endif
-                                    @if($vehCount > 0)
-                                        <span class="badge badge-warning mr-1 mb-1"><i class="fa fa-car mr-1"></i>{{ $vehCount }} Vehículos</span>
-                                    @endif
-                                    @if($propCount == 0 && $vehCount == 0)
-                                        <span class="badge badge-light text-muted mb-1">Sin inmuebles</span>
+                                    @if($pubCount > 0)
+                                        <span class="badge badge-info mr-1 mb-1"><i class="fa fa-th-list mr-1"></i>{{ $pubCount }} Publicaciones</span>
+                                    @else
+                                        <span class="badge badge-light text-muted mb-1">Sin publicaciones</span>
                                     @endif
                                 </div>
                             </div>
                             <div class="card-footer bg-white">
                                 <a href="{{ route('admin.subcategories.inmuebles', [$category, $sub]) }}" class="btn btn-sm btn-outline-info btn-block mb-2">
-                                    <i class="fa fa-list mr-1"></i> Ver inmuebles ({{ $propCount + $vehCount }})
+                                    <i class="fa fa-list mr-1"></i> Ver publicaciones ({{ $pubCount }})
                                 </a>
                                 <div class="btn-group btn-group-sm w-100">
                                     <a href="{{ route('admin.subcategories.edit', [$category, $sub]) }}" class="btn btn-outline-primary" title="Editar"><i class="fa fa-edit"></i></a>

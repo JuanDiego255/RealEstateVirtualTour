@@ -13,11 +13,7 @@
                     </li>
 
                     <li class="{{ Request::routeIs('config') || Request::routeIs('property') ? 'active' : '' }}">
-                        <a href="{{ route('property') }}"><i class="fa fa-building"></i><span>Propiedades</span></a>
-                    </li>
-
-                    <li class="{{ Request::routeIs('vehicles') ? 'active' : '' }}">
-                        <a href="{{ route('vehicles') }}"><i class="fa fa-car"></i><span>Vehículos</span></a>
+                        <a href="{{ route('property') }}"><i class="fa fa-th-list"></i><span>Publicaciones</span></a>
                     </li>
 
                     @auth

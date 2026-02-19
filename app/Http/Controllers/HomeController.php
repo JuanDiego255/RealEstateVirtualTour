@@ -8,8 +8,6 @@ use App\Hotspot;
 use App\Properties;
 use App\Sector;
 use App\Category;
-use App\Vehicle;
-
 class HomeController extends Controller
 {
     /**
@@ -34,8 +32,6 @@ class HomeController extends Controller
         $properties = Properties::all();
         $sectors = Sector::all();
         $categories = Category::all();
-        $vehicles = Vehicle::all();
-
-        return view('admin.index', compact('scenes', 'hotspots', 'properties', 'sectors', 'categories', 'vehicles'));
+        return view('admin.index', compact('scenes', 'hotspots', 'properties', 'sectors', 'categories'));
     }
 }

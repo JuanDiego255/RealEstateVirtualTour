@@ -148,7 +148,7 @@ class SubcategoryController extends Controller
     }
 
     /**
-     * Display inmuebles (properties + vehicles) for a subcategory.
+     * Display publicaciones (propiedades + vehículos unificados) for a subcategory.
      */
     public function inmuebles(Category $category, Subcategory $subcategory)
     {
@@ -156,9 +156,8 @@ class SubcategoryController extends Controller
         $this->ensureBelongs($subcategory, $category);
 
         $properties = $subcategory->properties()->get();
-        $vehicles = $subcategory->vehicles()->get();
 
-        return view('admin.subcategories.inmuebles', compact('category', 'subcategory', 'properties', 'vehicles'));
+        return view('admin.subcategories.inmuebles', compact('category', 'subcategory', 'properties'));
     }
 
     /**

@@ -105,9 +105,7 @@
                     <div class="row">
                         @foreach ($category->subcategories as $subcategory)
                             @php
-                                $subPropCount = $subcategory->properties->count();
-                                $subVehCount = $subcategory->vehicles->count();
-                                $subTotal = $subPropCount + $subVehCount;
+                                $subTotal = $subcategory->properties->count();
                             @endphp
                             <div class="col-md-{{ $category->subcategories->count() <= 2 ? '6' : '4' }} mb-4">
                                 <div class="card ftco-animate h-100"

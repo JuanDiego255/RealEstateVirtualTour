@@ -19,7 +19,7 @@ class CategoryController extends Controller
         $category = Category::where('slug', $slug)
             ->where('status', true)
             ->with(['sector', 'subcategories' => function ($q) {
-                $q->active()->ordered()->with(['properties', 'vehicles']);
+                $q->active()->ordered()->with(['properties']);
             }])
             ->firstOrFail();
 
@@ -41,7 +41,7 @@ class CategoryController extends Controller
         $subcategory = Subcategory::where('category_id', $category->id)
             ->where('slug', $subcategorySlug)
             ->where('is_active', true)
-            ->with(['properties', 'vehicles'])
+            ->with(['properties'])
             ->firstOrFail();
 
         $sector = $category->sector;

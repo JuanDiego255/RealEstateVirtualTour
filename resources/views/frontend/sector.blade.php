@@ -99,20 +99,16 @@
 
                                         <div class="mt-auto">
                                             @php
-                                                $catPropCount = $category->subcategories->sum('properties_count');
-                                                $catVehCount = $category->subcategories->sum('vehicles_count');
+                                                $catPubCount = $category->subcategories->sum('properties_count');
                                             @endphp
                                             <div class="d-flex flex-wrap mb-2">
-                                                @if ($catPropCount > 0)
+                                                @if ($catPubCount > 0)
                                                     <span class="badge badge-primary mr-2 mt-1" style="font-size: 0.8rem;">
-                                                        <i class="fa fa-building mr-1"></i>
-                                                        {{ $catPropCount }}
-                                                        {{ $catPropCount == 1 ? 'propiedad' : 'propiedades' }}
+                                                        <i class="fa fa-th-list mr-1"></i>
+                                                        {{ $catPubCount }}
+                                                        {{ $catPubCount == 1 ? 'publicación' : 'publicaciones' }}
                                                     </span>
-                                                @endif
-                                                @if ($catVehCount > 0)
-                                                @endif
-                                                @if ($catPropCount == 0 && $catVehCount == 0)
+                                                @else
                                                     <span class="badge badge-secondary mt-1">Sin items a&uacute;n</span>
                                                 @endif
                                             </div>

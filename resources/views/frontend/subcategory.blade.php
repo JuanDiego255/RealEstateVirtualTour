@@ -41,14 +41,14 @@
             </div>
         </div>
 
-        {{-- PROPIEDADES --}}
+        {{-- PUBLICACIONES (propiedades + vehículos unificados) --}}
         @if ($subcategory->properties->count() > 0)
             <section class="ftco-section goto-here">
                 <div class="container">
                     <div class="row justify-content-center">
                         <div class="col-md-12 heading-section text-center ftco-animate mb-5">
                             <span class="subheading">{{ $subcategory->name }}</span>
-                            <h2 class="mb-2">Propiedades</h2>
+                            <h2 class="mb-2">Publicaciones</h2>
                         </div>
                     </div>
                     <div class="row">
@@ -59,18 +59,39 @@
                                         style="background-image: url('{{ isset($property->image) ? route('file', $property->image) : url('images/producto-sin-imagen.PNG') }}')"></a>
                                     <div class="text">
                                         <p class="price">
-                                            <span class="old-price">{{ $property->formatted_price ?? '₡' . number_format($property->price) }}</span>
-                                            @if($property->maintenance)
+                                            <span class="old-price">{{ $property->formatted_price ?? (($property->currency ?? 'CRC') === 'USD' ? '$' : '₡') . number_format($property->price) }}</span>
+                                            @if(($property->property_type ?? '') !== 'vehicle' && $property->maintenance)
                                                 <span class="orig-price">₡{{ number_format($property->maintenance) }}<small>/mo</small></span>
                                             @endif
                                         </p>
-                                        <ul class="property_list">
-                                            <li><span class="flaticon-bed"></span>{{ $property->rooms }}</li>
-                                            <li><span class="flaticon-bathtub"></span>{{ $property->bathrooms }}</li>
-                                            <li><span class="flaticon-floor-plan"></span>{{ $property->construction }} Mt2</li>
-                                        </ul>
-                                        <h3><a href="{{ route('virtual-tour', $property->id) }}">{{ $property->name }}</a></h3>
-                                        <span class="location">{{ $property->location ?? 'Ubicación no disponible' }}</span>
+                                        @if(($property->property_type ?? '') === 'vehicle')
+                                            <ul class="property_list">
+                                                @if($property->engine_cc)<li><i class="fa fa-cog mr-1"></i>{{ $property->engine_cc }} CC</li>@endif
+                                                @if($property->transmission)<li><i class="fa fa-exchange mr-1"></i>{{ $property->transmission }}</li>@endif
+                                                @if($property->fuel_type)<li><i class="fa fa-tint mr-1"></i>{{ $property->fuel_type }}</li>@endif
+                                            </ul>
+                                            <h3><a href="{{ route('virtual-tour', $property->id) }}">{{ $property->brand }} {{ $property->model }} {{ $property->year }}</a></h3>
+                                            <div class="mb-2">
+                                                <small class="text-muted">
+                                                    @if($property->mileage_km)<i class="fa fa-road mr-1"></i>{{ number_format($property->mileage_km) }} km @endif
+                                                    @if($property->doors)&nbsp;|&nbsp;<i class="fa fa-car mr-1"></i>{{ $property->doors }} puertas @endif
+                                                    @if($property->passengers)&nbsp;|&nbsp;<i class="fa fa-users mr-1"></i>{{ $property->passengers }} pasajeros @endif
+                                                </small>
+                                            </div>
+                                            @if ($property->condition)
+                                                <span class="badge {{ $property->condition == 'Nuevo' ? 'badge-success' : 'badge-secondary' }} mb-2">
+                                                    {{ $property->condition }}
+                                                </span>
+                                            @endif
+                                        @else
+                                            <ul class="property_list">
+                                                <li><span class="flaticon-bed"></span>{{ $property->rooms }}</li>
+                                                <li><span class="flaticon-bathtub"></span>{{ $property->bathrooms }}</li>
+                                                <li><span class="flaticon-floor-plan"></span>{{ $property->construction }} Mt2</li>
+                                            </ul>
+                                            <h3><a href="{{ route('virtual-tour', $property->id) }}">{{ $property->name }}</a></h3>
+                                            <span class="location">{{ $property->location ?? 'Ubicación no disponible' }}</span>
+                                        @endif
                                         <a href="{{ route('virtual-tour', $property->id) }}"
                                             class="d-flex align-items-center justify-content-center btn-custom">
                                             <span class="ion-ios-link mr-2"></span> Virtual Tour
@@ -84,65 +105,8 @@
             </section>
         @endif
 
-        {{-- VEHÍCULOS --}}
-        @if ($subcategory->vehicles->count() > 0)
-            <section class="ftco-section {{ $subcategory->properties->count() > 0 ? 'bg-light' : 'goto-here' }}">
-                <div class="container">
-                    <div class="row justify-content-center">
-                        <div class="col-md-12 heading-section text-center ftco-animate mb-5">
-                            <span class="subheading">{{ $subcategory->name }}</span>
-                            <h2 class="mb-2">Vehículos</h2>
-                        </div>
-                    </div>
-                    <div class="row">
-                        @foreach ($subcategory->vehicles as $vehicle)
-                            <div class="col-md-4">
-                                <div class="property-wrap ftco-animate" style="border-radius: 12px; overflow: hidden;">
-                                    <a href="#" class="img"
-                                        style="background-image: url('{{ isset($vehicle->image) ? route('file', $vehicle->image) : url('images/producto-sin-imagen.PNG') }}')"></a>
-                                    <div class="text">
-                                        <p class="price">
-                                            <span class="orig-price">₡{{ number_format($vehicle->price) }}</span>
-                                        </p>
-                                        <ul class="property_list">
-                                            <li><i class="fa fa-cog mr-1"></i>{{ $vehicle->engine_cc }} CC</li>
-                                            <li><i class="fa fa-exchange mr-1"></i>{{ $vehicle->transmission }}</li>
-                                            <li><i class="fa fa-tint mr-1"></i>{{ $vehicle->fuel_type }}</li>
-                                        </ul>
-                                        <h3>
-                                            <a href="{{ route('virtual-tour', ['id' => $vehicle->id, 'type' => 'vehicle']) }}">
-                                                {{ $vehicle->brand }} {{ $vehicle->model }} {{ $vehicle->year }}
-                                            </a>
-                                        </h3>
-                                        <div class="mb-2">
-                                            <small class="text-muted">
-                                                <i class="fa fa-road mr-1"></i>{{ number_format($vehicle->mileage_km) }} km
-                                                &nbsp;|&nbsp;
-                                                <i class="fa fa-car mr-1"></i>{{ $vehicle->doors }} puertas
-                                                &nbsp;|&nbsp;
-                                                <i class="fa fa-users mr-1"></i>{{ $vehicle->passengers }} pasajeros
-                                            </small>
-                                        </div>
-                                        @if ($vehicle->condition)
-                                            <span class="badge {{ $vehicle->condition == 'Nuevo' ? 'badge-success' : 'badge-secondary' }} mb-2">
-                                                {{ $vehicle->condition }}
-                                            </span>
-                                        @endif
-                                        <a href="{{ route('virtual-tour', ['id' => $vehicle->id, 'type' => 'vehicle']) }}"
-                                            class="d-flex align-items-center justify-content-center btn-custom">
-                                            <span class="ion-ios-link mr-2"></span> Virtual Tour
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-            </section>
-        @endif
-
         {{-- SIN ITEMS --}}
-        @if ($subcategory->properties->count() == 0 && $subcategory->vehicles->count() == 0)
+        @if ($subcategory->properties->count() == 0)
             <section class="ftco-section goto-here">
                 <div class="container">
                     <div class="row justify-content-center">
