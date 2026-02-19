@@ -91,131 +91,85 @@
             </section>
         @endif
 
-        {{-- INMUEBLES POR SUBCATEGORÍA --}}
-        @php
-            $hasItems = false;
-            $sectionIndex = 0;
-        @endphp
-        @foreach ($category->subcategories as $subcategory)
-            @if ($subcategory->properties->count() > 0 || $subcategory->vehicles->count() > 0)
-                @php $hasItems = true; @endphp
-
-                {{-- Propiedades de esta subcategoría --}}
-                @if ($subcategory->properties->count() > 0)
-                    <section class="ftco-section {{ $sectionIndex === 0 ? 'goto-here' : ($sectionIndex % 2 === 1 ? 'bg-light' : '') }}">
-                        <div class="container">
-                            <div class="row justify-content-center">
-                                <div class="col-md-12 heading-section text-center ftco-animate mb-5">
-                                    <span class="subheading">{{ $subcategory->name }}</span>
-                                    <h2 class="mb-2">Propiedades</h2>
-                                </div>
-                            </div>
-                            <div class="row">
-                                @foreach ($subcategory->properties as $property)
-                                    <div class="col-md-4">
-                                        <div class="property-wrap ftco-animate">
-                                            <a href="#" class="img"
-                                                style="background-image: url('{{ isset($property->image) ? route('file', $property->image) : url('images/producto-sin-imagen.PNG') }}')"></a>
-                                            <div class="text">
-                                                <p class="price">
-                                                    <span class="old-price">{{ $property->formatted_price ?? '₡' . number_format($property->price) }}</span>
-                                                    @if($property->maintenance)
-                                                        <span class="orig-price">₡{{ number_format($property->maintenance) }}<small>/mo</small></span>
-                                                    @endif
-                                                </p>
-                                                <ul class="property_list">
-                                                    <li><span class="flaticon-bed"></span>{{ $property->rooms }}</li>
-                                                    <li><span class="flaticon-bathtub"></span>{{ $property->bathrooms }}</li>
-                                                    <li><span class="flaticon-floor-plan"></span>{{ $property->construction }} Mt2</li>
-                                                </ul>
-                                                <h3><a href="{{ route('virtual-tour', $property->id) }}">{{ $property->name }}</a></h3>
-                                                <span class="location">{{ $property->location ?? 'Ubicación no disponible' }}</span>
-                                                <a href="{{ route('virtual-tour', $property->id) }}"
-                                                    class="d-flex align-items-center justify-content-center btn-custom">
-                                                    <span class="ion-ios-link mr-2"></span> Virtual Tour
-                                                </a>
-                                            </div>
-                                        </div>
-                                    </div>
-                                @endforeach
-                            </div>
-                        </div>
-                    </section>
-                    @php $sectionIndex++; @endphp
-                @endif
-
-                {{-- Vehículos de esta subcategoría --}}
-                @if ($subcategory->vehicles->count() > 0)
-                    <section class="ftco-section {{ $sectionIndex === 0 ? 'goto-here' : ($sectionIndex % 2 === 1 ? 'bg-light' : '') }}">
-                        <div class="container">
-                            <div class="row justify-content-center">
-                                <div class="col-md-12 heading-section text-center ftco-animate mb-5">
-                                    <span class="subheading">{{ $subcategory->name }}</span>
-                                    <h2 class="mb-2">Vehículos</h2>
-                                </div>
-                            </div>
-                            <div class="row">
-                                @foreach ($subcategory->vehicles as $vehicle)
-                                    <div class="col-md-4">
-                                        <div class="property-wrap ftco-animate" style="border-radius: 12px; overflow: hidden;">
-                                            <a href="#" class="img"
-                                                style="background-image: url('{{ isset($vehicle->image) ? route('file', $vehicle->image) : url('images/producto-sin-imagen.PNG') }}')"></a>
-                                            <div class="text">
-                                                <p class="price">
-                                                    <span class="orig-price">₡{{ number_format($vehicle->price) }}</span>
-                                                </p>
-                                                <ul class="property_list">
-                                                    <li><i class="fa fa-cog mr-1"></i>{{ $vehicle->engine_cc }} CC</li>
-                                                    <li><i class="fa fa-exchange mr-1"></i>{{ $vehicle->transmission }}</li>
-                                                    <li><i class="fa fa-tint mr-1"></i>{{ $vehicle->fuel_type }}</li>
-                                                </ul>
-                                                <h3>
-                                                    <a href="{{ route('virtual-tour', ['id' => $vehicle->id, 'type' => 'vehicle']) }}">
-                                                        {{ $vehicle->brand }} {{ $vehicle->model }} {{ $vehicle->year }}
-                                                    </a>
-                                                </h3>
-                                                <div class="mb-2">
-                                                    <small class="text-muted">
-                                                        <i class="fa fa-road mr-1"></i>{{ number_format($vehicle->mileage_km) }} km
-                                                        &nbsp;|&nbsp;
-                                                        <i class="fa fa-car mr-1"></i>{{ $vehicle->doors }} puertas
-                                                        &nbsp;|&nbsp;
-                                                        <i class="fa fa-users mr-1"></i>{{ $vehicle->passengers }} pasajeros
-                                                    </small>
-                                                </div>
-                                                @if ($vehicle->condition)
-                                                    <span class="badge {{ $vehicle->condition == 'Nuevo' ? 'badge-success' : 'badge-secondary' }} mb-2">
-                                                        {{ $vehicle->condition }}
-                                                    </span>
-                                                @endif
-                                                <a href="{{ route('virtual-tour', ['id' => $vehicle->id, 'type' => 'vehicle']) }}"
-                                                    class="d-flex align-items-center justify-content-center btn-custom">
-                                                    <span class="ion-ios-link mr-2"></span> Virtual Tour
-                                                </a>
-                                            </div>
-                                        </div>
-                                    </div>
-                                @endforeach
-                            </div>
-                        </div>
-                    </section>
-                    @php $sectionIndex++; @endphp
-                @endif
-            @endif
-        @endforeach
-
-        {{-- SIN ITEMS --}}
-        @if (!$hasItems)
-            <section class="ftco-section goto-here">
-                <div class="container">
-                    <div class="row justify-content-center">
-                        <div class="col-md-8 text-center">
-                            <h3 class="text-muted mt-5">No hay items disponibles en esta sucursal</h3>
-                        </div>
+        {{-- SUBCATEGORÍAS DE LA SUCURSAL --}}
+        <section class="ftco-section goto-here">
+            <div class="container">
+                <div class="row justify-content-center">
+                    <div class="col-md-12 heading-section text-center ftco-animate mb-5">
+                        <span class="subheading">{{ $category->name }}</span>
+                        <h2 class="mb-2">Subcategorías</h2>
                     </div>
                 </div>
-            </section>
-        @endif
+
+                @if ($category->subcategories->count() > 0)
+                    <div class="row">
+                        @foreach ($category->subcategories as $subcategory)
+                            @php
+                                $subPropCount = $subcategory->properties->count();
+                                $subVehCount = $subcategory->vehicles->count();
+                                $subTotal = $subPropCount + $subVehCount;
+                            @endphp
+                            <div class="col-md-{{ $category->subcategories->count() <= 2 ? '6' : '4' }} mb-4">
+                                <div class="card ftco-animate h-100"
+                                    style="border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); transition: transform 0.3s; border: none;">
+                                    {{-- Imagen superior --}}
+                                    <a href="{{ route('subcategory.show', [$category->slug, $subcategory->slug]) }}">
+                                        @if($subcategory->image)
+                                            <div style="background-image: url('{{ route('file', ['filename' => $subcategory->image]) }}');
+                                                        height: 220px; background-size: cover; background-position: center;"></div>
+                                        @else
+                                            <div class="bg-light d-flex align-items-center justify-content-center" style="height: 220px;">
+                                                <i class="fa fa-tags fa-3x text-muted"></i>
+                                            </div>
+                                        @endif
+                                    </a>
+
+                                    {{-- Contenido --}}
+                                    <div class="card-body d-flex flex-column" style="min-height: 180px;">
+                                        <a href="{{ route('subcategory.show', [$category->slug, $subcategory->slug]) }}" class="text-decoration-none text-dark">
+                                            <h5 class="card-title mb-2" style="font-weight: 700;">{{ $subcategory->name }}</h5>
+                                        </a>
+
+                                        @if ($subcategory->description)
+                                            <p class="text-muted small mb-2">{{ Str::limit($subcategory->description, 100) }}</p>
+                                        @endif
+
+                                        <div class="mt-auto">
+                                            <div class="d-flex flex-wrap mb-2">
+                                                @if ($subPropCount > 0)
+                                                    <span class="badge badge-primary mr-2 mt-1" style="font-size: 0.8rem;">
+                                                        <i class="fa fa-building mr-1"></i>{{ $subPropCount }}
+                                                        {{ $subPropCount == 1 ? 'propiedad' : 'propiedades' }}
+                                                    </span>
+                                                @endif
+                                                @if ($subVehCount > 0)
+                                                    <span class="badge badge-info mr-2 mt-1" style="font-size: 0.8rem;">
+                                                        <i class="fa fa-car mr-1"></i>{{ $subVehCount }}
+                                                        {{ $subVehCount == 1 ? 'vehículo' : 'vehículos' }}
+                                                    </span>
+                                                @endif
+                                                @if ($subTotal == 0)
+                                                    <span class="badge badge-secondary mt-1">Sin inmuebles aún</span>
+                                                @endif
+                                            </div>
+                                            <a href="{{ route('subcategory.show', [$category->slug, $subcategory->slug]) }}" class="btn btn-sm btn-block" style="background-color: #c2ac1f; color: #fff; border-radius: 8px;">
+                                                Ver inmuebles <i class="fa fa-arrow-right ml-1"></i>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @else
+                    <div class="row justify-content-center">
+                        <div class="col-md-8 text-center">
+                            <h3 class="text-muted mt-5">No hay subcategorías disponibles en esta sucursal</h3>
+                        </div>
+                    </div>
+                @endif
+            </div>
+        </section>
 
         {{-- BOTÓN VOLVER --}}
         <section style="padding: 0 0 40px;">

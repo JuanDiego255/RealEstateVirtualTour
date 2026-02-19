@@ -175,6 +175,7 @@ Route::group(['middleware' => 'auth'], function () {
         Route::put('/{subcategory}', [SubcategoryController::class, 'update'])->name('admin.subcategories.update');
         Route::delete('/{subcategory}', [SubcategoryController::class, 'destroy'])->name('admin.subcategories.destroy');
         Route::post('/{subcategory}/toggle-status', [SubcategoryController::class, 'toggleStatus'])->name('admin.subcategories.toggle-status');
+        Route::get('/{subcategory}/inmuebles', [SubcategoryController::class, 'inmuebles'])->name('admin.subcategories.inmuebles');
     });
 
     // --- BOLSA INMOBILIARIA (Con suscripción que permite comisiones) ---
@@ -247,6 +248,7 @@ Route::group(['middleware' => 'auth'], function () {
 Route::get('/', [SectorController::class, 'index'])->name('welcome');
 Route::get('/sector/{slug}', [SectorController::class, 'show'])->name('sector.show');
 Route::get('/category/{slug}', [CategoryController::class, 'show'])->name('category.show');
+Route::get('/category/{categorySlug}/subcategory/{subcategorySlug}', [CategoryController::class, 'showSubcategory'])->name('subcategory.show');
 Route::get('virtual-tour/{id}', 'SceneController@pannellum')->name('virtual-tour');
 
 // Planes y registro de empresa

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Category;
+use App\Subcategory;
 use App\Sector;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -25,6 +26,27 @@ class CategoryController extends Controller
         $sector = $category->sector;
 
         return view('frontend.category', compact('category', 'sector'));
+    }
+
+    /**
+     * Display properties/vehicles within a subcategory (public frontend)
+     */
+    public function showSubcategory($categorySlug, $subcategorySlug)
+    {
+        $category = Category::where('slug', $categorySlug)
+            ->where('status', true)
+            ->with('sector')
+            ->firstOrFail();
+
+        $subcategory = Subcategory::where('category_id', $category->id)
+            ->where('slug', $subcategorySlug)
+            ->where('is_active', true)
+            ->with(['properties', 'vehicles'])
+            ->firstOrFail();
+
+        $sector = $category->sector;
+
+        return view('frontend.subcategory', compact('category', 'subcategory', 'sector'));
     }
 
     /**

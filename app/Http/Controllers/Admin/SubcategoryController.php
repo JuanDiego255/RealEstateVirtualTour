@@ -148,6 +148,20 @@ class SubcategoryController extends Controller
     }
 
     /**
+     * Display inmuebles (properties + vehicles) for a subcategory.
+     */
+    public function inmuebles(Category $category, Subcategory $subcategory)
+    {
+        $this->authorizeCategory($category);
+        $this->ensureBelongs($subcategory, $category);
+
+        $properties = $subcategory->properties()->get();
+        $vehicles = $subcategory->vehicles()->get();
+
+        return view('admin.subcategories.inmuebles', compact('category', 'subcategory', 'properties', 'vehicles'));
+    }
+
+    /**
      * Check if user can access this category (sucursal).
      */
     private function authorizeCategory(Category $category)
