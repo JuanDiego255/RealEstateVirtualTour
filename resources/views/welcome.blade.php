@@ -399,7 +399,9 @@
             <video id="drone-video" muted playsinline preload="auto" style="display:none;"></video>
             <canvas id="drone-canvas"></canvas>
             <div id="video-extract-progress">
-                <div id="video-extract-bar"><div id="video-extract-fill"></div></div>
+                <div id="video-extract-bar">
+                    <div id="video-extract-fill"></div>
+                </div>
                 <div id="video-extract-text">Preparando vista interactiva: 0%</div>
             </div>
             <div id="video-drag-hint"><i class="fa fa-arrows-h"></i> Arrastra para girar alrededor de la propiedad</div>
@@ -458,12 +460,12 @@
         $pannellumDefault = [
             'firstScene' => (string) $pannellumFirstScene->id,
             'hfov' => 100,
-            'minHfov' => 2,                       // Permitir zoom extremo para transición de caminar
+            'minHfov' => 2,
             'maxHfov' => 120,
             'autoLoad' => true,
-            'sceneFadeDuration' => 0,             // Sin fade
-            'autoRotate' => -2,
-            'autoRotateInactivityDelay' => 5000,
+            'sceneFadeDuration' => 0,
+            'autoRotate' => 0, // ✅ arranca estático
+            'autoRotateInactivityDelay' => 0, // (lo controlaremos nosotros)
             'compass' => false,
             'showControls' => true,
             'mouseZoom' => true,
@@ -484,15 +486,13 @@
                 // Determinar el texto a mostrar arriba de la imagen
                 // Para tipo 'info': mostrar el campo info (ej: "Refrigeradora")
                 // Para tipo 'scene': mostrar el nombre de la escena destino
-                $displayText = $hotspot->type === 'info'
-                    ? $hotspot->info
-                    : ($hotspot->targetSceneName ?? $hotspot->info);
+                $displayText = $hotspot->info;
 
                 $hs = [
                     'pitch' => (float) $hotspot->pitch,
                     'yaw' => (float) $hotspot->yaw,
                     'cssClass' => 'circular-hotspot',
-                    'type' => 'custom',  // Usar tipo custom para control total
+                    'type' => 'custom', // Usar tipo custom para control total
                     'createTooltipFunc' => 'hotspotTooltipFunction',
                     'createTooltipArgs' => [
                         'imageUrl' => isset($hotspot->image)
@@ -512,7 +512,7 @@
                     $hs['clickHandlerArgs'] = [
                         'targetSceneId' => (string) $hotspot->targetScene,
                         'yaw' => (float) $hotspot->yaw,
-                        'pitch' => (float) $hotspot->pitch
+                        'pitch' => (float) $hotspot->pitch,
                     ];
                 }
                 $hotspotsForScene[] = $hs;
@@ -668,6 +668,70 @@
             }
             window.viewer = viewer;
 
+            // ===== Auto-rotate solo tras inactividad (incluye inicio del tour) =====
+            const IDLE_ROTATE = (function() {
+                const ROTATE_SPEED = -1; // velocidad de giro
+                const IDLE_MS = 10000; // ✅ 10 segundos sin interacción
+
+                let idleTimer = null;
+                let enabled = false;
+
+                function startRotate() {
+                    if (!enabled) return;
+                    if (isTransitioning) return; // evita girar en transiciones
+
+                    if (typeof viewer.startAutoRotate === 'function') {
+                        viewer.startAutoRotate(ROTATE_SPEED);
+                    } else if (typeof viewer.setAutoRotate === 'function') {
+                        viewer.setAutoRotate(ROTATE_SPEED);
+                    } else {
+                        console.warn('[IdleRotate] startAutoRotate/setAutoRotate no disponible en este build.');
+                    }
+                }
+
+                function stopRotate() {
+                    if (typeof viewer.stopAutoRotate === 'function') {
+                        viewer.stopAutoRotate();
+                    } else if (typeof viewer.setAutoRotate === 'function') {
+                        viewer.setAutoRotate(0);
+                    }
+                }
+
+                function reset() {
+                    stopRotate();
+                    if (idleTimer) clearTimeout(idleTimer);
+                    idleTimer = setTimeout(startRotate, IDLE_MS);
+                }
+
+                function enable() {
+                    enabled = true;
+                    reset(); // empieza quieto y arranca conteo
+                }
+
+                function disable() {
+                    enabled = false;
+                    if (idleTimer) clearTimeout(idleTimer);
+                    stopRotate();
+                }
+
+                // Cualquier interacción = reset
+                const events = ['mousemove', 'mousedown', 'wheel', 'touchstart', 'touchmove', 'keydown'];
+                events.forEach(evt => document.addEventListener(evt, reset, {
+                    passive: true
+                }));
+
+                // Cambios de escena también resetean
+                viewer.on('scenechange', reset);
+                viewer.on('load', reset);
+
+                return {
+                    enable,
+                    disable,
+                    reset
+                };
+            })();
+
+
             // --- Overlay para transición suave ---
             var $transitionOverlay = $('<div id="transition-overlay"></div>').css({
                 position: 'absolute',
@@ -686,8 +750,11 @@
             // --- SVG Overlay para polígonos de terreno ---
             var polygonSvgEl = null;
             var polygonTooltip = document.getElementById('polygon-tooltip');
-            var hoveredPolygonId = null;  // Track qué polígono está en hover
-            var lastMousePos = { x: 0, y: 0 };  // Última posición del mouse
+            var hoveredPolygonId = null; // Track qué polígono está en hover
+            var lastMousePos = {
+                x: 0,
+                y: 0
+            }; // Última posición del mouse
             console.log('[Polygons] Data:', JSON.stringify(scenePolygons));
 
             // Actualizar posición del mouse globalmente
@@ -725,7 +792,8 @@
 
                 polygonSvgEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
                 polygonSvgEl.setAttribute('id', 'polygon-overlay');
-                polygonSvgEl.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:2;';
+                polygonSvgEl.style.cssText =
+                    'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:2;';
                 pnlmContainer.appendChild(polygonSvgEl);
                 console.log('[Polygons] SVG creado en:', pnlmContainer.id || pnlmContainer.className);
                 return true;
@@ -771,8 +839,11 @@
                         return null;
                     }
 
-                    return { x: screenX, y: screenY };
-                } catch(e) {
+                    return {
+                        x: screenX,
+                        y: screenY
+                    };
+                } catch (e) {
                     console.warn('[Polygons] Error en coordenadas:', e);
                 }
                 return null;
@@ -793,14 +864,18 @@
 
                 var currentSceneId = String(viewer.getScene());
                 var polygons = scenePolygons[currentSceneId] || [];
-                var createdPaths = [];  // Para restaurar hover después
+                var createdPaths = []; // Para restaurar hover después
 
                 polygons.forEach(function(poly) {
                     // Manejar points como string o array
                     var points = poly.points;
                     if (!points) return;
                     if (typeof points === 'string') {
-                        try { points = JSON.parse(points); } catch(e) { return; }
+                        try {
+                            points = JSON.parse(points);
+                        } catch (e) {
+                            return;
+                        }
                     }
                     if (!Array.isArray(points) || points.length < 3) return;
 
@@ -830,7 +905,8 @@
                         path.setAttribute('d', pathData);
                         path.setAttribute('fill', poly.fillColor);
                         // Aplicar estado hover si corresponde
-                        path.setAttribute('fill-opacity', isHovered ? Math.min(1, poly.fillOpacity + 0.3) : poly.fillOpacity);
+                        path.setAttribute('fill-opacity', isHovered ? Math.min(1, poly.fillOpacity + 0.3) : poly
+                            .fillOpacity);
                         path.setAttribute('stroke', poly.strokeColor);
                         path.setAttribute('stroke-width', isHovered ? poly.strokeWidth + 2 : poly.strokeWidth);
                         path.setAttribute('data-polygon-id', poly.id);
@@ -877,12 +953,19 @@
                         });
 
                         svg.appendChild(path);
-                        createdPaths.push({ path: path, poly: poly });
+                        createdPaths.push({
+                            path: path,
+                            poly: poly
+                        });
 
                         // Dibujar medidas en los lados
                         var edgeLabels = poly.edgeLabels;
                         if (typeof edgeLabels === 'string') {
-                            try { edgeLabels = JSON.parse(edgeLabels); } catch(e) { edgeLabels = null; }
+                            try {
+                                edgeLabels = JSON.parse(edgeLabels);
+                            } catch (e) {
+                                edgeLabels = null;
+                            }
                         }
                         if (edgeLabels && Array.isArray(edgeLabels)) {
                             drawPolygonEdgeLabels(svg, screenPoints, edgeLabels);
@@ -948,9 +1031,15 @@
 
             // Dibujar texto interior del polígono
             function drawPolygonInteriorText(svg, screenPoints, text) {
-                var sumX = 0, sumY = 0, count = 0;
+                var sumX = 0,
+                    sumY = 0,
+                    count = 0;
                 screenPoints.forEach(function(p) {
-                    if (p) { sumX += p.x; sumY += p.y; count++; }
+                    if (p) {
+                        sumX += p.x;
+                        sumY += p.y;
+                        count++;
+                    }
                 });
                 if (count < 3) return;
 
@@ -977,6 +1066,7 @@
 
             // Actualizar polígonos periódicamente mientras se navega
             var polygonUpdateInterval = null;
+
             function startPolygonUpdates() {
                 if (polygonUpdateInterval) return;
                 polygonUpdateInterval = setInterval(function() {
@@ -1006,11 +1096,11 @@
 
             // Frame cache: almacena frames extraídos del video como ImageBitmap/Image
             var frameCache = {
-                frames: [],          // Array de Image objects
-                times: [],           // Tiempo correspondiente a cada frame
+                frames: [], // Array de Image objects
+                times: [], // Tiempo correspondiente a cada frame
                 totalFrames: 0,
                 duration: 0,
-                currentIndex: 0,     // Frame actualmente mostrado
+                currentIndex: 0, // Frame actualmente mostrado
                 extracting: false,
                 aborted: false,
                 canvasWidth: 0,
@@ -1020,8 +1110,8 @@
             var videoDragState = {
                 isDragging: false,
                 startX: 0,
-                startNorm: 0,        // posición normalizada (0-1) al inicio del drag
-                sensitivity: 0.0015  // cambio normalizado por pixel de drag
+                startNorm: 0, // posición normalizada (0-1) al inicio del drag
+                sensitivity: 0.0015 // cambio normalizado por pixel de drag
             };
 
             function isVideoScene(sceneId) {
@@ -1162,7 +1252,8 @@
                         // Permitir interacción con frames ya extraídos (desde el 15%)
                         if (extracted >= Math.ceil(totalFrames * 0.15) && !videoReady) {
                             videoReady = true;
-                            videoDragHint.innerHTML = '<i class="fa fa-arrows-h"></i> Arrastra para girar alrededor de la propiedad';
+                            videoDragHint.innerHTML =
+                                '<i class="fa fa-arrows-h"></i> Arrastra para girar alrededor de la propiedad';
                             setTimeout(function() {
                                 videoDragHint.classList.remove('visible');
                             }, 3000);
@@ -1248,14 +1339,18 @@
                 videoHotspotsBar.innerHTML = '';
                 // Remover hotspots posicionados
                 var posHotspots = videoOverlay.querySelectorAll('.video-pos-hotspot');
-                posHotspots.forEach(function(el) { el.remove(); });
+                posHotspots.forEach(function(el) {
+                    el.remove();
+                });
             }
 
             function buildVideoHotspots(sceneId) {
                 videoHotspotsBar.innerHTML = '';
                 // Remover hotspots posicionados previos
                 var oldPosHotspots = videoOverlay.querySelectorAll('.video-pos-hotspot');
-                oldPosHotspots.forEach(function(el) { el.remove(); });
+                oldPosHotspots.forEach(function(el) {
+                    el.remove();
+                });
 
                 var sc = pannellumConfig.scenes[sceneId];
                 if (!sc || !sc.hotSpots) return;
@@ -1266,7 +1361,8 @@
                     var targetScene = pannellumConfig.scenes[targetId];
                     if (!targetScene) return;
 
-                    var displayText = hs.createTooltipArgs ? hs.createTooltipArgs.displayText : targetScene.title;
+                    var displayText = hs.createTooltipArgs ? hs.createTooltipArgs.displayText : targetScene
+                        .title;
                     var imageUrl = hs.createTooltipArgs ? hs.createTooltipArgs.imageUrl : null;
 
                     // Verificar si tiene posición en video (video_time + pos_x + pos_y)
@@ -1351,7 +1447,10 @@
                 isTransitioning = true;
 
                 // Fade out video
-                $transitionOverlay.css({ opacity: 0, transition: 'opacity 0.4s ease' });
+                $transitionOverlay.css({
+                    opacity: 0,
+                    transition: 'opacity 0.4s ease'
+                });
                 setTimeout(function() {
                     $transitionOverlay.css('opacity', 1);
                 }, 10);
@@ -1359,7 +1458,9 @@
                 setTimeout(function() {
                     hideVideoViewer();
                     viewer.loadScene(targetSceneId);
-                    $transitionOverlay.css({ transition: 'opacity 0.6s ease' });
+                    $transitionOverlay.css({
+                        transition: 'opacity 0.6s ease'
+                    });
                     setTimeout(function() {
                         $transitionOverlay.css('opacity', 0);
                         setTimeout(function() {
@@ -1411,7 +1512,9 @@
                 videoDragState.startNorm = getCurrentNormalized();
                 videoOverlay.classList.add('active-dragging');
                 videoScrubIndicator.classList.add('visible');
-            }, { passive: true });
+            }, {
+                passive: true
+            });
 
             document.addEventListener('touchmove', function(e) {
                 if (!videoDragState.isDragging) return;
@@ -1421,7 +1524,9 @@
                 showFrameAt(newNorm);
                 var pct = Math.round(((newNorm % 1) + 1) % 1 * 100);
                 videoScrubIndicator.textContent = pct + '%';
-            }, { passive: true });
+            }, {
+                passive: true
+            });
 
             document.addEventListener('touchend', function() {
                 if (videoDragState.isDragging) {
@@ -1446,7 +1551,10 @@
 
                 // Si el destino es video, usar transición fade en lugar de zoom
                 if (isVideoScene(targetSceneId)) {
-                    $transitionOverlay.css({ opacity: 0, transition: 'opacity 0.4s ease' });
+                    $transitionOverlay.css({
+                        opacity: 0,
+                        transition: 'opacity 0.4s ease'
+                    });
                     setTimeout(function() {
                         $transitionOverlay.css('opacity', 1);
                     }, 10);
@@ -1455,7 +1563,9 @@
                         showVideoViewer(targetSceneId);
                         var sceneName = pannellumConfig.scenes[targetSceneId]?.title || 'Escena';
                         showSceneName(sceneName);
-                        $transitionOverlay.css({ transition: 'opacity 0.6s ease' });
+                        $transitionOverlay.css({
+                            transition: 'opacity 0.6s ease'
+                        });
                         setTimeout(function() {
                             $transitionOverlay.css('opacity', 0);
                             setTimeout(function() {
@@ -1539,7 +1649,8 @@
 
                 // Recrear SVG de polígonos dentro del contenedor Pannellum
                 ensurePolygonSvg();
-                console.log('[Polygons] Escena cargada:', viewer.getScene(), '- Polígonos disponibles:', (scenePolygons[String(viewer.getScene())] || []).length);
+                console.log('[Polygons] Escena cargada:', viewer.getScene(), '- Polígonos disponibles:', (
+                    scenePolygons[String(viewer.getScene())] || []).length);
                 renderScenePolygons();
 
                 if (pendingOrientation) {
@@ -1608,6 +1719,7 @@
                 e.preventDefault();
                 $('.home-content-table').fadeOut(800, function() {
                     // Usar el ID real de la primera escena (puede ser video)
+                    IDLE_ROTATE.enable(); // ✅ empieza estático y si pasan 10s sin mover nada, gira
                     var firstSceneId = realFirstSceneId;
                     if (pannellumConfig.scenes[firstSceneId]) {
                         showSceneName(pannellumConfig.scenes[firstSceneId].title);
@@ -1648,13 +1760,18 @@
 
                     // Función para transición fade (usada para video)
                     function fadeTransition(onMiddle) {
-                        $transitionOverlay.css({ opacity: 0, transition: 'opacity 0.4s ease' });
+                        $transitionOverlay.css({
+                            opacity: 0,
+                            transition: 'opacity 0.4s ease'
+                        });
                         setTimeout(function() {
                             $transitionOverlay.css('opacity', 1);
                         }, 10);
                         setTimeout(function() {
                             onMiddle();
-                            $transitionOverlay.css({ transition: 'opacity 0.6s ease' });
+                            $transitionOverlay.css({
+                                transition: 'opacity 0.6s ease'
+                            });
                             setTimeout(function() {
                                 $transitionOverlay.css('opacity', 0);
                                 setTimeout(function() {
