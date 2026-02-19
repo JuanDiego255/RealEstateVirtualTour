@@ -25,9 +25,8 @@ class PropertiesController extends Controller
         return view('frontend.index', compact('properties'));
     }
     /**
-     * Display a listing of the resource.
-     *
-     * @return \Illuminate\Http\Response
+     * Display a listing of the resource (admin).
+     * Shows all publications (properties + vehicles) unified.
      */
     public function indexAdmin()
     {
@@ -38,65 +37,109 @@ class PropertiesController extends Controller
 
     /**
      * Store a newly created resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
+     * Handles both real estate and vehicle types dynamically.
      */
     public function store(Request $request)
     {
-
-        //
         DB::beginTransaction();
         try {
+            $isVehicle = ($request->property_type === 'vehicle');
 
-            $campos = [
-                'name' => 'required|string|max:100',
-                'code' => 'required|string|max:100',
-                'rooms' => 'required|string|max:100',
-                'bathrooms' => 'required|string|max:100',
-                'garage' => 'required|string|max:100',
-                'floor_levels' => 'required|string|max:100',
-                'construction' => 'required|string|max:100',
-                'land' => 'required|string|max:100',
-                'construction_year' => 'required|string|max:100',
-                'maintenance' => 'required|string|max:100',
-                'price' => 'required|string|max:100',
-            ];
+            // Validación dinámica según tipo
+            if ($isVehicle) {
+                $campos = [
+                    'name' => 'required|string|max:150',
+                    'subcategory_id' => 'required|exists:subcategories,id',
+                    'brand' => 'required|string|max:80',
+                    'model' => 'required|string|max:80',
+                    'year' => 'required|string|max:10',
+                    'price' => 'required|string|max:100',
+                ];
+            } else {
+                $campos = [
+                    'name' => 'required|string|max:100',
+                    'code' => 'required|string|max:100',
+                    'rooms' => 'required|string|max:100',
+                    'bathrooms' => 'required|string|max:100',
+                    'garage' => 'required|string|max:100',
+                    'floor_levels' => 'required|string|max:100',
+                    'construction' => 'required|string|max:100',
+                    'land' => 'required|string|max:100',
+                    'construction_year' => 'required|string|max:100',
+                    'maintenance' => 'required|string|max:100',
+                    'price' => 'required|string|max:100',
+                ];
+            }
 
-            $mensaje = ["required" => 'El :attribute es requerido store'];
+            $mensaje = ["required" => 'El :attribute es requerido'];
             $this->validate($request, $campos, $mensaje);
 
-            $property =  new  Properties();
+            $property = new Properties();
             if ($request->hasFile('image')) {
                 $property->image = $request->file('image')->store('uploads', 'public');
             }
+
             $property->name = $request->name;
-            $property->code = $request->code;
+            $property->property_type = $request->property_type ?? 'house';
             $property->subcategory_id = $request->subcategory_id;
+
             // Derivar category_id de la subcategoría
             if ($request->subcategory_id) {
                 $sub = Subcategory::find($request->subcategory_id);
                 $property->category_id = $sub ? $sub->category_id : null;
             }
-            $property->property_type = $request->property_type ?? 'house';
+
             $property->description = $request->description;
-            $property->rooms = $request->rooms;
-            $property->bathrooms = $request->bathrooms;
-            $property->garage = $request->garage;
-            $property->floor_levels = $request->floor_levels;
-            $property->construction = $request->construction;
-            $property->land = $request->land;
-            $property->construction_year = $request->construction_year;
-            $property->maintenance = $request->maintenance;
             $property->price = $request->price;
             $property->currency = $request->currency ?? 'CRC';
             $property->status = $request->status ?? 'available';
-            $property->location = $request->location;
-            $property->address = $request->address;
-            $property->commission_percentage = $request->commission_percentage;
-            $property->commission_notes = $request->commission_notes;
-            $property->is_exclusive = $request->is_exclusive ?? false;
             $property->user_id = auth()->id();
+
+            if ($isVehicle) {
+                // Campos específicos de vehículo
+                $property->code = $request->code ?? '';
+                $property->brand = $request->brand;
+                $property->model = $request->model;
+                $property->year = $request->year;
+                $property->color = $request->color;
+                $property->mileage_km = $request->mileage_km;
+                $property->fuel_tank_capacity = $request->fuel_tank_capacity;
+                $property->fuel_type = $request->fuel_type;
+                $property->engine_cc = $request->engine_cc;
+                $property->doors = $request->doors;
+                $property->passengers = $request->passengers;
+                $property->tires = $request->tires;
+                $property->drivetrain = $request->drivetrain;
+                $property->transmission = $request->transmission;
+                $property->condition = $request->condition;
+                $property->plate = $request->plate;
+                // Defaults para campos de propiedad
+                $property->rooms = $request->rooms ?? '0';
+                $property->bathrooms = $request->bathrooms ?? '0';
+                $property->garage = $request->garage ?? '0';
+                $property->floor_levels = $request->floor_levels ?? '0';
+                $property->construction = $request->construction ?? '0';
+                $property->land = $request->land ?? '0';
+                $property->construction_year = $request->construction_year ?? '';
+                $property->maintenance = $request->maintenance ?? '0';
+            } else {
+                // Campos específicos de propiedad
+                $property->code = $request->code;
+                $property->rooms = $request->rooms;
+                $property->bathrooms = $request->bathrooms;
+                $property->garage = $request->garage;
+                $property->floor_levels = $request->floor_levels;
+                $property->construction = $request->construction;
+                $property->land = $request->land;
+                $property->construction_year = $request->construction_year;
+                $property->maintenance = $request->maintenance;
+                $property->location = $request->location;
+                $property->address = $request->address;
+                $property->commission_percentage = $request->commission_percentage;
+                $property->commission_notes = $request->commission_notes;
+                $property->is_exclusive = $request->is_exclusive ?? false;
+            }
+
             $property->save();
 
             // Guardar imágenes adicionales
@@ -111,74 +154,105 @@ class PropertiesController extends Controller
             }
 
             DB::commit();
-            return redirect('/property')->with('success', 'Propiedad guardada con éxito!');
+            return redirect('/property')->with('success', 'Publicación guardada con éxito!');
         } catch (\Exception $th) {
             DB::rollBack();
-            return redirect('/property')->with('success', 'Propiedad no se pudo guardar con éxito!');
+            return redirect('/property')->with('success', 'No se pudo guardar la publicación!');
         }
     }
 
     /**
      * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
+     * Handles both real estate and vehicle types dynamically.
      */
     public function update(Request $request, $id)
     {
-        //
         DB::beginTransaction();
         try {
-            $campos = [
-                'name' => 'required|string|max:100',
-                'code' => 'required|string|max:100',
-                'rooms' => 'required|string|max:100',
-                'bathrooms' => 'required|string|max:100',
-                'garage' => 'required|string|max:100',
-                'floor_levels' => 'required|string|max:100',
-                'construction' => 'required|string|max:100',
-                'land' => 'required|string|max:100',
-                'construction_year' => 'required|string|max:100',
-                'maintenance' => 'required|string|max:100',
-                'price' => 'required|string|max:100',
-            ];
+            $isVehicle = ($request->property_type === 'vehicle');
 
-            $mensaje = ["required" => 'El :attribute es requerido ' . $id . ' update'];
+            if ($isVehicle) {
+                $campos = [
+                    'name' => 'required|string|max:150',
+                    'subcategory_id' => 'required|exists:subcategories,id',
+                    'brand' => 'required|string|max:80',
+                    'model' => 'required|string|max:80',
+                    'year' => 'required|string|max:10',
+                    'price' => 'required|string|max:100',
+                ];
+            } else {
+                $campos = [
+                    'name' => 'required|string|max:100',
+                    'code' => 'required|string|max:100',
+                    'rooms' => 'required|string|max:100',
+                    'bathrooms' => 'required|string|max:100',
+                    'garage' => 'required|string|max:100',
+                    'floor_levels' => 'required|string|max:100',
+                    'construction' => 'required|string|max:100',
+                    'land' => 'required|string|max:100',
+                    'construction_year' => 'required|string|max:100',
+                    'maintenance' => 'required|string|max:100',
+                    'price' => 'required|string|max:100',
+                ];
+            }
+
+            $mensaje = ["required" => 'El :attribute es requerido'];
             $this->validate($request, $campos, $mensaje);
 
-            $property = Properties::findOrfail($id);
+            $property = Properties::findOrFail($id);
             if ($request->hasFile('image')) {
                 Storage::delete('public/' . $property->image);
-                $image = $request->file('image')->store('uploads', 'public');
-                $property->image = $image;
+                $property->image = $request->file('image')->store('uploads', 'public');
             }
+
             $property->name = $request->name;
-            $property->code = $request->code;
+            $property->property_type = $request->property_type ?? $property->property_type;
             $property->subcategory_id = $request->subcategory_id;
-            // Derivar category_id de la subcategoría
+
             if ($request->subcategory_id) {
                 $sub = Subcategory::find($request->subcategory_id);
                 $property->category_id = $sub ? $sub->category_id : null;
             }
-            $property->property_type = $request->property_type ?? $property->property_type;
+
             $property->description = $request->description;
-            $property->rooms = $request->rooms;
-            $property->bathrooms = $request->bathrooms;
-            $property->garage = $request->garage;
-            $property->floor_levels = $request->floor_levels;
-            $property->construction = $request->construction;
-            $property->land = $request->land;
-            $property->construction_year = $request->construction_year;
-            $property->maintenance = $request->maintenance;
             $property->price = $request->price;
             $property->currency = $request->currency ?? $property->currency;
             $property->status = $request->status ?? $property->status;
-            $property->location = $request->location;
-            $property->address = $request->address;
-            $property->commission_percentage = $request->commission_percentage;
-            $property->commission_notes = $request->commission_notes;
-            $property->is_exclusive = $request->is_exclusive ?? false;
+
+            if ($isVehicle) {
+                $property->code = $request->code ?? $property->code;
+                $property->brand = $request->brand;
+                $property->model = $request->model;
+                $property->year = $request->year;
+                $property->color = $request->color;
+                $property->mileage_km = $request->mileage_km;
+                $property->fuel_tank_capacity = $request->fuel_tank_capacity;
+                $property->fuel_type = $request->fuel_type;
+                $property->engine_cc = $request->engine_cc;
+                $property->doors = $request->doors;
+                $property->passengers = $request->passengers;
+                $property->tires = $request->tires;
+                $property->drivetrain = $request->drivetrain;
+                $property->transmission = $request->transmission;
+                $property->condition = $request->condition;
+                $property->plate = $request->plate;
+            } else {
+                $property->code = $request->code;
+                $property->rooms = $request->rooms;
+                $property->bathrooms = $request->bathrooms;
+                $property->garage = $request->garage;
+                $property->floor_levels = $request->floor_levels;
+                $property->construction = $request->construction;
+                $property->land = $request->land;
+                $property->construction_year = $request->construction_year;
+                $property->maintenance = $request->maintenance;
+                $property->location = $request->location;
+                $property->address = $request->address;
+                $property->commission_percentage = $request->commission_percentage;
+                $property->commission_notes = $request->commission_notes;
+                $property->is_exclusive = $request->is_exclusive ?? false;
+            }
+
             $property->update();
 
             // Guardar imágenes adicionales
@@ -194,37 +268,35 @@ class PropertiesController extends Controller
             }
 
             DB::commit();
-            return redirect('/property')->with('success', 'Propiedad editada con éxito!');
+            return redirect('/property')->with('success', 'Publicación editada con éxito!');
         } catch (\Exception $th) {
             DB::rollBack();
-            return redirect('/property')->with('success', 'Propiedad no se pudo editar con éxito!');
+            return redirect('/property')->with('success', 'No se pudo editar la publicación!');
         }
     }
 
     /**
      * Remove the specified resource from storage.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
      */
     public function destroy($id)
     {
-        //
         DB::beginTransaction();
         try {
-
-            $property = Properties::findOrfail($id);
-            if (
-                Storage::delete('public/' . $property->image)
-            ) {
-                Properties::destroy($id);
+            $property = Properties::findOrFail($id);
+            if ($property->image) {
+                Storage::delete('public/' . $property->image);
             }
-            Properties::destroy($id);
+            // Eliminar imágenes de galería
+            foreach ($property->images as $img) {
+                Storage::delete('public/' . $img->image);
+                $img->delete();
+            }
+            $property->delete();
             DB::commit();
-            return redirect('/property')->with('success', 'Propiedad eliminada con éxito!');
+            return redirect('/property')->with('success', 'Publicación eliminada con éxito!');
         } catch (\Exception $th) {
-            //throw $th;
             DB::rollBack();
+            return redirect('/property')->with('success', 'No se pudo eliminar la publicación!');
         }
     }
 

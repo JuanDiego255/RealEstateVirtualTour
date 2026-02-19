@@ -41,6 +41,22 @@ class Properties extends Model
         'views_count',
         'published_at',
         'sold_at',
+        // Campos de vehículo
+        'brand',
+        'model',
+        'year',
+        'color',
+        'mileage_km',
+        'fuel_tank_capacity',
+        'fuel_type',
+        'engine_cc',
+        'doors',
+        'passengers',
+        'tires',
+        'drivetrain',
+        'transmission',
+        'condition',
+        'plate',
     ];
 
     protected $casts = [
@@ -294,5 +310,29 @@ class Properties extends Model
         return $query->whereHas('category', function ($q) use ($sectorId) {
             $q->where('sector_id', $sectorId);
         });
+    }
+
+    /**
+     * Verificar si es un vehículo
+     */
+    public function isVehicle(): bool
+    {
+        return $this->property_type === self::TYPE_VEHICLE;
+    }
+
+    /**
+     * Scope para solo vehículos
+     */
+    public function scopeVehicles($query)
+    {
+        return $query->where('property_type', self::TYPE_VEHICLE);
+    }
+
+    /**
+     * Scope para solo propiedades (no vehículos)
+     */
+    public function scopeRealEstate($query)
+    {
+        return $query->where('property_type', '!=', self::TYPE_VEHICLE);
     }
 }

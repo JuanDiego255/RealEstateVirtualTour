@@ -1,6 +1,6 @@
 @extends('admin.main')
 
-@section('title', 'Propiedades')
+@section('title', 'Publicaciones')
 
 @section('content')
     @if ($message = Session::has('success'))
@@ -17,7 +17,7 @@
 
     <div class="container">
         <button type="button" class="btn btn-rounded btn-outline-info" data-toggle="modal" data-target="#addProperty">Nueva
-            Propiedad</button>
+            Publicación</button>
         <div class="row mt-5">
 
             @foreach ($properties as $property)
@@ -27,7 +27,7 @@
                         <div class="product-grid product_data">
                             <div class="product-image">
                                 <img src="{{ isset($property->image) ? route('file', $property->image) : url('images/producto-sin-imagen.PNG') }}">
-                                <a onclick="if (confirm('¿Deseas borrar esta propiedad?')) {
+                                <a onclick="if (confirm('¿Deseas borrar esta publicación?')) {
                                     document.getElementById('deleteProperty' + {{ $property->id }}).submit();
                                 }"
                                     href="#"> <span class="product-discount-label"><i
@@ -44,12 +44,19 @@
                                     </span>
                                 @endif
 
-                                <ul class="product-links">
-                                    <li><a href="#"><i class="fas fa-bed mr-1"></i>{{ $property->rooms }}</a></li>
-                                    <li><a href="#"><i class="fas fa-bath mr-1"></i>{{ $property->bathrooms }}</a>
-                                    </li>
-                                    <li><a href="#"><i class="fas fa-car mr-1"></i>{{ $property->garage }}</a></li>
-                                </ul>
+                                @if(($property->property_type ?? '') !== 'vehicle')
+                                    <ul class="product-links">
+                                        <li><a href="#"><i class="fas fa-bed mr-1"></i>{{ $property->rooms }}</a></li>
+                                        <li><a href="#"><i class="fas fa-bath mr-1"></i>{{ $property->bathrooms }}</a></li>
+                                        <li><a href="#"><i class="fas fa-car mr-1"></i>{{ $property->garage }}</a></li>
+                                    </ul>
+                                @else
+                                    <ul class="product-links">
+                                        @if($property->transmission)<li><a href="#"><i class="fas fa-cog mr-1"></i>{{ $property->transmission }}</a></li>@endif
+                                        @if($property->fuel_type)<li><a href="#"><i class="fas fa-tint mr-1"></i>{{ $property->fuel_type }}</a></li>@endif
+                                        @if($property->year)<li><a href="#"><i class="fas fa-calendar mr-1"></i>{{ $property->year }}</a></li>@endif
+                                    </ul>
+                                @endif
 
                                 <a href="#" data-toggle="modal" data-target="#editProperty{{ $property['id'] }}"
                                     class="add-to-cart">Editar</a>
@@ -63,6 +70,25 @@
                                     <div class="mb-1"><span class="badge badge-light">{{ $property->property_type_name }}</span></div>
                                 @endif
 
+                                @if(($property->property_type ?? '') === 'vehicle')
+                                    @if($property->brand)
+                                        <div class="price"><i class="fas fa-car mr-1"></i>{{ $property->brand }} {{ $property->model }} {{ $property->year }}</div>
+                                    @endif
+                                    @if($property->mileage_km)
+                                        <div class="price"><i class="fas fa-road mr-1"></i>{{ number_format($property->mileage_km) }} km</div>
+                                    @endif
+                                @else
+                                    <div class="price"><i class="fas fa-home mr-1"></i>Construcción:
+                                        {{ $property->construction }} Mt2
+                                    </div>
+                                    <div class="price"><i class="fas fa-border-none mr-1"></i>Terreno:
+                                        {{ $property->land }} Mt2
+                                    </div>
+                                    <div class="price"><i class="fas fa-calendar-alt mr-1"></i>Se construyó:
+                                        {{ $property->construction_year }}
+                                    </div>
+                                @endif
+
                                 <div class="price"><i class="fas fa-money-bill mr-1"></i>Precio:
                                     @if($property->currency === 'USD')
                                         ${{ number_format($property->price) }} USD
@@ -70,18 +96,13 @@
                                         ₡{{ number_format($property->price) }}
                                     @endif
                                 </div>
-                                <div class="price"><i class="fas fa-money-bill mr-1"></i>Mantenimiento:
-                                    ₡{{ number_format($property->maintenance) }}
-                                </div>
-                                <div class="price"><i class="fas fa-home mr-1"></i>Construcción:
-                                    {{ $property->construction }} Mt2
-                                </div>
-                                <div class="price"><i class="fas fa-border-none mr-1"></i>Terreno:
-                                    {{ $property->land }} Mt2
-                                </div>
-                                <div class="price"><i class="fas fa-calendar-alt mr-1"></i>Se construyó:
-                                    {{ $property->construction_year }}
-                                </div>
+
+                                @if(($property->property_type ?? '') !== 'vehicle')
+                                    <div class="price"><i class="fas fa-money-bill mr-1"></i>Mantenimiento:
+                                        ₡{{ number_format($property->maintenance) }}
+                                    </div>
+                                @endif
+
                                 @if($property->location)
                                     <div class="price"><i class="fas fa-map-marker-alt mr-1"></i>{{ $property->location }}</div>
                                 @endif
