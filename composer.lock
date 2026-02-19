@@ -3491,7 +3491,6 @@
             "extra": {
                 "laravel": {
                     "providers": [
-                        "Stancl\\Tenancy\\TenancyServiceProvider"
                     ],
                     "aliases": {
                         "Tenancy": "Stancl\\Tenancy\\Facades\\Tenancy",
