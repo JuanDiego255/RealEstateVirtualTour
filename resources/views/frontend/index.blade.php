@@ -12,9 +12,9 @@
                 <div class="row no-gutters slider-text justify-content-center align-items-center">
                     <div class="col-lg-8 col-md-6 ftco-animate d-flex align-items-end">
                         <div class="text text-center">
-                            <h1 class="mb-4">
-                                Explora nuestra nueva implementación <br />Virtual Tour
-                            </h1>
+                            <h4 class="mb-4">
+                                 Explora un sistema innovador que eleva la experiencia visual y conecta a tus clientes con cada detalle, desde cualquier lugar. <br />Virtual Tour Space 360
+                            </h4>
                             <p style="font-size: 18px">
                                 Recorre cada espacio con tours virtuales 360 interactivos
                             </p>

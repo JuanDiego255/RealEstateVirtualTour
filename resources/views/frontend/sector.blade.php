@@ -41,7 +41,7 @@
                 <div class="row justify-content-center">
                     <div class="col-md-12 heading-section text-center ftco-animate mb-5">
                         <span class="subheading">{{ $sector->name }}</span>
-                        <h2 class="mb-2">Categorías disponibles</h2>
+                        <h2 class="mb-2">Sucursales disponibles</h2>
                     </div>
                 </div>
 
@@ -111,11 +111,6 @@
                                                     </span>
                                                 @endif
                                                 @if ($catVehCount > 0)
-                                                    <span class="badge badge-info mr-2 mt-1" style="font-size: 0.8rem;">
-                                                        <i class="fa fa-car mr-1"></i>
-                                                        {{ $catVehCount }}
-                                                        {{ $catVehCount == 1 ? 'veh&iacute;culo' : 'veh&iacute;culos' }}
-                                                    </span>
                                                 @endif
                                                 @if ($catPropCount == 0 && $catVehCount == 0)
                                                     <span class="badge badge-secondary mt-1">Sin items a&uacute;n</span>

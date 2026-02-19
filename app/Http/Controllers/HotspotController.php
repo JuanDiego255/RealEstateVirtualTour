@@ -56,8 +56,10 @@ class HotspotController extends Controller
             'image' => $image
         ]);
 
-        return redirect()->route('config', $property_id)->with('success', '
-        Punto de acceso agregado exitosamente');
+        return redirect()->route('configTyped', [
+            'type' => 'vehicle',
+            'id'   => $property_id
+        ])->with('success', 'Punto de acceso agregado exitosamente');
     }
 
     /**
