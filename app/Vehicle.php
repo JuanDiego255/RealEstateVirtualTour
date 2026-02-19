@@ -4,13 +4,14 @@ namespace App;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Subcategory;
 
 class Vehicle extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'category_id', 'name', 'brand', 'model', 'year', 'color',
+        'category_id', 'subcategory_id', 'name', 'brand', 'model', 'year', 'color',
         'mileage_km', 'fuel_tank_capacity', 'fuel_type', 'engine_cc',
         'doors', 'passengers', 'tires', 'drivetrain', 'transmission',
         'price', 'condition', 'plate', 'image', 'status'
@@ -26,6 +27,14 @@ class Vehicle extends Model
     public function category()
     {
         return $this->belongsTo('App\Category', 'category_id');
+    }
+
+    /**
+     * Subcategoría del vehículo
+     */
+    public function subcategory()
+    {
+        return $this->belongsTo(Subcategory::class);
     }
 
     /**

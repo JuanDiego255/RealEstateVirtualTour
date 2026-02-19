@@ -11,6 +11,7 @@ class Properties extends Model
 
     protected $fillable = [
         'category_id',
+        'subcategory_id',
         'user_id',
         'name',
         'code',
@@ -80,6 +81,14 @@ class Properties extends Model
     public function category()
     {
         return $this->belongsTo('App\Category', 'category_id');
+    }
+
+    /**
+     * Subcategoría del inmueble
+     */
+    public function subcategory()
+    {
+        return $this->belongsTo(Subcategory::class);
     }
 
     /**

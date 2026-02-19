@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Vehicle;
 use App\Category;
+use App\Subcategory;
 use App\Sector;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,28 +17,30 @@ class VehicleController extends Controller
      */
     public function indexAdmin(Request $request)
     {
-        $query = Vehicle::with('category.sector');
+        $query = Vehicle::with(['subcategory.category.sector', 'category']);
 
-        if ($request->has('category_id') && $request->category_id != '') {
-            $query->where('category_id', $request->category_id);
+        if ($request->has('subcategory_id') && $request->subcategory_id != '') {
+            $query->where('subcategory_id', $request->subcategory_id);
         }
 
         $vehicles = $query->get();
 
-        // Get only automotive sector categories for the dropdown
+        // Get subcategories for the dropdown (preferably from automotive sector)
         $automotiveSector = Sector::where('slug', 'sector-automotriz')->first();
-        $categories = $automotiveSector
-            ? Category::where('sector_id', $automotiveSector->id)->get()
-            : Category::whereHas('sector', function($q) {
-                $q->where('slug', 'like', '%automotriz%')->orWhere('slug', 'like', '%auto%');
-            })->get();
-
-        // If no automotive categories found, show all categories
-        if ($categories->isEmpty()) {
-            $categories = Category::all();
+        if ($automotiveSector) {
+            $subcategories = Subcategory::whereHas('category', function ($q) use ($automotiveSector) {
+                $q->where('sector_id', $automotiveSector->id);
+            })->with('category.sector')->where('is_active', true)->orderBy('name')->get();
+        } else {
+            $subcategories = Subcategory::with('category.sector')->where('is_active', true)->orderBy('name')->get();
         }
 
-        return view('admin.vehicles.vehicle', compact('vehicles', 'categories'));
+        // If no subcategories found, show all
+        if ($subcategories->isEmpty()) {
+            $subcategories = Subcategory::with('category.sector')->where('is_active', true)->orderBy('name')->get();
+        }
+
+        return view('admin.vehicles.vehicle', compact('vehicles', 'subcategories'));
     }
 
     /**
@@ -49,7 +52,7 @@ class VehicleController extends Controller
         try {
             $campos = [
                 'name' => 'required|string|max:150',
-                'category_id' => 'required|exists:categories,id',
+                'subcategory_id' => 'required|exists:subcategories,id',
                 'brand' => 'required|string|max:80',
                 'model' => 'required|string|max:80',
                 'year' => 'required|string|max:10',
@@ -75,7 +78,10 @@ class VehicleController extends Controller
             if ($request->hasFile('image')) {
                 $vehicle->image = $request->file('image')->store('uploads', 'public');
             }
-            $vehicle->category_id = $request->category_id;
+            $vehicle->subcategory_id = $request->subcategory_id;
+            // Derivar category_id de la subcategoría
+            $sub = Subcategory::find($request->subcategory_id);
+            $vehicle->category_id = $sub ? $sub->category_id : null;
             $vehicle->name = $request->name;
             $vehicle->brand = $request->brand;
             $vehicle->model = $request->model;
@@ -113,7 +119,7 @@ class VehicleController extends Controller
         try {
             $campos = [
                 'name' => 'required|string|max:150',
-                'category_id' => 'required|exists:categories,id',
+                'subcategory_id' => 'required|exists:subcategories,id',
                 'brand' => 'required|string|max:80',
                 'model' => 'required|string|max:80',
                 'year' => 'required|string|max:10',
@@ -130,7 +136,10 @@ class VehicleController extends Controller
                 }
                 $vehicle->image = $request->file('image')->store('uploads', 'public');
             }
-            $vehicle->category_id = $request->category_id;
+            $vehicle->subcategory_id = $request->subcategory_id;
+            // Derivar category_id de la subcategoría
+            $sub = Subcategory::find($request->subcategory_id);
+            $vehicle->category_id = $sub ? $sub->category_id : null;
             $vehicle->name = $request->name;
             $vehicle->brand = $request->brand;
             $vehicle->model = $request->model;

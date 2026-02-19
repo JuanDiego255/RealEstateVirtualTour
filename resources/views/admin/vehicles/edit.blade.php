@@ -16,12 +16,12 @@
                     </h6>
                     <div class="row">
                         <div class="form-group col-md-6">
-                            <label>Categoría <span class="text-danger">*</span></label>
-                            <select class="form-control form-control-lg input-rounded mb-2" name="category_id" required>
-                                @foreach ($categories as $cat)
-                                    <option value="{{ $cat->id }}"
-                                        {{ $vehicle->category_id == $cat->id ? 'selected' : '' }}>
-                                        {{ $cat->name }}
+                            <label>Subcategoría <span class="text-danger">*</span></label>
+                            <select class="form-control form-control-lg input-rounded mb-2" name="subcategory_id" required>
+                                @foreach ($subcategories as $sub)
+                                    <option value="{{ $sub->id }}"
+                                        {{ $vehicle->subcategory_id == $sub->id ? 'selected' : '' }}>
+                                        {{ $sub->category->name ?? '' }} → {{ $sub->name }}
                                     </option>
                                 @endforeach
                             </select>

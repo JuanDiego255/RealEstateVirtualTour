@@ -49,12 +49,14 @@
 
                     <div class="row">
                         <div class="form-group col-md-12">
-                            <label>Categoría</label>
-                            <select class="form-control" name="category_id">
-                                <option value="">-- Sin categoría --</option>
-                                @if(isset($categories))
-                                    @foreach ($categories as $cat)
-                                        <option value="{{ $cat->id }}">{{ $cat->sector->name ?? '' }} → {{ $cat->name }}</option>
+                            <label>Subcategoría</label>
+                            <select class="form-control" name="subcategory_id">
+                                <option value="">-- Sin subcategoría --</option>
+                                @if(isset($subcategories))
+                                    @foreach ($subcategories as $sub)
+                                        <option value="{{ $sub->id }}">
+                                            {{ $sub->category->sector->name ?? '' }} → {{ $sub->category->name ?? '' }} → {{ $sub->name }}
+                                        </option>
                                     @endforeach
                                 @endif
                             </select>

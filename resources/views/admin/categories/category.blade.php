@@ -93,13 +93,24 @@
                                         {{ Str::limit($category->description, 80) }}
                                     </p>
                                 @endif
+                                @php
+                                    $propCount = 0;
+                                    $vehCount = 0;
+                                    foreach ($category->subcategories as $sub) {
+                                        $propCount += $sub->properties()->count();
+                                        $vehCount += $sub->vehicles()->count();
+                                    }
+                                @endphp
                                 <div class="d-flex align-items-center">
+                                    <span class="badge badge-secondary mr-2">
+                                        <i class="fa fa-tags mr-1"></i>{{ $category->subcategories->count() }} Subcategorías
+                                    </span>
                                     <span class="badge badge-info mr-2">
-                                        <i class="fa fa-building mr-1"></i>{{ $category->properties_count ?? 0 }}
+                                        <i class="fa fa-building mr-1"></i>{{ $propCount }}
                                         Propiedades
                                     </span>
                                     <span class="badge badge-warning">
-                                        <i class="fa fa-car mr-1"></i>{{ $category->vehicles_count ?? 0 }} Vehículos
+                                        <i class="fa fa-car mr-1"></i>{{ $vehCount }} Vehículos
                                     </span>
                                 </div>
                             </div>

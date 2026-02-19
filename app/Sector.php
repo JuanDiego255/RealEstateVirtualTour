@@ -63,7 +63,9 @@ class Sector extends Model
      */
     public function getPropertiesCountAttribute(): int
     {
-        return Properties::whereIn('category_id', $this->categories()->pluck('id'))->count();
+        return Properties::whereHas('subcategory.category', function ($q) {
+            $q->where('sector_id', $this->id);
+        })->count();
     }
 
     /**

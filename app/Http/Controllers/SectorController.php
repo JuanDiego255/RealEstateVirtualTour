@@ -35,7 +35,9 @@ class SectorController extends Controller
         $sector = Sector::where('slug', $slug)->where('status', true)->firstOrFail();
         $categories = Category::where('sector_id', $sector->id)
             ->where('status', true)
-            ->withCount(['properties', 'vehicles'])
+            ->with(['subcategories' => function ($q) {
+                $q->active()->withCount(['properties', 'vehicles']);
+            }])
             ->get();
 
         return view('frontend.sector', compact('sector', 'categories'));

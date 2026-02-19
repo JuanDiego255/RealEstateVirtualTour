@@ -5,6 +5,9 @@ namespace App;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
+use App\Vehicle;
+use App\Properties;
+use App\Subcategory;
 
 class Category extends Model
 {
@@ -87,11 +90,19 @@ class Category extends Model
     }
 
     /**
-     * Get the properties for this category
+     * Propiedades directas (legacy, por category_id)
+     */
+    public function directProperties()
+    {
+        return $this->hasMany('App\Properties', 'category_id');
+    }
+
+    /**
+     * Propiedades a través de subcategorías
      */
     public function properties()
     {
-        return $this->hasMany('App\Properties', 'category_id');
+        return $this->hasManyThrough(Properties::class, Subcategory::class, 'category_id', 'subcategory_id');
     }
 
     /**
@@ -103,11 +114,19 @@ class Category extends Model
     }
 
     /**
-     * Get the vehicles for this category
+     * Vehículos directos (legacy, por category_id)
+     */
+    public function directVehicles()
+    {
+        return $this->hasMany('App\Vehicle', 'category_id');
+    }
+
+    /**
+     * Vehículos a través de subcategorías
      */
     public function vehicles()
     {
-        return $this->hasMany('App\Vehicle', 'category_id');
+        return $this->hasManyThrough(Vehicle::class, Subcategory::class, 'category_id', 'subcategory_id');
     }
 
     /**
@@ -177,7 +196,10 @@ class Category extends Model
         if (!$package) {
             return false;
         }
-        return $this->properties()->count() < $package->max_posts_per_category;
+        $totalProperties = Properties::whereHas('subcategory', function ($q) {
+            $q->where('category_id', $this->id);
+        })->count();
+        return $totalProperties < $package->max_posts_per_category;
     }
 
     /**

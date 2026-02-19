@@ -98,22 +98,26 @@
                                         @endif
 
                                         <div class="mt-auto">
+                                            @php
+                                                $catPropCount = $category->subcategories->sum('properties_count');
+                                                $catVehCount = $category->subcategories->sum('vehicles_count');
+                                            @endphp
                                             <div class="d-flex flex-wrap mb-2">
-                                                @if ($category->properties_count > 0)
+                                                @if ($catPropCount > 0)
                                                     <span class="badge badge-primary mr-2 mt-1" style="font-size: 0.8rem;">
                                                         <i class="fa fa-building mr-1"></i>
-                                                        {{ $category->properties_count }}
-                                                        {{ $category->properties_count == 1 ? 'propiedad' : 'propiedades' }}
+                                                        {{ $catPropCount }}
+                                                        {{ $catPropCount == 1 ? 'propiedad' : 'propiedades' }}
                                                     </span>
                                                 @endif
-                                                @if ($category->vehicles_count > 0)
+                                                @if ($catVehCount > 0)
                                                     <span class="badge badge-info mr-2 mt-1" style="font-size: 0.8rem;">
                                                         <i class="fa fa-car mr-1"></i>
-                                                        {{ $category->vehicles_count }}
-                                                        {{ $category->vehicles_count == 1 ? 'veh&iacute;culo' : 'veh&iacute;culos' }}
+                                                        {{ $catVehCount }}
+                                                        {{ $catVehCount == 1 ? 'veh&iacute;culo' : 'veh&iacute;culos' }}
                                                     </span>
                                                 @endif
-                                                @if ($category->properties_count == 0 && $category->vehicles_count == 0)
+                                                @if ($catPropCount == 0 && $catVehCount == 0)
                                                     <span class="badge badge-secondary mt-1">Sin items a&uacute;n</span>
                                                 @endif
                                             </div>

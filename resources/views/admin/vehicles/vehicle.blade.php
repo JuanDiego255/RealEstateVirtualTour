@@ -34,16 +34,16 @@
             </button>
         </div>
 
-        {{-- Filtro por categoría --}}
+        {{-- Filtro por subcategoría --}}
         <div class="row mb-4">
             <div class="col-md-4">
                 <form method="GET" action="{{ route('vehicles') }}">
-                    <select name="category_id" class="form-control" onchange="this.form.submit()">
-                        <option value="">-- Todas las Categorías --</option>
-                        @foreach ($categories as $cat)
-                            <option value="{{ $cat->id }}"
-                                {{ request('category_id') == $cat->id ? 'selected' : '' }}>
-                                {{ $cat->name }}
+                    <select name="subcategory_id" class="form-control" onchange="this.form.submit()">
+                        <option value="">-- Todas las Subcategorías --</option>
+                        @foreach ($subcategories as $sub)
+                            <option value="{{ $sub->id }}"
+                                {{ request('subcategory_id') == $sub->id ? 'selected' : '' }}>
+                                {{ $sub->category->name ?? '' }} → {{ $sub->name }}
                             </option>
                         @endforeach
                     </select>

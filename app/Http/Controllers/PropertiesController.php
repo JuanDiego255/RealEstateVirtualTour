@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Properties;
 use App\PropertyImage;
 use App\Category;
+use App\Subcategory;
 use App\Sector;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -30,10 +31,9 @@ class PropertiesController extends Controller
      */
     public function indexAdmin()
     {
-        $properties = Properties::with(['category', 'images'])->get();
-        // Get categories that belong to a real-estate sector (sector with slug containing 'inmobiliario' or all if none)
-        $categories = Category::whereHas('sector')->with('sector')->get();
-        return view('admin.properties.property', compact('properties', 'categories'));
+        $properties = Properties::with(['subcategory.category.sector', 'category', 'images'])->get();
+        $subcategories = Subcategory::with('category.sector')->where('is_active', true)->orderBy('name')->get();
+        return view('admin.properties.property', compact('properties', 'subcategories'));
     }
 
     /**
@@ -72,7 +72,12 @@ class PropertiesController extends Controller
             }
             $property->name = $request->name;
             $property->code = $request->code;
-            $property->category_id = $request->category_id;
+            $property->subcategory_id = $request->subcategory_id;
+            // Derivar category_id de la subcategoría
+            if ($request->subcategory_id) {
+                $sub = Subcategory::find($request->subcategory_id);
+                $property->category_id = $sub ? $sub->category_id : null;
+            }
             $property->property_type = $request->property_type ?? 'house';
             $property->description = $request->description;
             $property->rooms = $request->rooms;
@@ -150,7 +155,12 @@ class PropertiesController extends Controller
             }
             $property->name = $request->name;
             $property->code = $request->code;
-            $property->category_id = $request->category_id;
+            $property->subcategory_id = $request->subcategory_id;
+            // Derivar category_id de la subcategoría
+            if ($request->subcategory_id) {
+                $sub = Subcategory::find($request->subcategory_id);
+                $property->category_id = $sub ? $sub->category_id : null;
+            }
             $property->property_type = $request->property_type ?? $property->property_type;
             $property->description = $request->description;
             $property->rooms = $request->rooms;

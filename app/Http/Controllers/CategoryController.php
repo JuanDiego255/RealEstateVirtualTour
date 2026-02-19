@@ -17,7 +17,9 @@ class CategoryController extends Controller
     {
         $category = Category::where('slug', $slug)
             ->where('status', true)
-            ->with(['sector', 'properties', 'vehicles'])
+            ->with(['sector', 'subcategories' => function ($q) {
+                $q->active()->ordered()->with(['properties', 'vehicles']);
+            }])
             ->firstOrFail();
 
         $sector = $category->sector;
@@ -31,7 +33,7 @@ class CategoryController extends Controller
     public function indexAdmin(Request $request)
     {
         $sectors = Sector::all();
-        $query = Category::with('sector')->withCount(['properties', 'vehicles']);
+        $query = Category::with(['sector', 'subcategories']);
 
         if ($request->has('sector_id') && $request->sector_id != '') {
             $query->where('sector_id', $request->sector_id);
