@@ -28,7 +28,7 @@
         <div class="mb-2"><img src="{{ asset('storage/' . $subcategory->image) }}" class="img-thumbnail" style="max-height:120px"></div>
     @endif
     <input type="file" name="image" class="form-control-file" accept="image/*">
-    <small class="form-text text-muted">Máx. 2MB. Imagen representativa de la categoría.</small>
+    <small class="form-text text-muted">Máx. 10MB. Imagen representativa de la categoría.</small>
 </div>
 
 <div class="form-group mt-3">

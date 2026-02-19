@@ -55,7 +55,7 @@ class SubcategoryController extends Controller
         $request->validate([
             'name' => 'required|string|max:150',
             'description' => 'nullable|string',
-            'image' => 'nullable|image|max:2048',
+            'image' => 'nullable|image|max:10000',
             'is_active' => 'nullable',
         ]);
 
@@ -95,7 +95,7 @@ class SubcategoryController extends Controller
         $request->validate([
             'name' => 'required|string|max:150',
             'description' => 'nullable|string',
-            'image' => 'nullable|image|max:2048',
+            'image' => 'nullable|image|max:10000',
             'is_active' => 'nullable',
         ]);
 
