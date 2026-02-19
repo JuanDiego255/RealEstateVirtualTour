@@ -157,7 +157,7 @@ class PropertiesController extends Controller
             return redirect('/property')->with('success', 'Publicación guardada con éxito!');
         } catch (\Exception $th) {
             DB::rollBack();
-            return redirect('/property')->with('success', 'No se pudo guardar la publicación!');
+            return redirect('/property')->with('error', 'No se pudo guardar la publicación! Error: ' . $th->getMessage());
         }
     }
 

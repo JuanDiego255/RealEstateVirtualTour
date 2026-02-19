@@ -12,9 +12,7 @@
                         <a href="{{ route('home') }}"><i class="fa fa-home"></i><span>Inicio</span></a>
                     </li>
 
-                    <li class="{{ Request::routeIs('config') || Request::routeIs('property') ? 'active' : '' }}">
-                        <a href="{{ route('property') }}"><i class="fa fa-th-list"></i><span>Publicaciones</span></a>
-                    </li>
+
 
                     @auth
                         {{-- Sucursales (para usuarios con suscripción) --}}
@@ -22,9 +20,14 @@
                                 (Auth::user()->hasActiveSubscription() ||
                                     (method_exists(Auth::user(), 'isSuperAdmin') && Auth::user()->isSuperAdmin())))
                             <li class="{{ Request::routeIs('admin.categories.*') ? 'active' : '' }}">
-                                <a href="{{ route('admin.categories.index') }}"><i class="fa fa-map-marker"></i><span>Sucursales</span></a>
+                                <a href="{{ route('admin.categories.index') }}"><i
+                                        class="fa fa-map-marker"></i><span>Sucursales</span></a>
                             </li>
                         @endif
+
+                        <li class="{{ Request::routeIs('config') || Request::routeIs('property') ? 'active' : '' }}">
+                            <a href="{{ route('property') }}"><i class="fa fa-th-list"></i><span>Publicaciones</span></a>
+                        </li>
 
                         {{-- Bolsa Inmobiliaria (solo si el paquete lo permite) --}}
                         <li class="{{ Request::routeIs('admin.bolsa.*') ? 'active' : '' }}">
@@ -44,21 +47,24 @@
                                 (Auth::user()->hasActiveSubscription() ||
                                     (method_exists(Auth::user(), 'isSuperAdmin') && Auth::user()->isSuperAdmin())))
                             <li class="{{ Request::routeIs('admin.sales.*') ? 'active' : '' }}">
-                                <a href="{{ route('admin.sales.index') }}"><i class="fa fa-money"></i><span>Ventas</span></a>
+                                <a href="{{ route('admin.sales.index') }}"><i
+                                        class="fa fa-money"></i><span>Ventas</span></a>
                             </li>
                         @endif
 
                         {{-- Gestión de Usuarios (para company_admin) --}}
                         @if (Auth::user()->role === 'company_admin')
                             <li class="{{ Request::routeIs('admin.users.*') ? 'active' : '' }}">
-                                <a href="{{ route('admin.users.index') }}"><i class="fa fa-users"></i><span>Mi Equipo</span></a>
+                                <a href="{{ route('admin.users.index') }}"><i class="fa fa-users"></i><span>Mi
+                                        Equipo</span></a>
                             </li>
                         @endif
 
                         {{-- Mi Suscripción (para usuarios normales) --}}
                         @if (method_exists(Auth::user(), 'isSuperAdmin') && !Auth::user()->isSuperAdmin())
                             <li class="{{ Request::routeIs('admin.subscriptions.my') ? 'active' : '' }}">
-                                <a href="{{ route('admin.subscriptions.my') }}"><i class="fa fa-credit-card"></i><span>Mi Suscripción</span></a>
+                                <a href="{{ route('admin.subscriptions.my') }}"><i class="fa fa-credit-card"></i><span>Mi
+                                        Suscripción</span></a>
                             </li>
                         @endif
 
@@ -79,21 +85,25 @@
 
                             {{-- Empresas --}}
                             <li class="{{ Request::routeIs('admin.companies.*') ? 'active' : '' }}">
-                                <a href="{{ route('admin.companies.index') }}"><i class="fa fa-building"></i><span>Empresas</span></a>
+                                <a href="{{ route('admin.companies.index') }}"><i
+                                        class="fa fa-building"></i><span>Empresas</span></a>
                             </li>
 
                             {{-- Usuarios --}}
                             <li class="{{ Request::routeIs('admin.users.*') ? 'active' : '' }}">
-                                <a href="{{ route('admin.users.index') }}"><i class="fa fa-users"></i><span>Usuarios</span></a>
+                                <a href="{{ route('admin.users.index') }}"><i
+                                        class="fa fa-users"></i><span>Usuarios</span></a>
                             </li>
 
                             {{-- Paquetes --}}
                             <li class="{{ Request::routeIs('admin.packages.*') ? 'active' : '' }}">
-                                <a href="{{ route('admin.packages.index') }}"><i class="fa fa-cube"></i><span>Paquetes</span></a>
+                                <a href="{{ route('admin.packages.index') }}"><i
+                                        class="fa fa-cube"></i><span>Paquetes</span></a>
                             </li>
 
                             {{-- Suscripciones --}}
-                            <li class="{{ Request::routeIs('admin.subscriptions.*') && !Request::routeIs('admin.subscriptions.my') ? 'active' : '' }}">
+                            <li
+                                class="{{ Request::routeIs('admin.subscriptions.*') && !Request::routeIs('admin.subscriptions.my') ? 'active' : '' }}">
                                 <a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
                                     <i class="fa fa-id-card"></i><span>Suscripciones</span>
                                     @php
@@ -114,7 +124,8 @@
                                         </a>
                                     </li>
                                     <li><a href="{{ route('admin.subscriptions.expiring') }}">Por vencer</a></li>
-                                    <li><a href="{{ route('admin.subscriptions.pending-payments') }}">Pagos pendientes</a></li>
+                                    <li><a href="{{ route('admin.subscriptions.pending-payments') }}">Pagos pendientes</a>
+                                    </li>
                                     <li><a href="{{ route('admin.subscriptions.create') }}">Nueva suscripción</a></li>
                                 </ul>
                             </li>

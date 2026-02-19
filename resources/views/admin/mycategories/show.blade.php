@@ -35,7 +35,7 @@
                                 <p><strong>Sector:</strong>
                                     @if($category->sector)
                                         <span class="badge badge-info">
-                                            @if($category->sector->icon)<i class="{{ $category->sector->icon }}"></i> @endif
+                                            @if($category->sector->icon)<i class="fa {{ $category->sector->icon }}"></i> @endif
                                             {{ $category->sector->name }}
                                         </span>
                                     @else N/A @endif
@@ -64,7 +64,7 @@
                 <div class="card mb-3">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <strong><i class="fa fa-tags"></i> Categorías ({{ $category->subcategories->count() }})</strong>
-                        <a href="{{ route('admin.subcategories.index', $category) }}" class="btn btn-sm btn-outline-primary"><i class="fa fa-list"></i> Ver todas</a>
+                        <a href="{{ route('admin.subcategories.index', $category) }}" class="btn btn-sm btn-primary"><i class="fa fa-list"></i> Ver todas</a>
                     </div>
                     <div class="card-body">
                         @if($category->subcategories->count())
@@ -123,8 +123,8 @@
             {{-- Panel lateral --}}
             <div class="col-md-4">
                 {{-- Enlace compartible --}}
-                <div class="card mb-3 border-success">
-                    <div class="card-header bg-success text-white"><i class="fa fa-share-alt"></i> Enlace Compartible</div>
+                <div class="card mb-3 border-success border-radius-2xl">
+                    <div class="card-header bg-primary text-white"><i class="fa fa-share-alt"></i> Enlace Compartible</div>
                     <div class="card-body">
                         <div class="input-group mb-2">
                             <input type="text" class="form-control form-control-sm" value="{{ $category->share_url }}" id="shareUrl" readonly>
@@ -134,7 +134,7 @@
                         </div>
                         <form action="{{ route('admin.categories.regenerate-token', $category) }}" method="POST" class="d-inline">
                             @csrf
-                            <button class="btn btn-sm btn-outline-warning btn-block" onclick="return confirm('¿Regenerar enlace? El anterior dejará de funcionar.')">
+                            <button class="btn btn-sm btn-warning btn-block" onclick="return confirm('¿Regenerar enlace? El anterior dejará de funcionar.')">
                                 <i class="fa fa-refresh"></i> Regenerar enlace
                             </button>
                         </form>

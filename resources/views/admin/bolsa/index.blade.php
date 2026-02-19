@@ -62,10 +62,10 @@
                     <div class="card-header"><strong><i class="fa fa-bell"></i> Solicitudes</strong></div>
                     <div class="card-body">
                         <p class="text-muted">Gestiona solicitudes de comisión enviadas y recibidas.</p>
-                        <a href="{{ route('admin.bolsa.my-requests') }}" class="btn btn-outline-primary mr-2">
+                        <a href="{{ route('admin.bolsa.my-requests') }}" class="btn btn-primary mr-2">
                             <i class="fa fa-paper-plane"></i> Enviadas
                         </a>
-                        <a href="{{ route('admin.bolsa.incoming') }}" class="btn btn-outline-info">
+                        <a href="{{ route('admin.bolsa.incoming') }}" class="btn btn-info">
                             <i class="fa fa-inbox"></i> Recibidas
                             @if(($stats['incoming_pending'] ?? 0) > 0)
                                 <span class="badge badge-danger">{{ $stats['incoming_pending'] }}</span>

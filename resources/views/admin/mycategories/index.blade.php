@@ -45,7 +45,7 @@
                             @if ($cat->sector)
                                 <span class="badge badge-info mb-2">
                                     @if ($cat->sector->icon)
-                                        <i class="{{ $cat->sector->icon }}"></i>
+                                        <i class="fa {{ $cat->sector->icon }}"></i>
                                     @endif
                                     {{ $cat->sector->name }}
                                 </span>
@@ -65,27 +65,29 @@
                                 <span><i class="fa fa-eye"></i> {{ $cat->views_count ?? 0 }} vistas</span>
                             </div>
                         </div>
-                        <div class="card-footer d-flex justify-content-between">
-                            <div class="btn-group btn-group-sm">
-                                <a href="{{ route('admin.categories.show', $cat) }}" class="btn btn-outline-info"
-                                    title="Ver"><i class="fa fa-eye"></i></a>
-                                <a href="{{ route('admin.categories.edit', $cat) }}" class="btn btn-outline-primary"
+                        <div class="card-footer bg-white d-flex justify-content-between">
+                            <div class="btn-group ">
+                                <a href="{{ route('admin.categories.show', $cat) }}" class="btn btn-info" title="Ver"><i
+                                        class="fa fa-eye"></i></a>
+                                <a href="{{ route('admin.categories.edit', $cat) }}" class="btn btn-primary"
                                     title="Editar"><i class="fa fa-edit"></i></a>
+
+                            </div>
+                            <div>
                                 <form action="{{ route('admin.categories.toggle-status', $cat) }}" method="POST"
                                     class="d-inline">
                                     @csrf
-                                    <button class="btn btn-outline-{{ $cat->is_active ? 'warning' : 'success' }}"
+                                    <button class="btn btn-{{ $cat->is_active ? 'warning' : 'success' }}"
                                         title="{{ $cat->is_active ? 'Desactivar' : 'Activar' }}">
                                         <i class="fa fa-{{ $cat->is_active ? 'eye-slash' : 'eye' }}"></i>
                                     </button>
                                 </form>
-                            </div>
-                            <div>
-                                <a href="{{ route('admin.subcategories.index', $cat) }}" class="btn btn-sm btn-outline-secondary" title="Categorías">
+                                <a href="{{ route('admin.subcategories.index', $cat) }}"
+                                    class="btn btn-secondary" title="Categorías">
                                     <i class="fa fa-tags"></i>
                                 </a>
                                 @if ($cat->share_token)
-                                    <button class="btn btn-sm btn-outline-success"
+                                    <button class="btn btn-success"
                                         onclick="copyShareLink('{{ $cat->share_url }}')" title="Copiar enlace">
                                         <i class="fa fa-share-alt"></i>
                                     </button>

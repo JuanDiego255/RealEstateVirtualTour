@@ -29,7 +29,7 @@
     <div class="form-group col-md-6">
         <label>Logo</label>
         @if(isset($category) && $category->logo)
-            <div class="mb-2"><img src="{{ $category->logo_url }}" class="img-thumbnail" style="max-height:80px"></div>
+            <div class="mb-2"><img src="{{ route('file', $category->logo) }}" class="img-thumbnail" style="max-height:80px"></div>
         @endif
         <input type="file" name="logo" class="form-control-file" accept="image/*">
         <small class="form-text text-muted">Máx. 2MB</small>
@@ -37,7 +37,7 @@
     <div class="form-group col-md-6">
         <label>Imagen de Portada</label>
         @if(isset($category) && $category->cover_image)
-            <div class="mb-2"><img src="{{ $category->cover_image }}" class="img-thumbnail" style="max-height:80px"></div>
+            <div class="mb-2"><img src="{{ route('file', $category->cover_image) }}" class="img-thumbnail" style="max-height:80px"></div>
         @endif
         <input type="file" name="cover_image" class="form-control-file" accept="image/*">
         <small class="form-text text-muted">Máx. 5MB</small>

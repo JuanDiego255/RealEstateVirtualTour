@@ -77,7 +77,7 @@
                                 <td>
                                     <img src="{{ $u->avatar_url }}" class="rounded-circle mr-2" style="width: 32px; height: 32px;">
                                     <strong>{{ $u->name }}</strong>
-                                    <br><small class="text-muted">@{{ $u->username }}</small>
+                                    <br><small class="text-muted">{{ $u->username }}</small>
                                 </td>
                                 <td>{{ $u->email }}</td>
                                 @if(Auth::user()->isSuperAdmin())
@@ -107,14 +107,14 @@
                                 </td>
                                 <td>{{ $u->created_at->format('d/m/Y') }}</td>
                                 <td>
-                                    <div class="btn-group btn-group-sm">
-                                        <a href="{{ route('admin.users.edit', $u) }}" class="btn btn-outline-primary" title="Editar">
+                                    <div>
+                                        <a href="{{ route('admin.users.edit', $u) }}" class="btn btn-primary" title="Editar">
                                             <i class="fa fa-edit"></i>
                                         </a>
                                         @if($u->id !== Auth::id())
                                             <form action="{{ route('admin.users.toggle-status', $u) }}" method="POST" class="d-inline">
                                                 @csrf
-                                                <button class="btn btn-outline-{{ $u->status === 'active' ? 'warning' : 'success' }}"
+                                                <button class="btn btn-{{ $u->status === 'active' ? 'warning' : 'success' }}"
                                                         title="{{ $u->status === 'active' ? 'Desactivar' : 'Activar' }}">
                                                     <i class="fa fa-{{ $u->status === 'active' ? 'ban' : 'check' }}"></i>
                                                 </button>

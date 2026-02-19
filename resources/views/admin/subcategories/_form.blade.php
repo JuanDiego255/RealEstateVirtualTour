@@ -25,7 +25,7 @@
 <div class="form-group">
     <label>Imagen</label>
     @if(isset($subcategory) && $subcategory->image)
-        <div class="mb-2"><img src="{{ asset('storage/' . $subcategory->image) }}" class="img-thumbnail" style="max-height:120px"></div>
+        <div class="mb-2"><img src="{{ route('file', $subcategory->image) }}" class="img-thumbnail" style="max-height:120px"></div>
     @endif
     <input type="file" name="image" class="form-control-file" accept="image/*">
     <small class="form-text text-muted">Máx. 10MB. Imagen representativa de la categoría.</small>

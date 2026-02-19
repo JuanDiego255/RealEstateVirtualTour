@@ -134,13 +134,13 @@
 
                                         <div class="mt-auto">
                                             <div class="d-flex flex-wrap mb-2">
-                                                @if ($subPropCount > 0)
+                                                @if (isset($subPropCount) && $subPropCount > 0)
                                                     <span class="badge badge-primary mr-2 mt-1" style="font-size: 0.8rem;">
                                                         <i class="fa fa-building mr-1"></i>{{ $subPropCount }}
                                                         {{ $subPropCount == 1 ? 'propiedad' : 'propiedades' }}
                                                     </span>
                                                 @endif
-                                                @if ($subVehCount > 0)
+                                                @if (isset($subVehCount) && $subVehCount > 0)
                                                     <span class="badge badge-info mr-2 mt-1" style="font-size: 0.8rem;">
                                                         <i class="fa fa-car mr-1"></i>{{ $subVehCount }}
                                                         {{ $subVehCount == 1 ? 'vehículo' : 'vehículos' }}
