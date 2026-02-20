@@ -36,10 +36,10 @@ class CloudConvertWebhookController extends Controller
 
         // Descargar el ZIP desde export/url
         $zipUrl = $this->extractExportZipUrl($data);
-        if (!$zipUrl) {
+        /* if (!$zipUrl) {
             $spin->update(['status' => 'failed', 'error_message' => 'No export ZIP url found']);
             return response('No export url', 400);
-        }
+        } */
 
         $disk = 'public';
         $baseDir = "spins/{$spin->id}";
@@ -75,11 +75,76 @@ class CloudConvertWebhookController extends Controller
             ->filter(fn($p) => preg_match('/\.(webp|jpg|jpeg|png)$/i', $p))
             ->sort()
             ->values();
-        $minFrames = 60; // si tu plan es 36
-        if ($files->count() < $minFrames) {
-            $spin->update(['status' => 'failed', 'error_message' => 'Too few frames extracted']);
-            return response('Few frames', 500);
+
+        $totalFrames = $files->count();
+
+        if ($totalFrames < 10) {
+            $spin->update([
+                'status' => 'failed',
+                'error_message' => 'Too few frames extracted'
+            ]);
+            return response('Few frames', 200);
         }
+
+        $targetFrames = 72;
+
+        // Selección uniforme
+        if ($totalFrames > $targetFrames) {
+
+            $step = $totalFrames / $targetFrames;
+            $selected = collect();
+
+            for ($i = 0; $i < $targetFrames; $i++) {
+                $index = (int) round($i * $step);
+                if ($index >= $totalFrames) {
+                    $index = $totalFrames - 1;
+                }
+                $selected->push($files[$index]);
+            }
+        } else {
+            $selected = $files;
+        }
+
+        // Limpiar carpeta antes de renumerar
+        foreach (Storage::disk($disk)->files($framesDir) as $file) {
+            Storage::disk($disk)->delete($file);
+        }
+
+        // Copiar renumerando
+        $finalFiles = [];
+        $i = 1;
+
+        foreach ($selected as $srcPath) {
+
+            $ext = pathinfo($srcPath, PATHINFO_EXTENSION);
+            $newName = sprintf('frame-%03d.%s', $i++, $ext);
+            $newPath = "{$framesDir}/{$newName}";
+
+            Storage::disk($disk)->put(
+                $newPath,
+                Storage::disk($disk)->get($srcPath)
+            );
+
+            $finalFiles[] = $newName;
+        }
+
+        // Guardar manifest
+        $manifest = [
+            'count' => count($finalFiles),
+            'files' => $finalFiles,
+        ];
+
+        Storage::disk($disk)->put(
+            "{$baseDir}/frames.json",
+            json_encode($manifest)
+        );
+
+        $spin->update([
+            'frames_dir' => $framesDir,
+            'frames_count' => count($finalFiles),
+            'status' => 'ready',
+            'error_message' => null,
+        ]);
 
         $manifest = [
             'count' => $files->count(),

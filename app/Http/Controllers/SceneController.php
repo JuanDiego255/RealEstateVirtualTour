@@ -7,6 +7,11 @@ use Illuminate\Support\Facades\DB;
 use App\Scene;
 use App\Hotspot;
 use App\Properties;
+use App\Models\Spin;
+use App\Models\SpinJob;
+use App\Services\CloudConvertSpinService;
+use CloudConvert\Models\Task;
+use Illuminate\Support\Facades\Log;
 use App\Sector;
 use App\Vehicle;
 use Datatables;
@@ -214,7 +219,7 @@ class SceneController extends Controller
      * Store a newly created resource in storage.
      * Supports both property_id and vehicle_id contexts.
      */
-    public function store(Request $request)
+    public function store(Request $request, CloudConvertSpinService $cc)
     {
         $isVideo = $request->type === 'video';
         $hasChunkedVideo = $isVideo && $request->filled('video_path');
@@ -278,7 +283,12 @@ class SceneController extends Controller
             $sceneData['property_id'] = $itemId;
         }
 
-        Scene::create($sceneData);
+        $scene = Scene::create($sceneData);
+        // ✅ Si es escena tipo video y pertenece a un vehículo, disparar SPIN con el video ya subido por chunks
+        if ($isVideo && !empty($video)) {
+            $spinId = $this->startSpinForVehicleVideo((int)$itemId, $video, $cc);
+            $scene->update(['spin_id' => $spinId]);
+        }
 
         return redirect()->route('config', ['id' => $itemId, 'type' => $type])
             ->with('success', 'Escena guardada con éxito!');
@@ -508,5 +518,72 @@ class SceneController extends Controller
         }
 
         return response()->json(['success' => true, 'message' => 'Upload cancelado']);
+    }
+
+    private function startSpinForVehicleVideo(int $vehicleId, string $videoPath, CloudConvertSpinService $cc): ?int
+    {
+        // Crea Spin
+        $spin = Spin::create([
+            'vehicle_id' => $vehicleId,
+            'video_path' => $videoPath,     // ya está en disk 'public'
+            'status' => 'processing',
+        ]);
+
+        try {
+            // fps recomendado para tus videos 20–40s (da muchos frames y luego normalizamos a 72)
+            $fps = (int) env('SPIN_FPS', 4);
+            $ext = env('SPIN_FRAME_EXT', 'jpg'); // jpg recomendado
+
+            // 1) Crear job CloudConvert (usa tu versión que ya funciona con command/ffmpeg)
+            $job = $cc->createSpinJob($fps, $ext);
+
+            $spin->update(['cloudconvert_job_id' => $job->getId()]);
+
+            $spinJob = SpinJob::create([
+                'spin_id' => $spin->id,
+                'provider' => 'cloudconvert',
+                'provider_job_id' => $job->getId(),
+                'status' => 'created',
+            ]);
+            $tasks = $job->getTasks();
+            // 2) Encontrar task import-1 por nombre
+            $importTask = null;
+            foreach ($tasks as $t) {
+                if (method_exists($t, 'getName') && $t->getName() === 'import-1') {
+                    $importTask = $t;
+                    break;
+                }
+            }
+            if (!$importTask) {
+                Log::error('Spin start failed', [
+                    'vehicle_id' => $vehicleId,
+                    'video_path' => $videoPath,
+                    'spin_id' => $spin->id,
+                    'error' => 'CloudConvert: no se encontró el task import-1',
+                ]);
+                dd('error');
+                throw new \RuntimeException('CloudConvert: no se encontró el task import-1');
+            }
+            // 3) Subir video al import task (pasando el objeto Task)
+            $cc->uploadToImportTask($importTask, 'public', $videoPath);
+            $spinJob->update(['status' => 'uploaded']);
+
+            return $spin->id;
+        } catch (\Throwable $e) {
+            Log::error('Spin start failed', [
+                'vehicle_id' => $vehicleId,
+                'video_path' => $videoPath,
+                'spin_id' => $spin->id,
+                'error' => $e->getMessage(),
+            ]);
+            dd($e->getMessage());
+
+            $spin->update([
+                'status' => 'failed',
+                'error_message' => $e->getMessage(),
+            ]);
+
+            return $spin->id; // igual devolvemos ID para trazabilidad
+        }
     }
 }
