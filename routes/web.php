@@ -32,7 +32,10 @@ use Illuminate\Support\Facades\Auth;
 */
 
 Auth::routes();
-Route::post('/webhooks/cloudconvert', [CloudConvertWebhookController::class, 'handle']);
+Route::post('/webhook/cloudconvert', [CloudConvertWebhookController::class, 'handle']);
+Route::get('/spins/test/{spin}/preview', function (\App\Models\Spin $spin) {
+    return view('spins.preview', compact('spin'));
+})->name('spins.preview');
 
 Route::group(['middleware' => 'auth'], function () {
     Route::post('/spins', [SpinController::class, 'store'])->name('spins.store');

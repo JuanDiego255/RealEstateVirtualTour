@@ -35,7 +35,7 @@ class SpinController extends Controller
         $frames = (int) (env('SPIN_DEFAULT_FRAMES', 72));
 
         // 1) Crear job
-        $job = $cc->createSpinJob(2, 'jpg');
+        $job = $cc->createSpinJob(4, 'jpg');
         $spin->update(['cloudconvert_job_id' => $job->getId()]);
 
         $spinJob = SpinJob::create([

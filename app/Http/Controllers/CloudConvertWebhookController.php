@@ -75,8 +75,8 @@ class CloudConvertWebhookController extends Controller
             ->filter(fn($p) => preg_match('/\.(webp|jpg|jpeg|png)$/i', $p))
             ->sort()
             ->values();
-
-        if ($files->count() < 12) {
+        $minFrames = 60; // si tu plan es 36
+        if ($files->count() < $minFrames) {
             $spin->update(['status' => 'failed', 'error_message' => 'Too few frames extracted']);
             return response('Few frames', 500);
         }
