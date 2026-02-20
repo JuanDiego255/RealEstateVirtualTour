@@ -22,7 +22,7 @@
                                 </div>
                             @endforeach
                         @endif
-                        <input type="hidden" name="property_id" value="{{ $id }}">
+                        <input type="hidden" name="property_id" id="property_id" value="{{ $id }}">
                         <input type="hidden" name="item_type" value="{{ $type ?? 'property' }}">
 
                         <div class="row">
@@ -34,7 +34,8 @@
 
                             <div class="form-group col-md-6">
                                 <label for="scene_type_add">Tipo de escena</label>
-                                <select class="form-control form-control-lg input-rounded mb-4" id="scene-type-add" name="type">
+                                <select class="form-control form-control-lg input-rounded mb-4" id="scene-type-add"
+                                    name="type">
                                     <option value="equirectangular">Panorama 360</option>
                                     <option value="video">Video Dron Orbital</option>
                                 </select>
@@ -67,7 +68,8 @@
                         {{-- Imagen 360 (solo panorama) --}}
                         <div class="form-group panorama-fields-add">
                             <label for="image">Imagen 360</label>
-                            <img class="card-img-top img-fluid" id="image-preview-add" alt="Image Preview" style="display: none;" />
+                            <img class="card-img-top img-fluid" id="image-preview-add" alt="Image Preview"
+                                style="display: none;" />
                             <div class="custom-file">
                                 <input type="file" class="form-control-file" id="image-upload-add" name="image"
                                     accept="image/*">
@@ -76,9 +78,13 @@
 
                         <!-- Visor Pannellum para seleccionar yaw/pitch (solo panorama) -->
                         <div class="form-group panorama-fields-add" id="pannellum-container-add" style="display: none;">
-                            <label><strong>Seleccione la vista inicial (haga clic donde desea que inicie la escena)</strong></label>
-                            <div id="panorama-scene-add" style="width: 100%; height: 400px; border: 2px solid #007bff; border-radius: 5px;"></div>
-                            <small class="form-text text-muted">Navegue por la imagen y haga clic en el punto donde desea que el visor quede al frente cuando cargue esta escena.</small>
+                            <label><strong>Seleccione la vista inicial (haga clic donde desea que inicie la
+                                    escena)</strong></label>
+                            <div id="panorama-scene-add"
+                                style="width: 100%; height: 400px; border: 2px solid #007bff; border-radius: 5px;">
+                            </div>
+                            <small class="form-text text-muted">Navegue por la imagen y haga clic en el punto donde
+                                desea que el visor quede al frente cuando cargue esta escena.</small>
                         </div>
 
                         {{-- Video dron (solo video) - Con subida en chunks para archivos grandes --}}
@@ -88,7 +94,8 @@
                                 <input type="file" class="form-control-file" id="video-upload-add" name="video"
                                     accept="video/mp4,video/webm,video/ogg">
                             </div>
-                            <small class="form-text text-muted">Suba el video del dron que orbita la propiedad (MP4, WebM u OGG). Videos grandes se suben en segundo plano.</small>
+                            <small class="form-text text-muted">Suba el video del dron que orbita la propiedad (MP4,
+                                WebM u OGG). Videos grandes se suben en segundo plano.</small>
 
                             {{-- Contenedor de progreso de subida --}}
                             <div id="video-upload-progress-add" class="mt-3" style="display: none;">
@@ -99,12 +106,16 @@
                                     <span id="video-upload-percent-add" class="badge badge-info">0%</span>
                                 </div>
                                 <div class="progress" style="height: 20px;">
-                                    <div id="video-upload-bar-add" class="progress-bar progress-bar-striped progress-bar-animated"
-                                         role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                                    <div id="video-upload-bar-add"
+                                        class="progress-bar progress-bar-striped progress-bar-animated"
+                                        role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0"
+                                        aria-valuemax="100">
                                     </div>
                                 </div>
-                                <small id="video-upload-detail-add" class="text-muted mt-1 d-block">Preparando...</small>
-                                <button type="button" id="video-upload-cancel-add" class="btn btn-sm btn-outline-danger mt-2">
+                                <small id="video-upload-detail-add"
+                                    class="text-muted mt-1 d-block">Preparando...</small>
+                                <button type="button" id="video-upload-cancel-add"
+                                    class="btn btn-sm btn-outline-danger mt-2">
                                     <i class="fa fa-times"></i> Cancelar subida
                                 </button>
                             </div>
@@ -116,10 +127,18 @@
 
                             {{-- Campo oculto para el path del video subido por chunks --}}
                             <input type="hidden" id="video-path-add" name="video_path" value="">
+                            <input type="hidden" id="spinId" name="spinId" value="">
 
-                            <video id="video-preview-add" style="display:none; width:100%; max-height:200px; margin-top:10px; border-radius:5px;" muted></video>
+                            <video id="video-preview-add"
+                                style="display:none; width:100%; max-height:200px; margin-top:10px; border-radius:5px;"
+                                muted></video>
                         </div>
-
+                        <div class="form-group col-md-3">
+                            <div class="custom-control custom-switch">
+                                <input type="checkbox" class="custom-control-input" value="" id="is_spin" name="is_spin">
+                                <label class="custom-control-label" for="is_spin">Crear Spin</label>
+                            </div>
+                        </div>
                         <div class="form-group">
                             <label for="image">Imagen de referencia (miniatura)</label>
                             <img class="card-img-top img-fluid" id="image-preview" alt="Image Preview" />
@@ -181,24 +200,25 @@
                     <hr>
                     <h5>Información {{ $item->title }}</h5><br>
 
-                    <p class="d-flex justify-content-left"><b> Tipo: </b> {{ $item->type === 'video' ? 'Video Dron Orbital' : 'Panorama 360' }} </p><br>
+                    <p class="d-flex justify-content-left"><b> Tipo: </b>
+                        {{ $item->type === 'video' ? 'Video Dron Orbital' : 'Panorama 360' }} </p><br>
 
-                    @if($item->type !== 'video')
-                    <p class="d-flex justify-content-left">
-                        <b> Campo de Visión Horizontal: </b> {{ $item->hfov }}
-                    </p><br>
+                    @if ($item->type !== 'video')
+                        <p class="d-flex justify-content-left">
+                            <b> Campo de Visión Horizontal: </b> {{ $item->hfov }}
+                        </p><br>
 
-                    <p class="d-flex justify-content-left">
-                        <b> Movimiento de rotación horizontal: </b> {{ $item->yaw }}
-                    </p><br>
+                        <p class="d-flex justify-content-left">
+                            <b> Movimiento de rotación horizontal: </b> {{ $item->yaw }}
+                        </p><br>
 
-                    <p class="d-flex justify-content-left">
-                        <b> Movimiento de rotación vertical: </b> {{ $item->pitch }}
-                    </p><br>
+                        <p class="d-flex justify-content-left">
+                            <b> Movimiento de rotación vertical: </b> {{ $item->pitch }}
+                        </p><br>
                     @endif
 
-                    @if($item->type === 'video' && $item->video)
-                    <p class="d-flex justify-content-left"><b> Video: </b> {{ basename($item->video) }} </p><br>
+                    @if ($item->type === 'video' && $item->video)
+                        <p class="d-flex justify-content-left"><b> Video: </b> {{ basename($item->video) }} </p><br>
                     @endif
                 </div>
                 <div class="modal-footer">
@@ -248,21 +268,27 @@
                             <div class="form-group col-md-6">
                                 <label for="type">Tipo de escena</label>
                                 <select class="form-control form-control-lg input-rounded mb-4 scene-type-edit"
-                                        name="type" data-scene-id="{{ $item->id }}">
-                                    <option value="equirectangular" {{ $item->type !== 'video' ? 'selected' : '' }}>Panorama 360</option>
-                                    <option value="video" {{ $item->type === 'video' ? 'selected' : '' }}>Video Dron Orbital</option>
+                                    name="type" data-scene-id="{{ $item->id }}">
+                                    <option value="equirectangular" {{ $item->type !== 'video' ? 'selected' : '' }}>
+                                        Panorama 360</option>
+                                    <option value="video" {{ $item->type === 'video' ? 'selected' : '' }}>Video Dron
+                                        Orbital</option>
                                 </select>
                             </div>
 
-                            <div class="form-group col-md-6 panorama-fields-edit-{{ $item->id }}" style="{{ $item->type === 'video' ? 'display:none' : '' }}">
-                                <label for="hfov" class="d-flex justify-content-left">Campo de Visión Horizontal</label>
+                            <div class="form-group col-md-6 panorama-fields-edit-{{ $item->id }}"
+                                style="{{ $item->type === 'video' ? 'display:none' : '' }}">
+                                <label for="hfov" class="d-flex justify-content-left">Campo de Visión
+                                    Horizontal</label>
                                 <input class="form-control form-control-lg input-rounded mb-4" type="number"
                                     step="0.1" name="hfov" min="-360" max="360"
                                     value="{{ $item->hfov }}">
                             </div>
 
-                            <div class="form-group col-md-6 panorama-fields-edit-{{ $item->id }}" style="{{ $item->type === 'video' ? 'display:none' : '' }}">
-                                <label for="yaw" class="d-flex justify-content-left">Rotación horizontal (Yaw)</label>
+                            <div class="form-group col-md-6 panorama-fields-edit-{{ $item->id }}"
+                                style="{{ $item->type === 'video' ? 'display:none' : '' }}">
+                                <label for="yaw" class="d-flex justify-content-left">Rotación horizontal
+                                    (Yaw)</label>
                                 <input class="form-control form-control-lg input-rounded mb-4" type="text"
                                     step="0.1" name="yaw" id="yaw-edit-{{ $item->id }}"
                                     value="{{ $item->yaw }}" readonly
@@ -270,8 +296,10 @@
                                 <small class="form-text text-muted">Se actualiza al hacer clic en el visor</small>
                             </div>
 
-                            <div class="form-group col-md-6 panorama-fields-edit-{{ $item->id }}" style="{{ $item->type === 'video' ? 'display:none' : '' }}">
-                                <label for="pitch" class="d-flex justify-content-left">Rotación vertical (Pitch)</label>
+                            <div class="form-group col-md-6 panorama-fields-edit-{{ $item->id }}"
+                                style="{{ $item->type === 'video' ? 'display:none' : '' }}">
+                                <label for="pitch" class="d-flex justify-content-left">Rotación vertical
+                                    (Pitch)</label>
                                 <input class="form-control form-control-lg input-rounded mb-4" type="text"
                                     step="0.1" name="pitch" id="pitch-edit-{{ $item->id }}"
                                     value="{{ $item->pitch }}" readonly
@@ -281,31 +309,36 @@
                         </div>
 
                         <!-- Visor Pannellum para seleccionar yaw/pitch en edición (solo panorama) -->
-                        <div class="form-group panorama-fields-edit-{{ $item->id }}" style="{{ $item->type === 'video' ? 'display:none' : '' }}">
-                            <label><strong>Seleccione la vista inicial (haga clic donde desea que inicie la escena)</strong></label>
+                        <div class="form-group panorama-fields-edit-{{ $item->id }}"
+                            style="{{ $item->type === 'video' ? 'display:none' : '' }}">
+                            <label><strong>Seleccione la vista inicial (haga clic donde desea que inicie la
+                                    escena)</strong></label>
                             <div id="panorama-scene-edit-{{ $item->id }}"
-                                 style="width: 100%; height: 400px; border: 2px solid #007bff; border-radius: 5px;"
-                                 data-image="{{ isset($item->image) ? route('file', $item->image) : '' }}"
-                                 data-yaw="{{ $item->yaw }}"
-                                 data-pitch="{{ $item->pitch }}"></div>
-                            <small class="form-text text-muted">Navegue por la imagen y haga clic en el punto donde desea que el visor quede al frente cuando cargue esta escena.</small>
+                                style="width: 100%; height: 400px; border: 2px solid #007bff; border-radius: 5px;"
+                                data-image="{{ isset($item->image) ? route('file', $item->image) : '' }}"
+                                data-yaw="{{ $item->yaw }}" data-pitch="{{ $item->pitch }}"></div>
+                            <small class="form-text text-muted">Navegue por la imagen y haga clic en el punto donde
+                                desea que el visor quede al frente cuando cargue esta escena.</small>
                         </div>
 
-                        <div class="form-group panorama-fields-edit-{{ $item->id }}" style="{{ $item->type === 'video' ? 'display:none' : '' }}">
-                            <label for="image" class="d-flex justify-content-left">Imagen 360 (dejar vacío para mantener la actual)</label>
+                        <div class="form-group panorama-fields-edit-{{ $item->id }}"
+                            style="{{ $item->type === 'video' ? 'display:none' : '' }}">
+                            <label for="image" class="d-flex justify-content-left">Imagen 360 (dejar vacío para
+                                mantener la actual)</label>
                             <img class="card-img-top img-fluid w-25" id="image-preview-edit-{{ $item->id }}"
                                 src="{{ isset($item->image) ? route('file', $item->image) : url('images/producto-sin-imagen.PNG') }}">
                             <div class="custom-file">
-                                <input type="file" class="form-control-file image-upload-edit"
-                                    name="image" data-scene-id="{{ $item->id }}"
-                                    accept="image/*">
+                                <input type="file" class="form-control-file image-upload-edit" name="image"
+                                    data-scene-id="{{ $item->id }}" accept="image/*">
                             </div>
                         </div>
 
                         {{-- Video dron (solo video) --}}
-                        <div class="form-group video-fields-edit-{{ $item->id }}" style="{{ $item->type !== 'video' ? 'display:none' : '' }}">
-                            <label for="video"><i class="fa fa-video-camera"></i> Video del dron (dejar vacío para mantener el actual)</label>
-                            @if($item->video)
+                        <div class="form-group video-fields-edit-{{ $item->id }}"
+                            style="{{ $item->type !== 'video' ? 'display:none' : '' }}">
+                            <label for="video"><i class="fa fa-video-camera"></i> Video del dron (dejar vacío para
+                                mantener el actual)</label>
+                            @if ($item->video)
                                 <div class="mb-2">
                                     <small class="text-muted">Video actual: {{ basename($item->video) }}</small>
                                 </div>
@@ -314,15 +347,17 @@
                                 <input type="file" class="form-control-file" name="video"
                                     accept="video/mp4,video/webm,video/ogg">
                             </div>
-                            <small class="form-text text-muted">Suba el video del dron que orbita la propiedad (MP4, WebM u OGG).</small>
+                            <small class="form-text text-muted">Suba el video del dron que orbita la propiedad (MP4,
+                                WebM u OGG).</small>
                         </div>
+
                         <div class="form-group">
-                            <label for="image" class=" d-flex justify-content-left">Imagen de referencia (dejar vacío para mantener la actual)</label>
+                            <label for="image" class=" d-flex justify-content-left">Imagen de referencia (dejar
+                                vacío para mantener la actual)</label>
                             <img class="card-img-top img-fluid w-25"
                                 src="{{ isset($item->image_ref) ? route('file', $item->image_ref) : url('images/producto-sin-imagen.PNG') }}">
                             <div class="custom-file">
-                                <input type="file" class="form-control-file" name="image_ref"
-                                    accept="image/*">
+                                <input type="file" class="form-control-file" name="image_ref" accept="image/*">
                             </div>
                         </div>
                         <div class="modal-footer">
@@ -427,12 +462,15 @@
             videoUploadState.uploadId = uploadId;
             videoUploadState.aborted = false;
             videoUploadState.uploading = true;
+            var isSpin = $('input[name="is_spin"]').is(':checked');
+            var propertyId = $('input[name="property_id"]').val();
 
             // Mostrar UI de progreso
             $('#video-upload-progress-add').show();
             $('#video-ready-add').hide();
             $('#video-upload-status-add').html('<i class="fa fa-spinner fa-spin"></i> Subiendo video...');
-            updateUploadProgress(0, 'Iniciando subida de ' + formatBytes(file.size) + ' en ' + totalChunks + ' partes...');
+            updateUploadProgress(0, 'Iniciando subida de ' + formatBytes(file.size) + ' en ' + totalChunks +
+                ' partes...');
 
             var csrfToken = $('meta[name="csrf-token"]').attr('content') || $('input[name="_token"]').val();
 
@@ -440,7 +478,10 @@
             for (var i = 0; i < totalChunks; i++) {
                 if (videoUploadState.aborted) {
                     console.log('Upload abortado por usuario');
-                    return { success: false, aborted: true };
+                    return {
+                        success: false,
+                        aborted: true
+                    };
                 }
 
                 var start = i * CHUNK_SIZE;
@@ -457,7 +498,7 @@
 
                 try {
                     var response = await $.ajax({
-                        url: '{{ url("/upload-video-chunk") }}',
+                        url: '{{ url('/upload-video-chunk') }}',
                         type: 'POST',
                         data: formData,
                         processData: false,
@@ -467,31 +508,40 @@
 
                     if (response.success) {
                         var percent = Math.round(((i + 1) / totalChunks) * 100);
-                        updateUploadProgress(percent, 'Parte ' + (i + 1) + ' de ' + totalChunks + ' completada');
+                        updateUploadProgress(percent, 'Parte ' + (i + 1) + ' de ' + totalChunks +
+                            ' completada');
                     } else {
                         throw new Error(response.error || 'Error desconocido');
                     }
                 } catch (error) {
                     console.error('Error subiendo chunk ' + i, error);
-                    $('#video-upload-status-add').html('<i class="fa fa-exclamation-triangle text-danger"></i> Error al subir');
-                    updateUploadProgress(0, 'Error: ' + (error.responseJSON?.message || error.message || 'Fallo en la subida'));
+                    $('#video-upload-status-add').html(
+                        '<i class="fa fa-exclamation-triangle text-danger"></i> Error al subir');
+                    updateUploadProgress(0, 'Error: ' + (error.responseJSON?.message || error.message ||
+                        'Fallo en la subida'));
                     videoUploadState.uploading = false;
-                    return { success: false, error: error };
+                    return {
+                        success: false,
+                        error: error
+                    };
                 }
             }
 
             // Todos los chunks subidos, ahora ensamblar
-            $('#video-upload-status-add').html('<i class="fa fa-spinner fa-spin"></i> Ensamblando video...');
+            $('#video-upload-status-add').html(
+                '<i class="fa fa-spinner fa-spin"></i> Ensamblando video...');
             updateUploadProgress(100, 'Ensamblando archivo final...');
 
             try {
                 var completeResponse = await $.ajax({
-                    url: '{{ route("completeVideoUpload") }}',
+                    url: '{{ route('completeVideoUpload') }}',
                     type: 'POST',
                     data: {
                         uploadId: uploadId,
                         fileName: file.name,
                         totalChunks: totalChunks,
+                        _isSpin: isSpin,
+                        _propertyId: propertyId,
                         _token: csrfToken
                     },
                     timeout: 300000 // 5 minutos para ensamblar
@@ -500,11 +550,13 @@
                 if (completeResponse.success) {
                     // Éxito: guardar el path del video
                     $('#video-path-add').val(completeResponse.videoPath);
+                    $('#spinId').val(completeResponse.spinId);
 
                     // Actualizar UI
                     $('#video-upload-progress-add').hide();
                     $('#video-ready-add').show();
-                    $('#video-upload-status-add').html('<i class="fa fa-check text-success"></i> Video listo');
+                    $('#video-upload-status-add').html(
+                        '<i class="fa fa-check text-success"></i> Video listo');
 
                     // IMPORTANTE: Limpiar el input de archivo para evitar que el form envíe el video
                     // (el video ya está en el servidor vía chunks, solo necesitamos video_path)
@@ -512,16 +564,24 @@
                     $('#video-upload-add').val('');
                     videoUploadState.uploading = false;
 
-                    return { success: true, videoPath: completeResponse.videoPath };
+                    return {
+                        success: true,
+                        videoPath: completeResponse.videoPath
+                    };
                 } else {
                     throw new Error(completeResponse.error || 'Error al ensamblar');
                 }
             } catch (error) {
                 console.error('Error ensamblando video', error);
-                $('#video-upload-status-add').html('<i class="fa fa-exclamation-triangle text-danger"></i> Error al ensamblar');
-                updateUploadProgress(0, 'Error: ' + (error.responseJSON?.error || error.message || 'Fallo al ensamblar'));
+                $('#video-upload-status-add').html(
+                    '<i class="fa fa-exclamation-triangle text-danger"></i> Error al ensamblar');
+                updateUploadProgress(0, 'Error: ' + (error.responseJSON?.error || error.message ||
+                    'Fallo al ensamblar'));
                 videoUploadState.uploading = false;
-                return { success: false, error: error };
+                return {
+                    success: false,
+                    error: error
+                };
             }
         }
 
@@ -539,7 +599,8 @@
             // Si el archivo es mayor a 5MB, usar subida en chunks
             var THRESHOLD = 5 * 1024 * 1024; // 5MB
             if (file.size > THRESHOLD) {
-                console.log('Video grande detectado (' + formatBytes(file.size) + '), usando subida en chunks');
+                console.log('Video grande detectado (' + formatBytes(file.size) +
+                    '), usando subida en chunks');
 
                 // Iniciar subida en segundo plano
                 uploadVideoInChunks(file).then(function(result) {
@@ -566,15 +627,17 @@
                 videoUploadState.aborted = true;
 
                 // Notificar al servidor para limpiar chunks parciales
-                var csrfToken = $('meta[name="csrf-token"]').attr('content') || $('input[name="_token"]').val();
-                $.post('{{ route("cancelVideoUpload") }}', {
+                var csrfToken = $('meta[name="csrf-token"]').attr('content') || $(
+                    'input[name="_token"]').val();
+                $.post('{{ route('cancelVideoUpload') }}', {
                     uploadId: videoUploadState.uploadId,
                     _token: csrfToken
                 });
 
                 // Resetear UI
                 $('#video-upload-progress-add').hide();
-                $('#video-upload-status-add').html('<i class="fa fa-times text-warning"></i> Subida cancelada');
+                $('#video-upload-status-add').html(
+                    '<i class="fa fa-times text-warning"></i> Subida cancelada');
                 $('#video-path-add').val('');
                 videoUploadState.uploading = false;
             }
@@ -584,13 +647,18 @@
         $('#addScene').on('hidden.bs.modal', function() {
             if (videoUploadState.uploading) {
                 videoUploadState.aborted = true;
-                var csrfToken = $('meta[name="csrf-token"]').attr('content') || $('input[name="_token"]').val();
-                $.post('{{ route("cancelVideoUpload") }}', {
+                var csrfToken = $('meta[name="csrf-token"]').attr('content') || $(
+                    'input[name="_token"]').val();
+                $.post('{{ route('cancelVideoUpload') }}', {
                     uploadId: videoUploadState.uploadId,
                     _token: csrfToken
                 });
             }
-            videoUploadState = { uploadId: null, aborted: false, uploading: false };
+            videoUploadState = {
+                uploadId: null,
+                aborted: false,
+                uploading: false
+            };
             $('#video-upload-progress-add').hide();
             $('#video-ready-add').hide();
             $('#video-path-add').val('');

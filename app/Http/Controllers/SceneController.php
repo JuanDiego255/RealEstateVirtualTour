@@ -224,6 +224,8 @@ class SceneController extends Controller
         $isVideo = $request->type === 'video';
         $hasChunkedVideo = $isVideo && $request->filled('video_path');
         $type = $request->input('item_type', 'property');
+        $isSpin = $request->has('is_spin');
+        $spinId = $request->spinId;
 
         $rules = [
             'title' => 'required|max:255',
@@ -285,8 +287,9 @@ class SceneController extends Controller
 
         $scene = Scene::create($sceneData);
         // ✅ Si es escena tipo video y pertenece a un vehículo, disparar SPIN con el video ya subido por chunks
-        if ($isVideo && !empty($video)) {
-            $spinId = $this->startSpinForVehicleVideo((int)$itemId, $video, $cc);
+       
+        if ($isVideo && !empty($video) && $isSpin) {
+            $spinId = $this->startSpinForVehicleVideo((int)$itemId, $video, $cc, $spinId);
             $scene->update(['spin_id' => $spinId]);
         }
 
@@ -453,6 +456,7 @@ class SceneController extends Controller
         $uploadId = $request->uploadId;
         $fileName = $request->fileName;
         $totalChunks = (int) $request->totalChunks;
+        $isSpin = $request->_isSpin;
 
         $tempDir = storage_path('app/chunks/' . $uploadId);
 
@@ -475,17 +479,29 @@ class SceneController extends Controller
         sort($chunkFiles);
 
         $extension = pathinfo($fileName, PATHINFO_EXTENSION);
-        $finalFileName = 'uploads/' . uniqid('video_') . '.' . $extension;
+
+        if ($isSpin) {
+            $spin = Spin::create([
+                'vehicle_id' => $request->_propertyId,
+                'status' => 'uploaded',
+            ]);
+            $finalFileName = "spins/{$spin->id}/" . uniqid('video_') . '.' . $extension;
+        } else {
+            $finalFileName = 'uploads/' . uniqid('video_') . '.' . $extension;
+        }
         $finalPath = storage_path('app/public/' . $finalFileName);
 
-        $uploadsDir = storage_path('app/public/uploads');
-        if (!File::exists($uploadsDir)) {
-            File::makeDirectory($uploadsDir, 0755, true);
+        $finalDir = dirname($finalPath);
+        if (!File::exists($finalDir)) {
+            File::makeDirectory($finalDir, 0755, true);
         }
 
         $finalFile = fopen($finalPath, 'wb');
         if (!$finalFile) {
-            return response()->json(['success' => false, 'error' => 'No se pudo crear archivo final'], 500);
+            return response()->json([
+                'success' => false,
+                'error' => 'No se pudo crear archivo final'
+            ], 500);
         }
 
         foreach ($chunkFiles as $chunkFile) {
@@ -496,9 +512,15 @@ class SceneController extends Controller
 
         File::deleteDirectory($tempDir);
 
+        $spin->update([
+            'video_path' => $finalFileName,
+            'status' => 'processing',
+        ]);
+
         return response()->json([
             'success' => true,
             'videoPath' => $finalFileName,
+            'spinId' => $spin->id,
             'message' => 'Video ensamblado correctamente'
         ]);
     }
@@ -520,15 +542,10 @@ class SceneController extends Controller
         return response()->json(['success' => true, 'message' => 'Upload cancelado']);
     }
 
-    private function startSpinForVehicleVideo(int $vehicleId, string $videoPath, CloudConvertSpinService $cc): ?int
+    private function startSpinForVehicleVideo(int $vehicleId, string $videoPath, CloudConvertSpinService $cc, $spinId): ?int
     {
         // Crea Spin
-        $spin = Spin::create([
-            'vehicle_id' => $vehicleId,
-            'video_path' => $videoPath,     // ya está en disk 'public'
-            'status' => 'processing',
-        ]);
-
+        $spin = Spin::where('id', $spinId)->first();
         try {
             // fps recomendado para tus videos 20–40s (da muchos frames y luego normalizamos a 72)
             $fps = (int) env('SPIN_FPS', 4);
