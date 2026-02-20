@@ -13,7 +13,10 @@ use App\Http\Controllers\Admin\SaleController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\CompanyController;
 use App\Http\Controllers\Admin\SubcategoryController;
+use App\Http\Controllers\CloudConvertWebhookController;
 use App\Http\Controllers\RegisterCompanyController;
+use App\Http\Controllers\SpinController;
+use App\Models\Spin;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 
@@ -27,9 +30,24 @@ use Illuminate\Support\Facades\Auth;
 | contains the "web" middleware group. Now create something great!
 |
 */
+
 Auth::routes();
+Route::post('/webhooks/cloudconvert', [CloudConvertWebhookController::class, 'handle']);
 
 Route::group(['middleware' => 'auth'], function () {
+    Route::post('/spins', [SpinController::class, 'store'])->name('spins.store');
+
+    Route::get('/spins/test', function () {
+        return view('spins.test');
+    })->name('spins.test');
+
+    Route::post('/spins/test', [SpinController::class, 'store'])
+        ->name('spins.test.store');
+
+    // Ver estado rápido (JSON) para confirmar processing/ready y paths
+    Route::get('/spins/test/{spin}', function (Spin $spin) {
+        return response()->json($spin->toArray());
+    })->name('spins.test.status');
 
     Route::get('/admin', 'HomeController@index')->name('home');
     Route::get('/scene/{id}', 'SceneController@index')->name('config');
@@ -233,7 +251,6 @@ Route::group(['middleware' => 'auth'], function () {
         Route::post('/{company}/toggle-status', [CompanyController::class, 'toggleStatus'])->name('admin.companies.toggle-status');
         Route::delete('/{company}', [CompanyController::class, 'destroy'])->name('admin.companies.destroy');
     });
-
 });
 
 // =====================================================

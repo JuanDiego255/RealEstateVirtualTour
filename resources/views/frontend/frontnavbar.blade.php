@@ -75,7 +75,7 @@
         <div class="collapse navbar-collapse" id="ftco-nav">
             <ul class="navbar-nav ml-auto">
                 <li class="nav-item {{ request()->is('/') ? 'active' : '' }}">
-                    <a href="{{ url('/') }}" class="nav-link"><i class="fas fa-home mr-2"></i> Inicio</a>
+                    <a href="{{ url('/') }}" class="nav-link"><i class="fa fa-home mr-2"></i> Inicio</a>
                 </li>
                 @php
                     $navSectors = \App\Sector::where('status', true)->get();
@@ -107,7 +107,7 @@
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button"
                             data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                            <i class="fas fa-user mr-2"></i> {{ Auth::user()->name }} {{ Auth::user()->last_name }}
+                            <i class="fa fa-user mr-2"></i> {{ Auth::user()->name }} {{ Auth::user()->last_name }}
                         </a>
                         <div class="dropdown-menu dropdown-menu-right" aria-labelledby="userDropdown">
                             <a class="dropdown-item" href="{{ route('logout') }}"

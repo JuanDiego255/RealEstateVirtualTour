@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\CloudConvertWebhookController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -13,6 +14,8 @@ use Illuminate\Support\Facades\Route;
 | is assigned the "api" middleware group. Enjoy building your API!
 |
 */
+Route::post('api/webhook/cloudconvert', [CloudConvertWebhookController::class, 'handle'])
+    ->name('cloudconvert.webhook');
 
 Route::middleware('auth:api')->get('/user', function (Request $request) {
     return $request->user();

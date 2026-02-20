@@ -11030,38 +11030,7 @@ h5,
 .ftco-degree-bg {
     position: relative;
 }
-.ftco-degree-bg:after {
-    content: "";
-    position: absolute;
-    right: 0;
-    bottom: -30px;
-    overflow: visible;
-    width: 50%;
-    height: 70px;
-    z-index: 1;
-    -webkit-transform: skewY(-4deg);
-    -moz-transform: skewY(-4deg);
-    -ms-transform: skewY(-4deg);
-    -o-transform: skewY(-4deg);
-    transform: skewY(-4deg);
-    background-color: #fff;
-}
-.ftco-degree-bg:before {
-    content: "";
-    position: absolute;
-    left: 0;
-    bottom: -30px;
-    overflow: visible;
-    width: 50%;
-    height: 70px;
-    z-index: 1;
-    -webkit-transform: skewY(4deg);
-    -moz-transform: skewY(4deg);
-    -ms-transform: skewY(4deg);
-    -o-transform: skewY(4deg);
-    transform: skewY(4deg);
-    background-color: #fff;
-}
+
 
 .request-form {
     background: #fff;
@@ -12001,7 +11970,7 @@ textarea.form-control {
     position: absolute;
     left: 0;
     right: 0;
-    bottom: -20px;
+    bottom: -40px;
     z-index: 2;
 }
 
