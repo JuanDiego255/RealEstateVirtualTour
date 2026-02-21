@@ -548,7 +548,7 @@ class SceneController extends Controller
         $spin = Spin::where('id', $spinId)->first();
         try {
             // fps recomendado para tus videos 20–40s (da muchos frames y luego normalizamos a 72)
-            $fps = (int) env('SPIN_FPS', 4);
+            $fps = (float) 7.5;
             $ext = env('SPIN_FRAME_EXT', 'jpg'); // jpg recomendado
 
             // 1) Crear job CloudConvert (usa tu versión que ya funciona con command/ffmpeg)
