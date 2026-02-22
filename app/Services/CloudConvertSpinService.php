@@ -29,16 +29,24 @@ class CloudConvertSpinService
         $cloudconvert = $this->client();
         $desiredFrames = 180;
 
-        // $fps debe ser float, NO int
-        // ideal: $fps = $desiredFrames / $duration;
-        $fpsStr = rtrim(rtrim(number_format($fps, 6, '.', ''), '0'), '.'); // "6.923077"
-
-        // Escala: sube a 1600 o 1920 si tu video lo aguanta
-        $width = 1920; // o 1920
+        // fps float calculado: $fps = $desiredFrames / $duration;
+        $fpsStr = rtrim(rtrim(number_format($fps, 6, '.', ''), '0'), '.'); // ej "6.923077"
+        $width = 1600;
 
         $job = (new Job())
             ->addTask(new Task('import/upload', 'import-1'))
             ->addTask(
+                /* (new Task('command', 'extract-frames'))
+                    ->set('input', 'import-1')
+                    ->set('engine', 'ffmpeg')
+                    ->set('command', 'ffmpeg')
+                    ->set(
+                        'arguments',
+                        // input fijo: /input/import-1/input.mp4
+                        // output: /output/frame-001.jpg, frame-002.jpg, ...
+                        '-i /input/import-1/input.mp4 -vf "fps=' . (int)$fps . ',scale=1200:-1" /output/frame-%03d.' . $imgExt
+                    )
+                    ->set('capture_output', true) */
                 (new Task('command', 'extract-frames'))
                     ->set('input', 'import-1')
                     ->set('engine', 'ffmpeg')
@@ -46,10 +54,10 @@ class CloudConvertSpinService
                     ->set(
                         'arguments',
                         '-i /input/import-1/input.mp4 ' .
-                            '-vf "fps=' . $fpsStr . ',scale=' . $width . ':-1:flags=lanczos" ' .
+                            '-vf "fps=' . $fpsStr . ',scale=1000:-1:flags=lanczos" ' .
                             '-frames:v ' . $desiredFrames . ' ' .
-                            '-q:v 2 ' . // 1=mejor, 2=excelente, 3-5=normal
-                            '/output/frame-%03d.jpg'
+                            '-c:v libwebp -quality 80 -compression_level 6 -preset picture ' .
+                            '/output/frame-%03d.webp'
                     )
                     ->set('capture_output', true)
             )

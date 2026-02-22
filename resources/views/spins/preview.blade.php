@@ -362,7 +362,7 @@
         const baseUrl = "/storage/app/public/" + framesDir + "/";
 
         // Si cambias a .webp, solo cambia aquí:
-        const ext = "jpg"; // "webp" o "jpg"
+        const ext = "webp"; // "webp" o "jpg"
 
         function frameSrc(n) {
             const num = String(n).padStart(3, '0');
