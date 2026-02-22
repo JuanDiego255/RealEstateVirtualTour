@@ -114,7 +114,7 @@
                                     <a href="{{ route('subcategory.show', [$category->slug, $subcategory->slug]) }}">
                                         @if($subcategory->image)
                                             <div style="background-image: url('{{ route('file', ['filename' => $subcategory->image]) }}');
-                                                        height: 220px; background-size: cover; background-position: center;"></div>
+                                                        height: 300px; background-size: cover; background-position: center;"></div>
                                         @else
                                             <div class="bg-light d-flex align-items-center justify-content-center" style="height: 220px;">
                                                 <i class="fa fa-tags fa-3x text-muted"></i>

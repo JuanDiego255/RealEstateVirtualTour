@@ -4,7 +4,7 @@
     <div class="container-fluid">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h4>
-                @if($company->logo)<img src="{{ $company->logo_url }}" class="mr-2 rounded" style="height: 30px;">@endif
+                @if($company->logo)<img src="{{ route('file', $company->logo) }}" class="mr-2 rounded" style="height: 30px;">@endif
                 {{ $company->name }}
             </h4>
             <div>
