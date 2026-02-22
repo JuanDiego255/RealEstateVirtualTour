@@ -137,6 +137,14 @@
                                 @if ($property->is_exclusive)
                                     <div class="price text-warning"><i class="fa fa-lock mr-1"></i>Exclusiva</div>
                                 @endif
+
+                                @if($property->share_token)
+                                    <div class="mt-2">
+                                        <button class="btn btn-sm btn-outline-success" onclick="copyPropertyLink('{{ $property->share_url }}')" title="Copiar enlace compartible">
+                                            <i class="fa fa-share-alt mr-1"></i> Compartir
+                                        </button>
+                                    </div>
+                                @endif
                             </div>
                         </div>
                     </div>
@@ -144,5 +152,23 @@
             @endforeach
         </div>
     </div>
+
+    <script>
+    function copyPropertyLink(url) {
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(url).then(function() {
+                alert('Enlace copiado al portapapeles');
+            });
+        } else {
+            var input = document.createElement('input');
+            input.value = url;
+            document.body.appendChild(input);
+            input.select();
+            document.execCommand('copy');
+            document.body.removeChild(input);
+            alert('Enlace copiado al portapapeles');
+        }
+    }
+    </script>
 
 @endsection

@@ -135,10 +135,12 @@ class PropertiesController extends Controller
                 $property->maintenance = $request->maintenance;
                 $property->location = $request->location;
                 $property->address = $request->address;
-                $property->commission_percentage = $request->commission_percentage;
-                $property->commission_notes = $request->commission_notes;
-                $property->is_exclusive = $request->is_exclusive ?? false;
             }
+
+            // Comisión y bolsa (aplica a todos los tipos)
+            $property->commission_percentage = $request->commission_percentage;
+            $property->commission_notes = $request->commission_notes;
+            $property->is_exclusive = $request->is_exclusive ?? false;
 
             $property->save();
 
@@ -248,10 +250,12 @@ class PropertiesController extends Controller
                 $property->maintenance = $request->maintenance;
                 $property->location = $request->location;
                 $property->address = $request->address;
-                $property->commission_percentage = $request->commission_percentage;
-                $property->commission_notes = $request->commission_notes;
-                $property->is_exclusive = $request->is_exclusive ?? false;
             }
+
+            // Comisión y bolsa (aplica a todos los tipos)
+            $property->commission_percentage = $request->commission_percentage;
+            $property->commission_notes = $request->commission_notes;
+            $property->is_exclusive = $request->is_exclusive ?? false;
 
             $property->update();
 

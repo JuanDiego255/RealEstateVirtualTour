@@ -10,6 +10,7 @@ class Properties extends Model
     use HasFactory;
 
     protected $fillable = [
+        'share_token',
         'category_id',
         'subcategory_id',
         'user_id',
@@ -70,6 +71,25 @@ class Properties extends Model
         'published_at' => 'datetime',
         'sold_at' => 'datetime',
     ];
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($property) {
+            if (empty($property->share_token)) {
+                $property->share_token = \Illuminate\Support\Str::random(32);
+            }
+        });
+    }
+
+    /**
+     * Obtener URL compartible
+     */
+    public function getShareUrlAttribute()
+    {
+        return $this->share_token ? url('/p/' . $this->share_token) : null;
+    }
 
     /**
      * Tipos de propiedad

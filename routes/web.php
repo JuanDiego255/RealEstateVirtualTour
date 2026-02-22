@@ -276,6 +276,54 @@ Route::get('/c/{shareToken}', function ($shareToken) {
     return redirect()->route('category.show', $category->slug);
 })->name('category.share');
 
+// Enlace compartible de publicación
+Route::get('/p/{shareToken}', function ($shareToken) {
+    $property = \App\Properties::where('share_token', $shareToken)->firstOrFail();
+    return redirect()->route('virtual-tour', $property->id);
+})->name('property.share');
+
+// API: Búsqueda de publicaciones por sector (para buscador en frontend)
+Route::get('/api/search-properties', function (\Illuminate\Http\Request $request) {
+    $query = \App\Properties::query()->available();
+
+    if ($request->filled('sector_id')) {
+        $query->inSector($request->sector_id);
+    }
+
+    if ($request->filled('q')) {
+        $search = $request->q;
+        $query->where(function ($q) use ($search) {
+            $q->where('name', 'like', "%{$search}%")
+              ->orWhere('brand', 'like', "%{$search}%")
+              ->orWhere('model', 'like', "%{$search}%")
+              ->orWhere('location', 'like', "%{$search}%")
+              ->orWhere('code', 'like', "%{$search}%")
+              ->orWhere('description', 'like', "%{$search}%");
+        });
+    }
+
+    $results = $query->with('subcategory')
+        ->select('id', 'name', 'brand', 'model', 'year', 'property_type', 'price', 'currency', 'image', 'location', 'share_token')
+        ->limit(10)
+        ->get()
+        ->map(function ($p) {
+            return [
+                'id' => $p->id,
+                'name' => $p->property_type === 'vehicle'
+                    ? ($p->brand . ' ' . $p->model . ' ' . $p->year)
+                    : $p->name,
+                'type' => $p->property_type,
+                'type_name' => $p->property_type_name ?? $p->property_type,
+                'price' => ($p->currency === 'USD' ? '$' : '₡') . number_format($p->price),
+                'location' => $p->location,
+                'image' => $p->image ? route('file', $p->image) : url('images/producto-sin-imagen.PNG'),
+                'url' => route('virtual-tour', $p->id),
+            ];
+        });
+
+    return response()->json($results);
+})->name('api.search-properties');
+
 // Archivo desde storage
 Route::get('/file/{filename}', function ($filename) {
     $path = storage_path('app/public/' . $filename);

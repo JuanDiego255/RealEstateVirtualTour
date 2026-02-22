@@ -3,7 +3,7 @@
 @section('content')
     <div class="container-fluid">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h4><i class="fa fa-building"></i> Propiedades Disponibles para Comisión</h4>
+            <h4><i class="fa fa-th-list"></i> Publicaciones Disponibles para Comisión</h4>
             <a href="{{ route('admin.bolsa.index') }}" class="btn btn-secondary btn-sm"><i class="fa fa-arrow-left"></i> Dashboard</a>
         </div>
 
@@ -33,9 +33,21 @@
                         <label class="small">Comisión mín.</label>
                         <input type="number" name="min_commission" class="form-control form-control-sm" value="{{ request('min_commission') }}" placeholder="%" step="0.5">
                     </div>
-                    <div class="form-group col-md-3 mb-2">
-                        <button type="submit" class="btn btn-sm btn-primary"><i class="fa fa-search"></i> Filtrar</button>
-                        <a href="{{ route('admin.bolsa.available') }}" class="btn btn-sm btn-secondary">Limpiar</a>
+                    <div class="form-group col-md-2 mb-2">
+                        <label class="small">Tipo</label>
+                        <select name="property_type" class="form-control form-control-sm">
+                            <option value="">Todos</option>
+                            <option value="house" {{ request('property_type') == 'house' ? 'selected' : '' }}>Casa</option>
+                            <option value="apartment" {{ request('property_type') == 'apartment' ? 'selected' : '' }}>Apartamento</option>
+                            <option value="land" {{ request('property_type') == 'land' ? 'selected' : '' }}>Lote</option>
+                            <option value="vehicle" {{ request('property_type') == 'vehicle' ? 'selected' : '' }}>Vehículo</option>
+                            <option value="commercial" {{ request('property_type') == 'commercial' ? 'selected' : '' }}>Comercial</option>
+                        </select>
+                    </div>
+                    <div class="form-group col-md-1 mb-2">
+                        <label class="small">&nbsp;</label><br>
+                        <button type="submit" class="btn btn-sm btn-primary"><i class="fa fa-search"></i></button>
+                        <a href="{{ route('admin.bolsa.available') }}" class="btn btn-sm btn-secondary"><i class="fa fa-times"></i></a>
                     </div>
                 </form>
             </div>
@@ -55,12 +67,24 @@
                         @endif
                         <div class="card-body">
                             <h5 class="card-title">{{ $prop->name }}</h5>
+                            @if(($prop->property_type ?? '') === 'vehicle' && $prop->brand)
+                                <p class="text-muted small mb-1">{{ $prop->brand }} {{ $prop->model }} {{ $prop->year }}</p>
+                            @endif
                             <h4 class="text-primary">{{ $prop->formatted_price }}</h4>
 
                             <div class="mb-2">
+                                <span class="badge badge-light">{{ $prop->property_type_name ?? 'Propiedad' }}</span>
                                 <span class="badge badge-success"><i class="fa fa-percent"></i> {{ $prop->commission_percentage }}% comisión</span>
                                 @if($prop->has_virtual_tour) <span class="badge badge-info"><i class="fa fa-eye"></i> Tour 360</span> @endif
                             </div>
+
+                            @if(($prop->property_type ?? '') === 'vehicle')
+                                <small class="text-muted d-block">
+                                    @if($prop->transmission)<i class="fa fa-cog mr-1"></i>{{ $prop->transmission }} @endif
+                                    @if($prop->fuel_type)| <i class="fa fa-tint mr-1"></i>{{ $prop->fuel_type }} @endif
+                                    @if($prop->mileage_km)| <i class="fa fa-road mr-1"></i>{{ number_format($prop->mileage_km) }} km @endif
+                                </small>
+                            @endif
 
                             @if($prop->category)
                                 <small class="text-muted d-block">

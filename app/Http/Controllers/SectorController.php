@@ -36,7 +36,7 @@ class SectorController extends Controller
         $categories = Category::where('sector_id', $sector->id)
             ->where('status', true)
             ->with(['subcategories' => function ($q) {
-                $q->active()->withCount(['properties', 'vehicles']);
+                $q->active()->withCount('properties');
             }])
             ->get();
 

@@ -137,32 +137,6 @@
                             </div>
                         </div>
 
-                        {{-- Comisión y exclusividad --}}
-                        <h6 class="text-muted mb-3 mt-3"><i class="fa fa-handshake-o"></i> Comisión y Bolsa</h6>
-                        <div class="row">
-                            <div class="form-group col-md-4">
-                                <label>% Comisión</label>
-                                <input value="{{ $property->commission_percentage ?? '' }}" class="form-control"
-                                    type="number" step="0.01" min="0" max="100"
-                                    name="commission_percentage" placeholder="Ej: 5.00">
-                                <small class="form-text text-muted">Porcentaje para agentes externos</small>
-                            </div>
-                            <div class="form-group col-md-4">
-                                <label>Exclusividad</label>
-                                <select class="form-control" name="is_exclusive">
-                                    <option value="0"
-                                        {{ !($property->is_exclusive ?? false) ? 'selected' : '' }}>No exclusiva
-                                        (visible en Bolsa)</option>
-                                    <option value="1" {{ $property->is_exclusive ?? false ? 'selected' : '' }}>
-                                        Exclusiva (solo mi empresa)</option>
-                                </select>
-                            </div>
-                            <div class="form-group col-md-4">
-                                <label>Notas de comisión</label>
-                                <input value="{{ $property->commission_notes ?? '' }}" class="form-control"
-                                    type="text" name="commission_notes" placeholder="Condiciones especiales">
-                            </div>
-                        </div>
                     </div>
 
                     {{-- ============ CAMPOS DE VEHÍCULO ============ --}}
@@ -295,6 +269,27 @@
                                 <input value="{{ $property->plate ?? '' }}" class="form-control" type="text"
                                     name="plate">
                             </div>
+                        </div>
+                    </div>
+
+                    {{-- Comisión y exclusividad (aplica a todos los tipos) --}}
+                    <h6 class="text-muted mb-3 mt-3"><i class="fa fa-handshake-o"></i> Comisión y Bolsa</h6>
+                    <div class="row">
+                        <div class="form-group col-md-4">
+                            <label>% Comisión</label>
+                            <input value="{{ $property->commission_percentage ?? '' }}" class="form-control" type="number" step="0.01" min="0" max="100" name="commission_percentage" placeholder="Ej: 5.00">
+                            <small class="form-text text-muted">Porcentaje para agentes externos</small>
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label>Exclusividad</label>
+                            <select class="form-control" name="is_exclusive">
+                                <option value="0" {{ !($property->is_exclusive ?? false) ? 'selected' : '' }}>No exclusiva (visible en Bolsa)</option>
+                                <option value="1" {{ ($property->is_exclusive ?? false) ? 'selected' : '' }}>Exclusiva (solo mi empresa)</option>
+                            </select>
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label>Notas de comisión</label>
+                            <input value="{{ $property->commission_notes ?? '' }}" class="form-control" type="text" name="commission_notes" placeholder="Condiciones especiales">
                         </div>
                     </div>
 

@@ -45,6 +45,23 @@
                     </div>
                 </div>
 
+                {{-- Buscador de publicaciones --}}
+                <div class="row justify-content-center mb-5">
+                    <div class="col-md-8">
+                        <div class="position-relative">
+                            <div class="input-group" style="border-radius: 30px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                                <input type="text" id="searchInput" class="form-control form-control-lg border-0"
+                                    placeholder="Buscar publicaciones en {{ $sector->name }}..."
+                                    autocomplete="off" style="padding-left: 20px;">
+                                <div class="input-group-append">
+                                    <span class="input-group-text bg-white border-0"><i class="fa fa-search" style="color: #c2ac1f;"></i></span>
+                                </div>
+                            </div>
+                            <div id="searchResults" style="display:none; position: absolute; z-index: 1000; width: 100%; max-height: 400px; overflow-y: auto; background: #fff; border-radius: 0 0 12px 12px; box-shadow: 0 8px 25px rgba(0,0,0,0.15);"></div>
+                        </div>
+                    </div>
+                </div>
+
                 @if (count($categories) > 0)
                     <div class="row">
                         @foreach ($categories as $category)
@@ -183,6 +200,62 @@
                         $(this).html('Ver menos <i class="fa fa-chevron-up" style="font-size: 10px;"></i>');
                     }
                 });
+            });
+
+            // Buscador live de publicaciones por sector
+            var searchTimer = null;
+            var sectorId = {{ $sector->id }};
+            var $input = $('#searchInput');
+            var $results = $('#searchResults');
+
+            $input.on('input', function() {
+                var q = $(this).val().trim();
+                clearTimeout(searchTimer);
+
+                if (q.length < 2) {
+                    $results.hide().empty();
+                    return;
+                }
+
+                searchTimer = setTimeout(function() {
+                    $.getJSON('{{ route("api.search-properties") }}', { q: q, sector_id: sectorId }, function(data) {
+                        $results.empty();
+                        if (data.length === 0) {
+                            $results.html('<div style="padding: 20px; text-align: center; color: #999;"><i class="fa fa-search"></i> No se encontraron resultados</div>');
+                        } else {
+                            data.forEach(function(item) {
+                                var typeIcon = item.type === 'vehicle' ? 'fa-car' : 'fa-home';
+                                var html = '<a href="' + item.url + '" style="display: flex; align-items: center; padding: 12px 16px; text-decoration: none; color: #333; border-bottom: 1px solid #f0f0f0; transition: background 0.2s;"' +
+                                    ' onmouseover="this.style.background=\'#f8f9fa\'" onmouseout="this.style.background=\'#fff\'">' +
+                                    '<img src="' + item.image + '" style="width: 60px; height: 45px; object-fit: cover; border-radius: 6px; margin-right: 12px;">' +
+                                    '<div style="flex: 1;">' +
+                                    '<div style="font-weight: 600; font-size: 14px;">' + item.name + '</div>' +
+                                    '<div style="font-size: 12px; color: #999;">' +
+                                    '<span class="badge" style="background: #f0f0f0; color: #666; font-size: 10px; margin-right: 4px;"><i class="fa ' + typeIcon + ' mr-1"></i>' + item.type_name + '</span>' +
+                                    (item.location ? '<i class="fa fa-map-marker mr-1"></i>' + item.location : '') +
+                                    '</div>' +
+                                    '</div>' +
+                                    '<div style="font-weight: 700; color: #c2ac1f; white-space: nowrap;">' + item.price + '</div>' +
+                                    '</a>';
+                                $results.append(html);
+                            });
+                        }
+                        $results.show();
+                    });
+                }, 300);
+            });
+
+            // Cerrar resultados al hacer clic fuera
+            $(document).on('click', function(e) {
+                if (!$(e.target).closest('#searchInput, #searchResults').length) {
+                    $results.hide();
+                }
+            });
+
+            $input.on('focus', function() {
+                if ($results.children().length > 0) {
+                    $results.show();
+                }
             });
         </script>
     </body>

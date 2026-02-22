@@ -72,7 +72,9 @@ class BolsaController extends Controller
 
         $properties = $query->orderBy('created_at', 'desc')->paginate(12);
 
-        return view('admin.bolsa.available', compact('properties'));
+        $sectors = \App\Sector::where('status', true)->orderBy('name')->get();
+
+        return view('admin.bolsa.available', compact('properties', 'sectors'));
     }
 
     /**
