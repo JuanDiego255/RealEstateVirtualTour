@@ -166,7 +166,7 @@
                             if (data) {
                                 return `<img class='circular' src='${routeBase}${data}' />`;
                             } else {
-                                return "<p>N/A</p>";
+                                return `<img class='circular' src='{{ url("virtualtour/images/hotspot.png") }}' />`;
                             }
                         },
                         orderable: false,

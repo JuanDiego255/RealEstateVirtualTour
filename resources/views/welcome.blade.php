@@ -495,9 +495,9 @@
                     'type' => 'custom', // Usar tipo custom para control total
                     'createTooltipFunc' => 'hotspotTooltipFunction',
                     'createTooltipArgs' => [
-                        'imageUrl' => isset($hotspot->image)
+                        'imageUrl' => !empty($hotspot->image)
                             ? route('file', $hotspot->image)
-                            : url('images/producto-sin-imagen.PNG'),
+                            : url('virtualtour/images/hotspot.png'),
                         'displayText' => $displayText,
                         'hotspotType' => $hotspot->type,
                         'videoTime' => $hotspot->video_time !== null ? (float) $hotspot->video_time : null,

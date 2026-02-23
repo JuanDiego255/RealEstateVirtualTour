@@ -103,6 +103,17 @@
                                     <textarea class="form-control form-control-sm" id="cardInfo" rows="2" placeholder="Descripción del hotspot..."></textarea>
                                 </div>
 
+                                <div class="form-group mb-2">
+                                    <label class="small mb-1"><i class="fa fa-image mr-1"></i> Imagen</label>
+                                    <div class="d-flex align-items-center">
+                                        <img id="cardImagePreview" src="{{ url('virtualtour/images/hotspot.png') }}" alt="Preview" style="width: 40px; height: 40px; object-fit: cover; border-radius: 50%; border: 2px solid #ddd; margin-right: 8px;">
+                                        <div style="flex: 1;">
+                                            <input type="file" class="form-control-file" id="cardImageFile" accept="image/*" style="font-size: 11px;">
+                                            <small class="text-muted">Opcional. Si no se selecciona se usa imagen por defecto.</small>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div class="d-flex justify-content-between">
                                     <button type="button" class="btn btn-sm btn-outline-secondary" id="cancelHotspotCard">
                                         <i class="fa fa-times"></i> Cancelar
@@ -126,6 +137,7 @@
                                 <thead class="thead-light">
                                     <tr>
                                         <th style="width: 30px;">#</th>
+                                        <th style="width: 50px;">Img</th>
                                         <th>Tipo</th>
                                         <th>Destino</th>
                                         <th>Info</th>
@@ -335,10 +347,8 @@
 
                             <div class="form-group">
                                 <label class="d-flex justify-content-left">Imagen Referencia</label>
-                                @if ($hotspot->image)
-                                    <img class="card-img-top img-fluid w-50"
-                                        src="{{ isset($hotspot->image) ? route('file', $hotspot->image) : url('images/producto-sin-imagen.PNG') }}">
-                                @endif
+                                <img class="card-img-top img-fluid w-50 mb-2"
+                                    src="{{ !empty($hotspot->image) ? route('file', $hotspot->image) : url('virtualtour/images/hotspot.png') }}">
                                 <div class="custom-file">
                                     <input class="form-control" type="file" name="image">
                                 </div>
@@ -422,9 +432,10 @@
 
         // ====== Variables globales para creación múltiple ======
         var viewerMulti = null;
-        var pendingHotspots = [];
+        var pendingHotspots = []; // Cada item: { ...datos, imageFile: File|null, imagePreviewUrl: string|null }
         var currentSceneId = null;
         var isVideoScene = false;
+        var defaultHotspotImage = '{{ url("virtualtour/images/hotspot.png") }}';
 
         // ====== Utilidad: drag-to-scrub en un contenedor de video ======
         function setupVideoScrub(containerEl, videoEl, progressEl, onClickCallback) {
@@ -546,6 +557,8 @@
             $('#cardTargetScene').val('');
             $('#cardTargetContainer').hide();
             $('#cardInfo').val('');
+            $('#cardImageFile').val('');
+            $('#cardImagePreview').attr('src', defaultHotspotImage);
             $('#addToListBtn').html('<i class="fa fa-plus"></i> Agregar');
 
             // Posicionar y mostrar
@@ -582,9 +595,11 @@
                 var typeLabel = h.type === 'scene' ? '<span class="badge badge-success">Enlace</span>' : '<span class="badge badge-info">Info</span>';
                 var targetLabel = h.type === 'scene' && h.targetScene ? sceneTitleMap[h.targetScene] || '-' : '-';
                 var infoShort = h.info.length > 30 ? h.info.substring(0, 30) + '...' : h.info;
+                var imgSrc = h.imagePreviewUrl || defaultHotspotImage;
 
                 var row = '<tr data-index="' + idx + '">' +
                     '<td>' + (idx + 1) + '</td>' +
+                    '<td><img src="' + imgSrc + '" style="width:32px; height:32px; object-fit:cover; border-radius:50%; border:1px solid #ddd;"></td>' +
                     '<td>' + typeLabel + '</td>' +
                     '<td>' + targetLabel + '</td>' +
                     '<td title="' + h.info.replace(/"/g, '&quot;') + '">' + infoShort + '</td>' +
@@ -753,6 +768,20 @@
             }
         });
 
+        // Preview de imagen en el card
+        $('#cardImageFile').on('change', function() {
+            var file = this.files[0];
+            if (file) {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    $('#cardImagePreview').attr('src', e.target.result);
+                };
+                reader.readAsDataURL(file);
+            } else {
+                $('#cardImagePreview').attr('src', defaultHotspotImage);
+            }
+        });
+
         // Agregar hotspot a la lista
         $('#addToListBtn').on('click', function() {
             var type = $('#cardType').val();
@@ -769,6 +798,15 @@
                 return;
             }
 
+            // Capturar archivo de imagen si existe
+            var imageFile = null;
+            var imagePreviewUrl = null;
+            var fileInput = document.getElementById('cardImageFile');
+            if (fileInput.files && fileInput.files[0]) {
+                imageFile = fileInput.files[0];
+                imagePreviewUrl = $('#cardImagePreview').attr('src');
+            }
+
             var hotspotData = {
                 sourceScene: currentSceneId,
                 type: type,
@@ -778,7 +816,9 @@
                 pitch: $('#cardPitch').val(),
                 video_time: $('#cardVideoTime').val(),
                 pos_x: $('#cardPosX').val(),
-                pos_y: $('#cardPosY').val()
+                pos_y: $('#cardPosY').val(),
+                imageFile: imageFile,
+                imagePreviewUrl: imagePreviewUrl
             };
 
             var editIndex = parseInt($('#cardEditIndex').val());
@@ -811,6 +851,8 @@
             $('#cardPosX').val(h.pos_x || '');
             $('#cardPosY').val(h.pos_y || '');
             $('#cardEditIndex').val(idx);
+            $('#cardImageFile').val('');
+            $('#cardImagePreview').attr('src', h.imagePreviewUrl || defaultHotspotImage);
             $('#addToListBtn').html('<i class="fa fa-check"></i> Actualizar');
 
             // Mostrar card en el centro
@@ -852,14 +894,33 @@
             var $btn = $(this);
             $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Guardando...');
 
+            // Construir FormData para enviar archivos junto con datos
+            var formData = new FormData();
+            formData.append('_token', '{{ csrf_token() }}');
+            formData.append('property_id', $('#propertyIdBatch').val());
+
+            pendingHotspots.forEach(function(h, idx) {
+                formData.append('hotspots[' + idx + '][sourceScene]', h.sourceScene);
+                formData.append('hotspots[' + idx + '][type]', h.type);
+                formData.append('hotspots[' + idx + '][info]', h.info);
+                if (h.targetScene) formData.append('hotspots[' + idx + '][targetScene]', h.targetScene);
+                if (h.yaw) formData.append('hotspots[' + idx + '][yaw]', h.yaw);
+                if (h.pitch) formData.append('hotspots[' + idx + '][pitch]', h.pitch);
+                if (h.video_time) formData.append('hotspots[' + idx + '][video_time]', h.video_time);
+                if (h.pos_x) formData.append('hotspots[' + idx + '][pos_x]', h.pos_x);
+                if (h.pos_y) formData.append('hotspots[' + idx + '][pos_y]', h.pos_y);
+                // Adjuntar imagen si existe
+                if (h.imageFile) {
+                    formData.append('images_' + idx, h.imageFile);
+                }
+            });
+
             $.ajax({
                 url: '{{ route("addHotspotBatch") }}',
                 method: 'POST',
-                data: {
-                    _token: '{{ csrf_token() }}',
-                    property_id: $('#propertyIdBatch').val(),
-                    hotspots: pendingHotspots
-                },
+                data: formData,
+                processData: false,
+                contentType: false,
                 success: function(response) {
                     if (response.success) {
                         alert(response.message);

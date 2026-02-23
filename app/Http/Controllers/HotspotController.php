@@ -176,6 +176,13 @@ class HotspotController extends Controller
 
                 $targetScene = $hotspotData['type'] === 'scene' ? $hotspotData['targetScene'] : null;
 
+                // Manejar imagen: buscar archivo por clave images_N
+                $image = null;
+                $fileKey = 'images_' . $index;
+                if ($request->hasFile($fileKey)) {
+                    $image = $request->file($fileKey)->store('uploads', 'public');
+                }
+
                 Hotspot::create([
                     'type' => $hotspotData['type'],
                     'yaw' => isset($hotspotData['yaw']) ? (float) $hotspotData['yaw'] : 0,
@@ -186,7 +193,7 @@ class HotspotController extends Controller
                     'info' => $hotspotData['info'],
                     'sourceScene' => $hotspotData['sourceScene'],
                     'targetScene' => $targetScene,
-                    'image' => null // No soportamos imágenes en batch por ahora
+                    'image' => $image
                 ]);
 
                 $createdCount++;
