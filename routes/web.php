@@ -63,6 +63,7 @@ Route::group(['middleware' => 'auth'], function () {
     Route::post('/changePassword', 'PasswordController@store')->name('changePassword');
     Route::post('/addScene', 'SceneController@store')->name('addScene');
     Route::post('/addHotspot', 'HotspotController@store')->name('addHotspot');
+    Route::post('/addHotspotBatch', 'HotspotController@storeBatch')->name('addHotspotBatch');
 
     // Rutas para subida de video en chunks (archivos grandes)
     Route::post('/upload-video-chunk', 'SceneController@uploadVideoChunk')->name('uploadVideoChunk');

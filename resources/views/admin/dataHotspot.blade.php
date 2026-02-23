@@ -1,142 +1,151 @@
 {{-- Vista Hotspots (Blade) --}}
 <div class="d-flex justify-content-end">
     <!-- Add Hotspot -->
-    <button type="button" class="btn btn-rounded btn-outline-info mb-3" data-toggle="modal" data-target="#addHotspot">
-        Nuevo HotSpot
+    <button type="button" class="btn btn-rounded btn-outline-info mb-3" data-toggle="modal" data-target="#addHotspotMulti">
+        <i class="fa fa-plus-circle mr-1"></i> Nuevo HotSpot
     </button>
 
-    <div class="modal fade" id="addHotspot">
+    {{-- Modal para creación múltiple de hotspots --}}
+    <div class="modal fade" id="addHotspotMulti">
         <div class="modal-dialog modal-xl modal-dialog-centered" role="document">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Agregar punto de acceso</h5>
-                    <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="fa fa-map-marker mr-2"></i>Agregar Puntos de Acceso</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
                 </div>
 
                 <div class="modal-body">
-                    <form action="{{ route('addHotspot') }}" method="POST" enctype="multipart/form-data">
-                        @csrf
+                    @if ($errors->any())
+                        @foreach ($errors->all() as $error)
+                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                <strong>{{ $error }}</strong>
+                                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                    <span class="fa fa-times"></span>
+                                </button>
+                            </div>
+                        @endforeach
+                    @endif
 
-                        @if ($errors->any())
-                            @foreach ($errors->all() as $error)
-                                <div class="alert-dismiss">
-                                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                                        <strong>{{ $error }}</strong>
-                                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                                            <span class="fa fa-times"></span>
-                                        </button>
-                                    </div>
-                                </div>
-                            @endforeach
-                        @endif
+                    <input type="hidden" id="propertyIdBatch" value="{{ $id }}">
 
-                        <input type="hidden" name="property_id" value="{{ $id }}">
+                    {{-- Paso 1: Seleccionar escena origen --}}
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="sourceSceneMulti" class="font-weight-bold">
+                                <i class="fa fa-image mr-1"></i> Escena Origen
+                            </label>
+                            <select class="form-control form-control-lg" id="sourceSceneMulti" required>
+                                <option value="" disabled selected>Seleccione una escena</option>
+                                @foreach ($scene as $item)
+                                    <option value="{{ $item->id }}" data-type="{{ $item->type }}">{{ $item->title }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-6 d-flex align-items-end">
+                            <div class="alert alert-info mb-0 w-100" style="font-size: 13px;">
+                                <i class="fa fa-info-circle mr-1"></i>
+                                Haz clic en la imagen para posicionar hotspots. Puedes agregar varios antes de guardar.
+                            </div>
+                        </div>
+                    </div>
 
+                    {{-- Contenedor del visor con card flotante --}}
+                    <div id="viewerWrapper" style="position: relative; display: none;">
                         {{-- Visor panorama (escenas 360) --}}
-                        <div id="panorama-hotspot-add" style="width: 100%; height: 500px;"></div>
+                        <div id="panorama-multi" style="width: 100%; height: 450px;"></div>
 
                         {{-- Visor video (escenas de video dron) --}}
-                        <div id="video-hotspot-add" style="width: 100%; height: 500px; display: none; position: relative; background: #000; cursor: crosshair; overflow: hidden;">
-                            <video id="video-hotspot-add-player" muted playsinline preload="auto" style="width:100%; height:100%; object-fit:cover; pointer-events:none;"></video>
-                            <div id="video-hotspot-add-marker" style="display:none; position:absolute; width:20px; height:20px; border:3px solid #e74c3c; border-radius:50%; background:rgba(231,76,60,0.3); transform:translate(-50%,-50%); pointer-events:none; z-index:5;"></div>
+                        <div id="video-multi" style="width: 100%; height: 450px; display: none; position: relative; background: #000; cursor: crosshair; overflow: hidden;">
+                            <video id="video-multi-player" muted playsinline preload="auto" style="width:100%; height:100%; object-fit:cover; pointer-events:none;"></video>
+                            <div id="video-multi-marker" style="display:none; position:absolute; width:20px; height:20px; border:3px solid #e74c3c; border-radius:50%; background:rgba(231,76,60,0.3); transform:translate(-50%,-50%); pointer-events:none; z-index:5;"></div>
                             <div style="position:absolute; bottom:0; left:0; width:100%; height:4px; background:rgba(255,255,255,0.2);">
-                                <div id="video-hotspot-add-progress" style="height:100%; background:#007bff; width:0%;"></div>
+                                <div id="video-multi-progress" style="height:100%; background:#007bff; width:0%;"></div>
                             </div>
                             <div style="position:absolute; bottom:10px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.6); color:#fff; padding:4px 12px; border-radius:10px; font-size:11px;">
-                                <i class="fa fa-arrows-h"></i> Arrastra para navegar, haz clic para posicionar el hotspot
+                                <i class="fa fa-arrows-h"></i> Arrastra para navegar, haz clic para posicionar
                             </div>
                         </div>
 
-                        <div class="row">
-                            <div class="form-group col-md-6">
-                                <label for="sourceSceneAdd">Origen de la escena</label>
-                                <select class="form-control form-control-lg input-rounded mb-4" id="sourceSceneAdd"
-                                    name="sourceScene" required>
-                                    <option value="" disabled selected>Seleccione uno</option>
-                                    @foreach ($scene as $item)
-                                        <option value="{{ $item->id }}" data-type="{{ $item->type }}">{{ $item->title }}</option>
-                                    @endforeach
-                                </select>
+                        {{-- Card flotante para configurar hotspot --}}
+                        <div id="hotspotCard" class="card shadow" style="display: none; position: absolute; width: 320px; z-index: 1000; border: 2px solid #007bff;">
+                            <div class="card-header bg-primary text-white py-2 d-flex justify-content-between align-items-center">
+                                <span><i class="fa fa-map-pin mr-1"></i> Configurar Hotspot</span>
+                                <button type="button" class="close text-white" id="closeHotspotCard" style="font-size: 18px;">&times;</button>
                             </div>
+                            <div class="card-body py-2">
+                                <input type="hidden" id="cardYaw">
+                                <input type="hidden" id="cardPitch">
+                                <input type="hidden" id="cardVideoTime">
+                                <input type="hidden" id="cardPosX">
+                                <input type="hidden" id="cardPosY">
+                                <input type="hidden" id="cardEditIndex" value="-1">
 
-                            <div class="form-group col-md-6">
-                                <label for="typeAdd">Tipo</label>
-                                <select class="form-control form-control-lg input-rounded mb-4" id="typeAdd"
-                                    name="type" required>
-                                    <option value="" disabled selected>Seleccione uno</option>
-                                    <option value="info">Información</option>
-                                    <option value="scene">Enlace</option>
-                                </select>
-                            </div>
+                                <div class="form-group mb-2">
+                                    <label class="small mb-1"><i class="fa fa-tag mr-1"></i> Tipo</label>
+                                    <select class="form-control form-control-sm" id="cardType">
+                                        <option value="info">Información</option>
+                                        <option value="scene">Enlace a escena</option>
+                                    </select>
+                                </div>
 
-                            <div class="form-group col-md-6" id="targetSceneAddContainer" style="display: none;">
-                                <label for="targetSceneAdd">Objetivo de la escena</label>
-                                <select class="form-control form-control-lg input-rounded mb-4" id="targetSceneAdd"
-                                    name="targetScene">
-                                    <option value="" disabled selected>Seleccione uno</option>
-                                    @foreach ($scene as $item)
-                                        <option value="{{ $item->id }}">{{ $item->title }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
+                                <div class="form-group mb-2" id="cardTargetContainer" style="display: none;">
+                                    <label class="small mb-1"><i class="fa fa-link mr-1"></i> Escena Destino</label>
+                                    <select class="form-control form-control-sm" id="cardTargetScene">
+                                        <option value="">Seleccione</option>
+                                        @foreach ($scene as $item)
+                                            <option value="{{ $item->id }}">{{ $item->title }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
 
-                            {{-- Campos de posición para panorama 360 --}}
-                            <div class="form-group col-md-6 panorama-pos-add">
-                                <label for="yawAdd">Yaw</label>
-                                <input id="yawAdd" name="yaw"
-                                    class="form-control form-control-lg input-rounded mb-4" required type="text"
-                                    step="0.1" value="0">
-                            </div>
+                                <div class="form-group mb-2">
+                                    <label class="small mb-1"><i class="fa fa-comment mr-1"></i> Información</label>
+                                    <textarea class="form-control form-control-sm" id="cardInfo" rows="2" placeholder="Descripción del hotspot..."></textarea>
+                                </div>
 
-                            <div class="form-group col-md-6 panorama-pos-add">
-                                <label for="pitchAdd">Pitch</label>
-                                <input id="pitchAdd" name="pitch"
-                                    class="form-control form-control-lg input-rounded mb-4" required type="text"
-                                    step="0.1" value="0">
-                            </div>
-
-                            {{-- Campos de posición para video --}}
-                            <div class="form-group col-md-4 video-pos-add" style="display:none;">
-                                <label for="videoTimeAdd"><i class="fa fa-clock-o"></i> Tiempo en video (seg)</label>
-                                <input id="videoTimeAdd" name="video_time"
-                                    class="form-control form-control-lg input-rounded mb-4" type="text"
-                                    step="0.1" value="">
-                            </div>
-
-                            <div class="form-group col-md-4 video-pos-add" style="display:none;">
-                                <label for="posXAdd">Posición X (%)</label>
-                                <input id="posXAdd" name="pos_x"
-                                    class="form-control form-control-lg input-rounded mb-4" type="text"
-                                    step="0.1" min="0" max="100" value="">
-                            </div>
-
-                            <div class="form-group col-md-4 video-pos-add" style="display:none;">
-                                <label for="posYAdd">Posición Y (%)</label>
-                                <input id="posYAdd" name="pos_y"
-                                    class="form-control form-control-lg input-rounded mb-4" type="text"
-                                    step="0.1" min="0" max="100" value="">
-                            </div>
-
-                            <div class="form-group col-md-12">
-                                <label for="textAdd">Información</label>
-                                <textarea id="textAdd" class="form-control form-control-lg input-rounded mb-4" required name="text"></textarea>
+                                <div class="d-flex justify-content-between">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="cancelHotspotCard">
+                                        <i class="fa fa-times"></i> Cancelar
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-success" id="addToListBtn">
+                                        <i class="fa fa-plus"></i> Agregar
+                                    </button>
+                                </div>
                             </div>
                         </div>
+                    </div>
 
-                        <div class="form-group">
-                            <label for="image">Imagen Referencia</label>
-                            <img class="card-img-top img-fluid" id="image-preview" alt="Image Preview" />
-                            <div class="custom-file">
-                                <input type="file" class="form-control-file" id="image-upload" name="image"
-                                    onchange="previewImage()" accept="image/*">
-                            </div>
+                    {{-- Lista de hotspots pendientes --}}
+                    <div id="pendingHotspotsSection" style="display: none;" class="mt-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0"><i class="fa fa-list mr-1"></i> Hotspots Pendientes</h6>
+                            <span class="badge badge-primary" id="pendingCount">0</span>
                         </div>
+                        <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
+                            <table class="table table-sm table-hover mb-0" id="pendingTable">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th style="width: 30px;">#</th>
+                                        <th>Tipo</th>
+                                        <th>Destino</th>
+                                        <th>Info</th>
+                                        <th style="width: 80px;">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pendingTableBody">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
 
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-danger" data-dismiss="modal">Cancelar</button>
-                            <button type="submit" class="btn btn-primary btn-sm">Guardar</button>
-                        </div>
-                    </form>
+                    <div class="modal-footer px-0 pb-0 mt-3">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                            <i class="fa fa-times mr-1"></i> Cerrar
+                        </button>
+                        <button type="button" class="btn btn-primary" id="saveAllHotspots" disabled>
+                            <i class="fa fa-save mr-1"></i> Guardar Todos (<span id="saveCount">0</span>)
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -387,7 +396,7 @@
             } catch (e) {}
         }
 
-        // ---------- Map escena -> imagen / video / tipo ----------
+        // ---------- Map escena -> imagen / video / tipo / título ----------
         var sceneImageMap = {
             @foreach ($scene as $scenes)
                 {{ $scenes->id }}: "{{ isset($scenes->image) ? route('file', $scenes->image) : url('images/producto-sin-imagen.PNG') }}",
@@ -405,6 +414,17 @@
                 @endif
             @endforeach
         };
+        var sceneTitleMap = {
+            @foreach ($scene as $scenes)
+                {{ $scenes->id }}: "{{ addslashes($scenes->title) }}",
+            @endforeach
+        };
+
+        // ====== Variables globales para creación múltiple ======
+        var viewerMulti = null;
+        var pendingHotspots = [];
+        var currentSceneId = null;
+        var isVideoScene = false;
 
         // ====== Utilidad: drag-to-scrub en un contenedor de video ======
         function setupVideoScrub(containerEl, videoEl, progressEl, onClickCallback) {
@@ -450,7 +470,7 @@
                     var y = ((e.clientY - rect.top) / rect.height) * 100;
                     x = Math.max(0, Math.min(100, x));
                     y = Math.max(0, Math.min(100, y));
-                    onClickCallback(x, y, videoEl.currentTime);
+                    onClickCallback(x, y, videoEl.currentTime, e.clientX, e.clientY);
                 }
             });
 
@@ -489,130 +509,378 @@
             });
         }
 
-        // ====== Función para alternar visor panorama/video según tipo de escena ======
-        function toggleViewerType(sceneId, panoramaContainerId, videoContainerId, posFieldsClass, isAdd) {
-            var sceneType = sceneTypeMap[sceneId] || 'equirectangular';
-            var isVideo = (sceneType === 'video');
+        // ====== Mostrar card flotante ======
+        function showHotspotCard(x, y, yaw, pitch, videoTime, posX, posY) {
+            var $card = $('#hotspotCard');
+            var $wrapper = $('#viewerWrapper');
+            var wrapperOffset = $wrapper.offset();
+            var wrapperWidth = $wrapper.width();
+            var wrapperHeight = $wrapper.height();
 
-            if (isAdd) {
-                // ADD: mostrar/ocultar contenedores y campos
-                var panoramaEl = document.getElementById(panoramaContainerId);
-                var videoEl = document.getElementById(videoContainerId);
+            // Posición relativa al wrapper
+            var cardLeft = x - wrapperOffset.left;
+            var cardTop = y - wrapperOffset.top;
 
-                if (isVideo) {
-                    if (panoramaEl) panoramaEl.style.display = 'none';
-                    if (videoEl) videoEl.style.display = 'block';
-                    $('.panorama-pos-add').hide();
-                    $('.video-pos-add').show();
-                    // Cargar video
-                    var videoUrl = sceneVideoMap[sceneId];
-                    if (videoUrl) {
-                        var player = document.getElementById('video-hotspot-add-player');
-                        player.src = videoUrl;
-                        player.load();
-                    }
-                } else {
-                    if (panoramaEl) panoramaEl.style.display = 'block';
-                    if (videoEl) videoEl.style.display = 'none';
-                    $('.panorama-pos-add').show();
-                    $('.video-pos-add').hide();
+            // Ajustar si el card se sale del contenedor
+            var cardWidth = 320;
+            var cardHeight = 280;
+            if (cardLeft + cardWidth > wrapperWidth) {
+                cardLeft = wrapperWidth - cardWidth - 10;
+            }
+            if (cardLeft < 10) cardLeft = 10;
+            if (cardTop + cardHeight > wrapperHeight) {
+                cardTop = cardTop - cardHeight - 20;
+            }
+            if (cardTop < 10) cardTop = 10;
+
+            // Guardar coordenadas
+            $('#cardYaw').val(yaw || '');
+            $('#cardPitch').val(pitch || '');
+            $('#cardVideoTime').val(videoTime || '');
+            $('#cardPosX').val(posX || '');
+            $('#cardPosY').val(posY || '');
+            $('#cardEditIndex').val(-1);
+
+            // Resetear campos
+            $('#cardType').val('info');
+            $('#cardTargetScene').val('');
+            $('#cardTargetContainer').hide();
+            $('#cardInfo').val('');
+            $('#addToListBtn').html('<i class="fa fa-plus"></i> Agregar');
+
+            // Posicionar y mostrar
+            $card.css({
+                left: cardLeft + 'px',
+                top: cardTop + 'px'
+            }).show();
+        }
+
+        // ====== Ocultar card flotante ======
+        function hideHotspotCard() {
+            $('#hotspotCard').hide();
+        }
+
+        // ====== Actualizar lista de hotspots pendientes ======
+        function updatePendingList() {
+            var $tbody = $('#pendingTableBody');
+            $tbody.empty();
+
+            if (pendingHotspots.length === 0) {
+                $('#pendingHotspotsSection').hide();
+                $('#saveAllHotspots').prop('disabled', true);
+                $('#saveCount').text('0');
+                $('#pendingCount').text('0');
+                return;
+            }
+
+            $('#pendingHotspotsSection').show();
+            $('#saveAllHotspots').prop('disabled', false);
+            $('#saveCount').text(pendingHotspots.length);
+            $('#pendingCount').text(pendingHotspots.length);
+
+            pendingHotspots.forEach(function(h, idx) {
+                var typeLabel = h.type === 'scene' ? '<span class="badge badge-success">Enlace</span>' : '<span class="badge badge-info">Info</span>';
+                var targetLabel = h.type === 'scene' && h.targetScene ? sceneTitleMap[h.targetScene] || '-' : '-';
+                var infoShort = h.info.length > 30 ? h.info.substring(0, 30) + '...' : h.info;
+
+                var row = '<tr data-index="' + idx + '">' +
+                    '<td>' + (idx + 1) + '</td>' +
+                    '<td>' + typeLabel + '</td>' +
+                    '<td>' + targetLabel + '</td>' +
+                    '<td title="' + h.info.replace(/"/g, '&quot;') + '">' + infoShort + '</td>' +
+                    '<td>' +
+                        '<button type="button" class="btn btn-sm btn-outline-primary edit-pending mr-1" data-index="' + idx + '" title="Editar"><i class="fa fa-pencil"></i></button>' +
+                        '<button type="button" class="btn btn-sm btn-outline-danger delete-pending" data-index="' + idx + '" title="Eliminar"><i class="fa fa-trash"></i></button>' +
+                    '</td>' +
+                '</tr>';
+                $tbody.append(row);
+            });
+
+            // Actualizar marcadores en el visor
+            updateViewerMarkers();
+        }
+
+        // ====== Actualizar marcadores en el visor ======
+        function updateViewerMarkers() {
+            if (isVideoScene) {
+                // Para video, actualizar el marcador del último punto
+                // (Los videos solo muestran un marcador a la vez, en el tiempo actual)
+            } else {
+                // Para panorama 360, necesitamos agregar los hotspots pendientes al viewer
+                if (viewerMulti && pendingHotspots.length > 0) {
+                    // Remover hotspots previos si existen
+                    try {
+                        var existingHotspots = viewerMulti.getConfig().hotSpots || [];
+                        existingHotspots.forEach(function(hs, i) {
+                            viewerMulti.removeHotSpot(hs.id || 'pending-' + i);
+                        });
+                    } catch(e) {}
+
+                    // Agregar marcadores para cada hotspot pendiente
+                    pendingHotspots.forEach(function(h, idx) {
+                        if (h.yaw !== undefined && h.pitch !== undefined) {
+                            try {
+                                viewerMulti.addHotSpot({
+                                    id: 'pending-' + idx,
+                                    pitch: parseFloat(h.pitch),
+                                    yaw: parseFloat(h.yaw),
+                                    type: 'info',
+                                    text: (idx + 1) + '. ' + (h.info.substring(0, 20) || 'Hotspot'),
+                                    cssClass: 'pending-hotspot-marker'
+                                });
+                            } catch(e) {
+                                console.log('Error adding hotspot marker:', e);
+                            }
+                        }
+                    });
                 }
             }
         }
 
-        // ====== ADD ======
-        var viewerAdd = null;
-        var panoramaAddEl = document.getElementById("panorama-hotspot-add");
-        var videoAddEl = document.getElementById("video-hotspot-add");
-        if (panoramaAddEl) panoramaAddEl.style.display = "none";
+        // ====== Inicializar modal de creación múltiple ======
+        var panoramaMultiEl = document.getElementById('panorama-multi');
+        var videoMultiEl = document.getElementById('video-multi');
+        var videoMultiPlayer = document.getElementById('video-multi-player');
+        var videoMultiProgress = document.getElementById('video-multi-progress');
+        var videoMultiMarker = document.getElementById('video-multi-marker');
 
-        // Setup video scrub para ADD
-        var videoAddPlayer = document.getElementById('video-hotspot-add-player');
-        var videoAddProgress = document.getElementById('video-hotspot-add-progress');
-        var videoAddMarker = document.getElementById('video-hotspot-add-marker');
-
-        setupVideoScrub(videoAddEl, videoAddPlayer, videoAddProgress, function(x, y, time) {
-            // Clic en video → posicionar hotspot
-            $('#videoTimeAdd').val(round3(time));
-            $('#posXAdd').val(round3(x));
-            $('#posYAdd').val(round3(y));
-            // Mostrar marcador
-            videoAddMarker.style.display = 'block';
-            videoAddMarker.style.left = x + '%';
-            videoAddMarker.style.top = y + '%';
+        // Setup video scrub
+        setupVideoScrub(videoMultiEl, videoMultiPlayer, videoMultiProgress, function(x, y, time, clientX, clientY) {
+            // Click en video → mostrar card
+            videoMultiMarker.style.display = 'block';
+            videoMultiMarker.style.left = x + '%';
+            videoMultiMarker.style.top = y + '%';
+            showHotspotCard(clientX, clientY, null, null, round3(time), round3(x), round3(y));
         });
 
-        $("#addHotspot").on('shown.bs.modal', function() {
-            if (panoramaAddEl) panoramaAddEl.style.display = "none";
-            if (videoAddEl) videoAddEl.style.display = "none";
-            destroyViewer(viewerAdd);
-            $("#yawAdd").val('0');
-            $("#pitchAdd").val('0');
-            $("#videoTimeAdd").val('');
-            $("#posXAdd").val('');
-            $("#posYAdd").val('');
-            videoAddMarker.style.display = 'none';
-            $("#sourceSceneAdd").val('');
-            $('.panorama-pos-add').show();
-            $('.video-pos-add').hide();
+        // Al abrir el modal
+        $('#addHotspotMulti').on('shown.bs.modal', function() {
+            pendingHotspots = [];
+            currentSceneId = null;
+            isVideoScene = false;
+            destroyViewer(viewerMulti);
+            viewerMulti = null;
+            $('#viewerWrapper').hide();
+            $('#sourceSceneMulti').val('');
+            hideHotspotCard();
+            updatePendingList();
+            videoMultiMarker.style.display = 'none';
         });
 
-        $("#sourceSceneAdd").on("change", function() {
-            var selectedSceneId = $(this).val();
-            var sceneType = sceneTypeMap[selectedSceneId] || 'equirectangular';
+        // Al cerrar el modal
+        $('#addHotspotMulti').on('hidden.bs.modal', function() {
+            destroyViewer(viewerMulti);
+            viewerMulti = null;
+            pendingHotspots = [];
+            hideHotspotCard();
+            if (videoMultiPlayer) {
+                videoMultiPlayer.pause();
+                videoMultiPlayer.removeAttribute('src');
+            }
+        });
 
-            if (sceneType === 'video') {
+        // Cambio de escena origen
+        $('#sourceSceneMulti').on('change', function() {
+            currentSceneId = $(this).val();
+            var sceneType = sceneTypeMap[currentSceneId] || 'equirectangular';
+            isVideoScene = (sceneType === 'video');
+
+            $('#viewerWrapper').show();
+            hideHotspotCard();
+
+            // Limpiar hotspots pendientes al cambiar de escena
+            pendingHotspots = [];
+            updatePendingList();
+
+            if (isVideoScene) {
                 // Escena de video
-                if (panoramaAddEl) panoramaAddEl.style.display = 'none';
-                destroyViewer(viewerAdd);
-                viewerAdd = null;
+                panoramaMultiEl.style.display = 'none';
+                videoMultiEl.style.display = 'block';
+                destroyViewer(viewerMulti);
+                viewerMulti = null;
 
-                videoAddEl.style.display = 'block';
-                $('.panorama-pos-add').hide();
-                $('.video-pos-add').show();
-
-                var videoUrl = sceneVideoMap[selectedSceneId];
+                var videoUrl = sceneVideoMap[currentSceneId];
                 if (videoUrl) {
-                    videoAddPlayer.src = videoUrl;
-                    videoAddPlayer.load();
+                    videoMultiPlayer.src = videoUrl;
+                    videoMultiPlayer.load();
                 }
-                videoAddMarker.style.display = 'none';
-                $('#videoTimeAdd').val('');
-                $('#posXAdd').val('');
-                $('#posYAdd').val('');
+                videoMultiMarker.style.display = 'none';
             } else {
                 // Escena panorama 360
-                videoAddEl.style.display = 'none';
-                videoAddPlayer.pause();
-                videoAddPlayer.removeAttribute('src');
-                $('.panorama-pos-add').show();
-                $('.video-pos-add').hide();
+                videoMultiEl.style.display = 'none';
+                if (videoMultiPlayer) {
+                    videoMultiPlayer.pause();
+                    videoMultiPlayer.removeAttribute('src');
+                }
+                panoramaMultiEl.style.display = 'block';
 
-                var imageUrl = sceneImageMap[selectedSceneId];
+                var imageUrl = sceneImageMap[currentSceneId];
                 if (!imageUrl) return;
 
-                panoramaAddEl.style.display = "block";
-                destroyViewer(viewerAdd);
-
-                viewerAdd = pannellum.viewer('panorama-hotspot-add', {
+                destroyViewer(viewerMulti);
+                viewerMulti = pannellum.viewer('panorama-multi', {
                     type: "equirectangular",
                     panorama: imageUrl,
                     autoLoad: true,
-                    showControls: true
+                    showControls: true,
+                    hotSpotDebug: false
                 });
 
-                viewerAdd.on('mousedown', function(ev) {
-                    var coords = viewerAdd.mouseEventToCoords(ev);
+                // Click en panorama → mostrar card
+                viewerMulti.on('mousedown', function(ev) {
+                    var coords = viewerMulti.mouseEventToCoords(ev);
                     if (!coords) return;
                     var pitch = coords[0];
                     var yaw = coords[1];
-                    $("#yawAdd").val(round3(yaw));
-                    $("#pitchAdd").val(round3(pitch));
+                    showHotspotCard(ev.clientX, ev.clientY, round3(yaw), round3(pitch), null, null, null);
                 });
             }
         });
 
-        // ====== EDIT ======
+        // Cerrar card flotante
+        $('#closeHotspotCard, #cancelHotspotCard').on('click', function() {
+            hideHotspotCard();
+            videoMultiMarker.style.display = 'none';
+        });
+
+        // Cambio de tipo en card
+        $('#cardType').on('change', function() {
+            if ($(this).val() === 'scene') {
+                $('#cardTargetContainer').show();
+            } else {
+                $('#cardTargetContainer').hide();
+                $('#cardTargetScene').val('');
+            }
+        });
+
+        // Agregar hotspot a la lista
+        $('#addToListBtn').on('click', function() {
+            var type = $('#cardType').val();
+            var targetScene = $('#cardTargetScene').val();
+            var info = $('#cardInfo').val().trim();
+
+            // Validaciones
+            if (!info) {
+                alert('Por favor ingresa la información del hotspot');
+                return;
+            }
+            if (type === 'scene' && !targetScene) {
+                alert('Por favor selecciona la escena destino');
+                return;
+            }
+
+            var hotspotData = {
+                sourceScene: currentSceneId,
+                type: type,
+                targetScene: type === 'scene' ? targetScene : null,
+                info: info,
+                yaw: $('#cardYaw').val(),
+                pitch: $('#cardPitch').val(),
+                video_time: $('#cardVideoTime').val(),
+                pos_x: $('#cardPosX').val(),
+                pos_y: $('#cardPosY').val()
+            };
+
+            var editIndex = parseInt($('#cardEditIndex').val());
+            if (editIndex >= 0) {
+                // Editar existente
+                pendingHotspots[editIndex] = hotspotData;
+            } else {
+                // Agregar nuevo
+                pendingHotspots.push(hotspotData);
+            }
+
+            updatePendingList();
+            hideHotspotCard();
+            videoMultiMarker.style.display = 'none';
+        });
+
+        // Editar hotspot pendiente
+        $(document).on('click', '.edit-pending', function() {
+            var idx = $(this).data('index');
+            var h = pendingHotspots[idx];
+            if (!h) return;
+
+            // Rellenar card con datos existentes
+            $('#cardType').val(h.type).trigger('change');
+            $('#cardTargetScene').val(h.targetScene || '');
+            $('#cardInfo').val(h.info);
+            $('#cardYaw').val(h.yaw || '');
+            $('#cardPitch').val(h.pitch || '');
+            $('#cardVideoTime').val(h.video_time || '');
+            $('#cardPosX').val(h.pos_x || '');
+            $('#cardPosY').val(h.pos_y || '');
+            $('#cardEditIndex').val(idx);
+            $('#addToListBtn').html('<i class="fa fa-check"></i> Actualizar');
+
+            // Mostrar card en el centro
+            var $wrapper = $('#viewerWrapper');
+            var $card = $('#hotspotCard');
+            $card.css({
+                left: ($wrapper.width() / 2 - 160) + 'px',
+                top: '100px'
+            }).show();
+
+            // Si es panorama, navegar a la posición
+            if (!isVideoScene && viewerMulti && h.yaw && h.pitch) {
+                viewerMulti.setYaw(parseFloat(h.yaw));
+                viewerMulti.setPitch(parseFloat(h.pitch));
+            }
+            // Si es video, navegar al tiempo
+            if (isVideoScene && h.video_time) {
+                videoMultiPlayer.currentTime = parseFloat(h.video_time);
+                videoMultiMarker.style.display = 'block';
+                videoMultiMarker.style.left = h.pos_x + '%';
+                videoMultiMarker.style.top = h.pos_y + '%';
+            }
+        });
+
+        // Eliminar hotspot pendiente
+        $(document).on('click', '.delete-pending', function() {
+            var idx = $(this).data('index');
+            pendingHotspots.splice(idx, 1);
+            updatePendingList();
+        });
+
+        // Guardar todos los hotspots
+        $('#saveAllHotspots').on('click', function() {
+            if (pendingHotspots.length === 0) {
+                alert('No hay hotspots pendientes para guardar');
+                return;
+            }
+
+            var $btn = $(this);
+            $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Guardando...');
+
+            $.ajax({
+                url: '{{ route("addHotspotBatch") }}',
+                method: 'POST',
+                data: {
+                    _token: '{{ csrf_token() }}',
+                    property_id: $('#propertyIdBatch').val(),
+                    hotspots: pendingHotspots
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.message);
+                        window.location.href = response.redirect;
+                    } else {
+                        alert('Error: ' + response.message);
+                        $btn.prop('disabled', false).html('<i class="fa fa-save mr-1"></i> Guardar Todos (<span id="saveCount">' + pendingHotspots.length + '</span>)');
+                    }
+                },
+                error: function(xhr) {
+                    var msg = 'Error al guardar los hotspots';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        msg = xhr.responseJSON.message;
+                    }
+                    alert(msg);
+                    $btn.prop('disabled', false).html('<i class="fa fa-save mr-1"></i> Guardar Todos (<span id="saveCount">' + pendingHotspots.length + '</span>)');
+                }
+            });
+        });
+
+        // ====== EDIT (mantener funcionalidad existente) ======
         $('[id^="editHotspot"]').on('shown.bs.modal', function() {
             var $modal = $(this);
             var idNum = $modal.attr('id').match(/\d+/)[0];
@@ -740,17 +1008,6 @@
         });
 
         // ====== Control de visibilidad de targetScene según tipo ======
-        $('#typeAdd').on('change', function() {
-            var selectedType = $(this).val();
-            if (selectedType === 'scene') {
-                $('#targetSceneAddContainer').show();
-                $('#targetSceneAdd').prop('required', true);
-            } else {
-                $('#targetSceneAddContainer').hide();
-                $('#targetSceneAdd').prop('required', false).val('');
-            }
-        });
-
         $(document).on('change', '.hotspot-type-select', function() {
             var selectedType = $(this).val();
             var hotspotId = $(this).data('hotspot-id');
@@ -767,3 +1024,23 @@
         });
     });
 </script>
+
+<style>
+/* Estilos para marcadores de hotspots pendientes */
+.pending-hotspot-marker {
+    background: rgba(40, 167, 69, 0.8) !important;
+    border: 2px solid #fff !important;
+    border-radius: 50% !important;
+    width: 24px !important;
+    height: 24px !important;
+    font-size: 11px !important;
+    color: #fff !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+}
+.pending-hotspot-marker span {
+    display: none;
+}
+</style>
