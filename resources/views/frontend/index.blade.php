@@ -211,6 +211,7 @@
                     </div>
                 @else
                     {{-- Fallback: mostrar propiedades directamente si no hay sectores --}}
+                    @include('frontend._spin-card-styles')
                     <div class="row justify-content-center">
                         <div class="col-md-12 heading-section text-center ftco-animate mb-5">
                             <span class="subheading">Tours disponibles</span>
@@ -220,39 +221,59 @@
                     <div class="row">
                         @if (count($properties) != 0)
                             @foreach ($properties as $property)
-                                <div class="col-md-4">
-                                    <div class="property-wrap ftco-animate">
-                                        <a href="#" class="img"
-                                            style="background-image: url('{{ isset($property->image) ? route('file', $property->image) : url('images/producto-sin-imagen.PNG') }}')"></a>
-                                        <div class="text">
-                                            <p class="price">
-                                                <span class="old-price">₡{{ number_format($property->price) }}</span>
-                                                <span
-                                                    class="orig-price">₡{{ number_format($property->maintenance) }}<small>/mo</small></span>
-                                            </p>
-                                            <ul class="property_list">
+                                @php
+                                    $spin = $property->active_spin;
+                                    $hasSpin = !empty($spin);
+                                @endphp
+                                <div class="col-md-4 mb-4">
+                                    <div class="card spin-card ftco-animate h-100">
+                                        @if($hasSpin)
+                                            <div class="spin-viewer-wrap" id="spinViewer{{ $property->id }}"
+                                                 data-frames-dir="{{ $spin->frames_dir }}"
+                                                 data-frames-count="{{ $spin->frames_count }}"
+                                                 data-auto-rotate="{{ $property->spin_auto_rotate ? '1' : '0' }}">
+                                                <canvas></canvas>
+                                                <div class="spin-overlay">
+                                                    <span class="spin-arrows">&larr;</span>
+                                                    <span>Spin 360</span>
+                                                    <span class="spin-arrows">&rarr;</span>
+                                                </div>
+                                            </div>
+                                        @else
+                                            <a href="{{ route('virtual-tour', $property->id) }}">
+                                                <div class="spin-img-wrap"
+                                                    style="background-image: url('{{ isset($property->image) ? route('file', $property->image) : url('images/producto-sin-imagen.PNG') }}')">
+                                                </div>
+                                            </a>
+                                        @endif
+                                        <div class="card-info">
+                                            <div class="price-row">
+                                                <span class="price-main">{{ $property->formatted_price ?? '₡' . number_format($property->price) }}</span>
+                                                @if($property->maintenance)
+                                                    <span class="price-sub">₡{{ number_format($property->maintenance) }}/mo</span>
+                                                @endif
+                                            </div>
+                                            <ul class="prop-features">
                                                 <li><span class="flaticon-bed"></span>{{ $property->rooms }}</li>
                                                 <li><span class="flaticon-bathtub"></span>{{ $property->bathrooms }}</li>
-                                                <li><span class="flaticon-floor-plan"></span>{{ $property->construction }}
-                                                    Mt2</li>
+                                                <li><span class="flaticon-floor-plan"></span>{{ $property->construction }} Mt2</li>
                                             </ul>
-                                            <h3><a href="#">{{ $property->name }}</a></h3>
-                                            <span
-                                                class="location">{{ $property->location ?? 'Ubicación no disponible' }}</span>
-                                            <a href="{{ route('virtual-tour', $property->id) }}"
-                                                class="d-flex align-items-center justify-content-center btn-custom">
-                                                <span class="ion-ios-link"></span> Virtual Tour
+                                            <h5><a href="{{ route('virtual-tour', $property->id) }}">{{ $property->name }}</a></h5>
+                                            <span class="location-text">{{ $property->location ?? 'Ubicación no disponible' }}</span>
+                                            <a href="{{ route('virtual-tour', $property->id) }}" class="btn-tour">
+                                                <i class="fa fa-play-circle mr-1"></i> Virtual Tour
                                             </a>
                                         </div>
                                     </div>
                                 </div>
                             @endforeach
                         @else
-                            <center>
-                                <h3 class="text-muted text-center mt-5">No hay propiedades para visualizar</h3>
-                            </center>
+                            <div class="col-12 text-center">
+                                <h3 class="text-muted mt-5">No hay propiedades para visualizar</h3>
+                            </div>
                         @endif
                     </div>
+                    @include('frontend._spin-viewer-script')
                 @endif
             </div>
         </section>

@@ -45,7 +45,23 @@ class SceneController extends Controller
 
         $sceneIds = $scene->pluck('id')->toArray();
         $hotspots = Hotspot::whereIn('sourceScene', $sceneIds)->get();
-        return view('admin.config', compact('hotspots', 'scene', 'id', 'type'));
+
+        $property = Properties::find($id);
+
+        return view('admin.config', compact('hotspots', 'scene', 'id', 'type', 'property'));
+    }
+
+    /**
+     * Update spin display settings for a property
+     */
+    public function updateSpinSettings(Request $request)
+    {
+        $property = Properties::findOrFail($request->input('property_id'));
+        $property->spin_active = $request->boolean('spin_active');
+        $property->spin_auto_rotate = $request->boolean('spin_auto_rotate');
+        $property->save();
+
+        return response()->json(['success' => true]);
     }
 
     /**

@@ -38,6 +38,8 @@ class Properties extends Model
         'commission_percentage',
         'commission_notes',
         'has_virtual_tour',
+        'spin_active',
+        'spin_auto_rotate',
         'is_featured',
         'views_count',
         'published_at',
@@ -66,6 +68,8 @@ class Properties extends Model
         'is_exclusive' => 'boolean',
         'commission_percentage' => 'decimal:2',
         'has_virtual_tour' => 'boolean',
+        'spin_active' => 'boolean',
+        'spin_auto_rotate' => 'boolean',
         'is_featured' => 'boolean',
         'views_count' => 'integer',
         'published_at' => 'datetime',
@@ -165,6 +169,23 @@ class Properties extends Model
     public function sale()
     {
         return $this->hasOne(Sale::class, 'property_id');
+    }
+
+    /**
+     * Obtener el spin activo a través de las escenas
+     */
+    public function getActiveSpinAttribute()
+    {
+        if (!$this->spin_active) return null;
+
+        $scene = $this->scenes()->whereNotNull('spin_id')->first();
+        if (!$scene) return null;
+
+        $spin = \App\Models\Spin::where('id', $scene->spin_id)
+            ->where('status', 'ready')
+            ->first();
+
+        return $spin;
     }
 
     /**

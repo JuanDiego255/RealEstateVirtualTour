@@ -14,6 +14,49 @@
         </div>
     @endif
 
+    {{-- Panel Spin 360 --}}
+    @if(isset($property) && $property)
+        @php
+            $hasSpin = $property->scenes()->whereNotNull('spin_id')->exists();
+            $spinReady = false;
+            if ($hasSpin) {
+                $sceneWithSpin = $property->scenes()->whereNotNull('spin_id')->first();
+                $spinReady = $sceneWithSpin && $sceneWithSpin->spin && $sceneWithSpin->spin->status === 'ready';
+            }
+        @endphp
+        @if($spinReady)
+            <div class="row mb-3">
+                <div class="col-lg-12">
+                    <div class="card" style="border-left: 4px solid #007bff;">
+                        <div class="card-body py-3">
+                            <div class="d-flex align-items-center justify-content-between flex-wrap">
+                                <div>
+                                    <h6 class="mb-1"><i class="fa fa-refresh mr-2"></i>Spin 360 en Landing Page</h6>
+                                    <small class="text-muted">Configura cómo se muestra el spin en las tarjetas de publicaciones</small>
+                                </div>
+                                <div class="d-flex align-items-center" style="gap: 20px;">
+                                    <div class="custom-control custom-switch">
+                                        <input type="checkbox" class="custom-control-input" id="spin_active"
+                                            {{ $property->spin_active ? 'checked' : '' }}>
+                                        <label class="custom-control-label" for="spin_active">Spin activo</label>
+                                    </div>
+                                    <div class="custom-control custom-switch">
+                                        <input type="checkbox" class="custom-control-input" id="spin_auto_rotate"
+                                            {{ $property->spin_auto_rotate ? 'checked' : '' }}>
+                                        <label class="custom-control-label" for="spin_auto_rotate">Auto-rotate</label>
+                                    </div>
+                                    <span id="spinSettingsStatus" class="text-success" style="font-size: 12px; display: none;">
+                                        <i class="fa fa-check"></i> Guardado
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
+    @endif
+
     <div class="row">
         <div class="col-lg-12 mt-sm-30 mt-xs-30">
             <div class="card">
@@ -196,6 +239,28 @@
                     }
                 ],
                 'order': []
+            });
+        });
+    </script>
+
+    {{-- Spin settings AJAX --}}
+    <script>
+        $(document).ready(function() {
+            $('#spin_active, #spin_auto_rotate').on('change', function() {
+                var csrfToken = $('meta[name="csrf-token"]').attr('content') || $('input[name="_token"]').first().val();
+                $.ajax({
+                    url: '{{ route("updateSpinSettings") }}',
+                    type: 'POST',
+                    data: {
+                        property_id: '{{ $id }}',
+                        spin_active: $('#spin_active').is(':checked') ? 1 : 0,
+                        spin_auto_rotate: $('#spin_auto_rotate').is(':checked') ? 1 : 0,
+                        _token: csrfToken
+                    },
+                    success: function() {
+                        $('#spinSettingsStatus').fadeIn().delay(2000).fadeOut();
+                    }
+                });
             });
         });
     </script>

@@ -43,6 +43,8 @@
 
         {{-- PUBLICACIONES (propiedades + vehículos unificados) --}}
         @if ($subcategory->properties->count() > 0)
+            @include('frontend._spin-card-styles')
+
             <section class="ftco-section goto-here">
                 <div class="container">
                     <div class="row justify-content-center">
@@ -53,48 +55,66 @@
                     </div>
                     <div class="row">
                         @foreach ($subcategory->properties as $property)
-                            <div class="col-md-4">
-                                <div class="property-wrap ftco-animate">
-                                    <a href="#" class="img"
-                                        style="background-image: url('{{ isset($property->image) ? route('file', $property->image) : url('images/producto-sin-imagen.PNG') }}')"></a>
-                                    <div class="text">
-                                        <p class="price">
-                                            <span class="old-price">{{ $property->formatted_price ?? (($property->currency ?? 'CRC') === 'USD' ? '$' : '₡') . number_format($property->price) }}</span>
-                                            @if(($property->property_type ?? '') !== 'vehicle' && $property->maintenance)
-                                                <span class="orig-price">₡{{ number_format($property->maintenance) }}<small>/mo</small></span>
-                                            @endif
-                                        </p>
-                                        @if(($property->property_type ?? '') === 'vehicle')
-                                            <ul class="property_list">
-                                                @if($property->engine_cc)<li><i class="fa fa-cog mr-1"></i>{{ $property->engine_cc }} CC</li>@endif
-                                                @if($property->transmission)<li><i class="fa fa-exchange mr-1"></i>{{ $property->transmission }}</li>@endif
-                                                @if($property->fuel_type)<li><i class="fa fa-tint mr-1"></i>{{ $property->fuel_type }}</li>@endif
-                                            </ul>
-                                            <h3><a href="{{ route('virtual-tour', $property->id) }}">{{ $property->brand }} {{ $property->model }} {{ $property->year }}</a></h3>
-                                            <div class="mb-2">
-                                                <small class="text-muted">
-                                                    @if($property->mileage_km)<i class="fa fa-road mr-1"></i>{{ number_format($property->mileage_km) }} km @endif
-                                                    @if($property->doors)&nbsp;|&nbsp;<i class="fa fa-car mr-1"></i>{{ $property->doors }} puertas @endif
-                                                    @if($property->passengers)&nbsp;|&nbsp;<i class="fa fa-users mr-1"></i>{{ $property->passengers }} pasajeros @endif
-                                                </small>
+                            @php
+                                $spin = $property->active_spin;
+                                $hasSpin = !empty($spin);
+                            @endphp
+                            <div class="col-md-4 mb-4">
+                                <div class="card spin-card ftco-animate h-100">
+                                    {{-- SPIN VIEWER O IMAGEN --}}
+                                    @if($hasSpin)
+                                        <div class="spin-viewer-wrap" id="spinViewer{{ $property->id }}"
+                                             data-frames-dir="{{ $spin->frames_dir }}"
+                                             data-frames-count="{{ $spin->frames_count }}"
+                                             data-auto-rotate="{{ $property->spin_auto_rotate ? '1' : '0' }}">
+                                            <canvas></canvas>
+                                            <div class="spin-overlay">
+                                                <span class="spin-arrows">&larr;</span>
+                                                <span>Spin 360</span>
+                                                <span class="spin-arrows">&rarr;</span>
                                             </div>
-                                            @if ($property->condition)
-                                                <span class="badge {{ $property->condition == 'Nuevo' ? 'badge-success' : 'badge-secondary' }} mb-2">
-                                                    {{ $property->condition }}
-                                                </span>
+                                        </div>
+                                    @else
+                                        <a href="{{ route('virtual-tour', $property->id) }}">
+                                            <div class="spin-img-wrap"
+                                                style="background-image: url('{{ isset($property->image) ? route('file', $property->image) : url('images/producto-sin-imagen.PNG') }}')">
+                                            </div>
+                                        </a>
+                                    @endif
+
+                                    {{-- INFO --}}
+                                    <div class="card-info">
+                                        <div class="price-row">
+                                            <span class="price-main">{{ $property->formatted_price ?? (($property->currency ?? 'CRC') === 'USD' ? '$' : '₡') . number_format($property->price) }}</span>
+                                            @if(($property->property_type ?? '') !== 'vehicle' && $property->maintenance)
+                                                <span class="price-sub">₡{{ number_format($property->maintenance) }}/mo</span>
                                             @endif
+                                        </div>
+
+                                        @if(($property->property_type ?? '') === 'vehicle')
+                                            <ul class="prop-features">
+                                                @if($property->engine_cc)<li><i class="fa fa-cog"></i>{{ $property->engine_cc }} CC</li>@endif
+                                                @if($property->transmission)<li><i class="fa fa-exchange"></i>{{ $property->transmission }}</li>@endif
+                                                @if($property->fuel_type)<li><i class="fa fa-tint"></i>{{ $property->fuel_type }}</li>@endif
+                                            </ul>
+                                            <h5><a href="{{ route('virtual-tour', $property->id) }}">{{ $property->brand }} {{ $property->model }} {{ $property->year }}</a></h5>
+                                            <span class="location-text">
+                                                @if($property->mileage_km){{ number_format($property->mileage_km) }} km @endif
+                                                @if($property->doors)| {{ $property->doors }} puertas @endif
+                                                @if($property->passengers)| {{ $property->passengers }} pasajeros @endif
+                                            </span>
                                         @else
-                                            <ul class="property_list">
+                                            <ul class="prop-features">
                                                 <li><span class="flaticon-bed"></span>{{ $property->rooms }}</li>
                                                 <li><span class="flaticon-bathtub"></span>{{ $property->bathrooms }}</li>
                                                 <li><span class="flaticon-floor-plan"></span>{{ $property->construction }} Mt2</li>
                                             </ul>
-                                            <h3><a href="{{ route('virtual-tour', $property->id) }}">{{ $property->name }}</a></h3>
-                                            <span class="location">{{ $property->location ?? 'Ubicación no disponible' }}</span>
+                                            <h5><a href="{{ route('virtual-tour', $property->id) }}">{{ $property->name }}</a></h5>
+                                            <span class="location-text">{{ $property->location ?? 'Ubicación no disponible' }}</span>
                                         @endif
-                                        <a href="{{ route('virtual-tour', $property->id) }}"
-                                            class="d-flex align-items-center justify-content-center btn-custom">
-                                            <span class="ion-ios-link mr-2"></span> Virtual Tour
+
+                                        <a href="{{ route('virtual-tour', $property->id) }}" class="btn-tour">
+                                            <i class="fa fa-play-circle mr-1"></i> Virtual Tour
                                         </a>
                                     </div>
                                 </div>
@@ -103,6 +123,8 @@
                     </div>
                 </div>
             </section>
+
+            @include('frontend._spin-viewer-script')
         @endif
 
         {{-- SIN ITEMS --}}
