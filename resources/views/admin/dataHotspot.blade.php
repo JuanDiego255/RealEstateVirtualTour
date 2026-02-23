@@ -437,6 +437,17 @@
         var isVideoScene = false;
         var defaultHotspotImage = '{{ url("virtualtour/images/hotspot.png") }}';
 
+        // Estado para detectar click vs drag en panorama
+        var panoramaDragState = {
+            isMouseDown: false,
+            startX: 0,
+            startY: 0,
+            hasMoved: false,
+            coords: null,
+            clientX: 0,
+            clientY: 0
+        };
+
         // ====== Utilidad: drag-to-scrub en un contenedor de video ======
         function setupVideoScrub(containerEl, videoEl, progressEl, onClickCallback) {
             var dragState = { isDragging: false, startX: 0, startTime: 0, hasMoved: false };
@@ -741,14 +752,45 @@
                     hotSpotDebug: false
                 });
 
-                // Click en panorama → mostrar card
+                // Click en panorama → detectar si es click o drag
                 viewerMulti.on('mousedown', function(ev) {
                     var coords = viewerMulti.mouseEventToCoords(ev);
                     if (!coords) return;
-                    var pitch = coords[0];
-                    var yaw = coords[1];
-                    showHotspotCard(ev.clientX, ev.clientY, round3(yaw), round3(pitch), null, null, null);
+                    panoramaDragState.isMouseDown = true;
+                    panoramaDragState.startX = ev.clientX;
+                    panoramaDragState.startY = ev.clientY;
+                    panoramaDragState.hasMoved = false;
+                    panoramaDragState.coords = coords;
+                    panoramaDragState.clientX = ev.clientX;
+                    panoramaDragState.clientY = ev.clientY;
                 });
+            }
+        });
+
+        // Detectar movimiento para distinguir click de drag en panorama
+        $(document).on('mousemove.panoramaDrag', function(e) {
+            if (!panoramaDragState.isMouseDown) return;
+            var deltaX = Math.abs(e.clientX - panoramaDragState.startX);
+            var deltaY = Math.abs(e.clientY - panoramaDragState.startY);
+            if (deltaX > 5 || deltaY > 5) {
+                panoramaDragState.hasMoved = true;
+            }
+        });
+
+        // Al soltar el mouse, si no hubo drag, mostrar card
+        $(document).on('mouseup.panoramaDrag', function(e) {
+            if (!panoramaDragState.isMouseDown) return;
+            var wasDragging = panoramaDragState.hasMoved;
+            var coords = panoramaDragState.coords;
+
+            // Resetear estado
+            panoramaDragState.isMouseDown = false;
+
+            // Si no arrastró y tenemos coordenadas válidas, mostrar card
+            if (!wasDragging && coords && viewerMulti && !isVideoScene) {
+                var pitch = coords[0];
+                var yaw = coords[1];
+                showHotspotCard(panoramaDragState.clientX, panoramaDragState.clientY, round3(yaw), round3(pitch), null, null, null);
             }
         });
 
