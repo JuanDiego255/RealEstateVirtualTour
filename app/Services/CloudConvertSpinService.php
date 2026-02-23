@@ -27,26 +27,14 @@ class CloudConvertSpinService
     public function createSpinJob(int $fps = 2, string $imgExt = 'jpg'): Job
     {
         $cloudconvert = $this->client();
-        $desiredFrames = 180;
+        $desiredFrames = 72;
 
         // fps float calculado: $fps = $desiredFrames / $duration;
-        $fpsStr = rtrim(rtrim(number_format($fps, 6, '.', ''), '0'), '.'); // ej "6.923077"
-        $width = 1600;
+        $fpsStr = rtrim(rtrim(number_format($fps, 6, '.', ''), '0'), '.'); // ej "2.769231"
 
         $job = (new Job())
             ->addTask(new Task('import/upload', 'import-1'))
             ->addTask(
-                /* (new Task('command', 'extract-frames'))
-                    ->set('input', 'import-1')
-                    ->set('engine', 'ffmpeg')
-                    ->set('command', 'ffmpeg')
-                    ->set(
-                        'arguments',
-                        // input fijo: /input/import-1/input.mp4
-                        // output: /output/frame-001.jpg, frame-002.jpg, ...
-                        '-i /input/import-1/input.mp4 -vf "fps=' . (int)$fps . ',scale=1200:-1" /output/frame-%03d.' . $imgExt
-                    )
-                    ->set('capture_output', true) */
                 (new Task('command', 'extract-frames'))
                     ->set('input', 'import-1')
                     ->set('engine', 'ffmpeg')
@@ -54,9 +42,9 @@ class CloudConvertSpinService
                     ->set(
                         'arguments',
                         '-i /input/import-1/input.mp4 ' .
-                            '-vf "fps=' . $fpsStr . ',scale=1000:-1:flags=lanczos" ' .
+                            '-vf "fps=' . $fpsStr . ',scale=640:-1:flags=lanczos" ' .
                             '-frames:v ' . $desiredFrames . ' ' .
-                            '-c:v libwebp -quality 80 -compression_level 6 -preset picture ' .
+                            '-c:v libwebp -quality 70 -compression_level 4 -preset picture ' .
                             '/output/frame-%03d.webp'
                     )
                     ->set('capture_output', true)

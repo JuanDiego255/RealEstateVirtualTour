@@ -65,6 +65,8 @@ class CloudConvertWebhookController extends Controller
         if ($zip->open($zipAbs) === true) {
             $zip->extractTo(storage_path('app/public/' . $framesDir));
             $zip->close();
+            // Limpiar ZIP después de extracción exitosa
+            @unlink($zipAbs);
         } else {
             $spin->update(['status' => 'failed', 'error_message' => 'Cannot open downloaded zip']);
             return response('Zip open failed', 500);
@@ -75,7 +77,7 @@ class CloudConvertWebhookController extends Controller
             ->filter(fn($p) => preg_match('/\.(webp|jpg|jpeg|png)$/i', $p))
             ->sort()
             ->values();
-        $minFrames = 60; // si tu plan es 36
+        $minFrames = 24; // ajustado para 72 frames objetivo
         if ($files->count() < $minFrames) {
             $spin->update(['status' => 'failed', 'error_message' => 'Too few frames extracted']);
             return response('Few frames', 500);

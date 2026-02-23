@@ -346,8 +346,7 @@
             </div>
 
             <div class="hint">
-                Ajuste recomendado para carga rápida: precargar 36 frames para empezar y completar el resto en background.
-                Para reducir tiempo total sin perder nitidez: WebP quality ~84–88 (o JPG q=2–3) y 1600px ancho.
+                72 frames a 640px WebP q70. Precarga 12 frames para arranque inmediato, el resto carga en background con 16 workers paralelos.
             </div>
         </div>
 
@@ -404,8 +403,8 @@
         // ==========================
         // Performance preload strategy (5–10s perceived)
         // ==========================
-        const MIN_READY = Math.min(36, totalFrames); // arranque rápido
-        const CONCURRENCY = 8;                       // 6–10 ideal
+        const MIN_READY = Math.min(12, totalFrames); // arranque rápido con menos frames
+        const CONCURRENCY = 16;                      // más workers para carga paralela
         const PRIORITY_RADIUS = 14;                  // preload alrededor del frame actual
         let backgroundStarted = false;
 
