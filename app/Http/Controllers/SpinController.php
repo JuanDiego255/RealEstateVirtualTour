@@ -32,10 +32,13 @@ class SpinController extends Controller
             'status' => 'processing',
         ]);
 
-        $frames = (int) (env('SPIN_DEFAULT_FRAMES', 72));
+        // fps dinámico según duración del video
+        $videoDuration = (float) $request->input('video_duration', 0);
+        $desiredFrames = 72;
+        $fps = $videoDuration > 0 ? ($desiredFrames / $videoDuration) : 1.8;
 
         // 1) Crear job
-        $job = $cc->createSpinJob(4, 'jpg');
+        $job = $cc->createSpinJob($fps, 'jpg');
         $spin->update(['cloudconvert_job_id' => $job->getId()]);
 
         $spinJob = SpinJob::create([

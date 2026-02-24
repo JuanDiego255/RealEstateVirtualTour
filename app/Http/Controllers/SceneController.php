@@ -56,12 +56,15 @@ class SceneController extends Controller
      */
     public function updateSpinSettings(Request $request)
     {
-        $property = Properties::findOrFail($request->input('property_id'));
-        $property->spin_active = $request->boolean('spin_active');
-        $property->spin_auto_rotate = $request->boolean('spin_auto_rotate');
-        $property->save();
-
-        return response()->json(['success' => true]);
+        try {
+            $property = Properties::findOrFail($request->input('property_id'));
+            $property->spin_active = $request->boolean('spin_active');
+            $property->spin_auto_rotate = $request->boolean('spin_auto_rotate');
+            $property->save();
+            return response()->json(['success' => true]);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
     }
 
     /**
@@ -305,7 +308,8 @@ class SceneController extends Controller
         // ✅ Si es escena tipo video y pertenece a un vehículo, disparar SPIN con el video ya subido por chunks
        
         if ($isVideo && !empty($video) && $isSpin) {
-            $spinId = $this->startSpinForVehicleVideo((int)$itemId, $video, $cc, $spinId);
+            $videoDuration = (float) $request->input('video_duration', 0);
+            $spinId = $this->startSpinForVehicleVideo((int)$itemId, $video, $cc, $spinId, $videoDuration);
             $scene->update(['spin_id' => $spinId]);
         }
 
@@ -558,14 +562,20 @@ class SceneController extends Controller
         return response()->json(['success' => true, 'message' => 'Upload cancelado']);
     }
 
-    private function startSpinForVehicleVideo(int $vehicleId, string $videoPath, CloudConvertSpinService $cc, $spinId): ?int
+    private function startSpinForVehicleVideo(int $vehicleId, string $videoPath, CloudConvertSpinService $cc, $spinId, float $videoDuration = 0): ?int
     {
         // Crea Spin
         $spin = Spin::where('id', $spinId)->first();
         try {
-            // fps recomendado para tus videos 20–40s (da muchos frames y luego normalizamos a 72)
-            $fps = (float) 7.5;
-            $ext = env('SPIN_FRAME_EXT', 'jpg'); // jpg recomendado
+            // fps calculado dinámicamente: 72 frames distribuidos en toda la duración del video
+            $desiredFrames = 72;
+            if ($videoDuration > 0) {
+                $fps = (float) ($desiredFrames / $videoDuration);
+            } else {
+                // Fallback conservador para videos ~40s
+                $fps = 1.8;
+            }
+            $ext = env('SPIN_FRAME_EXT', 'jpg');
 
             // 1) Crear job CloudConvert (usa tu versión que ya funciona con command/ffmpeg)
             $job = $cc->createSpinJob($fps, $ext);

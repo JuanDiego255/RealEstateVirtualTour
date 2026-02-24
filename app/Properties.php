@@ -176,7 +176,11 @@ class Properties extends Model
      */
     public function getActiveSpinAttribute()
     {
-        if (!$this->spin_active) return null;
+        try {
+            if (!data_get($this->attributes, 'spin_active', false)) return null;
+        } catch (\Throwable $e) {
+            return null;
+        }
 
         $scene = $this->scenes()->whereNotNull('spin_id')->first();
         if (!$scene) return null;

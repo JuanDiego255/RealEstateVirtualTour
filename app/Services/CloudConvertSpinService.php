@@ -24,7 +24,7 @@ class CloudConvertSpinService
      * 3) archive -> zip de todos los frames
      * 4) export/url -> URL del zip
      */
-    public function createSpinJob(int $fps = 2, string $imgExt = 'jpg'): Job
+    public function createSpinJob(float $fps = 2.0, string $imgExt = 'jpg'): Job
     {
         $cloudconvert = $this->client();
         $desiredFrames = 72;

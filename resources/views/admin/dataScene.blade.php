@@ -128,6 +128,7 @@
                             {{-- Campo oculto para el path del video subido por chunks --}}
                             <input type="hidden" id="video-path-add" name="video_path" value="">
                             <input type="hidden" id="spinId" name="spinId" value="">
+                            <input type="hidden" id="video-duration-add" name="video_duration" value="">
 
                             <video id="video-preview-add"
                                 style="display:none; width:100%; max-height:200px; margin-top:10px; border-radius:5px;"
@@ -590,11 +591,20 @@
             var file = e.target.files[0];
             if (!file) return;
 
-            // Mostrar vista previa
+            // Mostrar vista previa y capturar duración
             var videoUrl = URL.createObjectURL(file);
             var $preview = $('#video-preview-add');
             $preview.attr('src', videoUrl).show();
             $preview[0].currentTime = 0;
+
+            // Capturar duración del video para calcular fps
+            $preview.off('loadedmetadata').on('loadedmetadata', function() {
+                var duration = this.duration;
+                if (duration && isFinite(duration)) {
+                    $('#video-duration-add').val(duration.toFixed(2));
+                    console.log('Duración del video:', duration.toFixed(2), 'segundos');
+                }
+            });
 
             // Si el archivo es mayor a 5MB, usar subida en chunks
             var THRESHOLD = 5 * 1024 * 1024; // 5MB

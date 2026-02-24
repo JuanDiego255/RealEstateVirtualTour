@@ -15,46 +15,53 @@
     @endif
 
     {{-- Panel Spin 360 --}}
-    @if(isset($property) && $property)
-        @php
-            $hasSpin = $property->scenes()->whereNotNull('spin_id')->exists();
-            $spinReady = false;
-            if ($hasSpin) {
+    @php
+        $spinReady = false;
+        $spinActiveVal = false;
+        $spinAutoVal = true;
+        try {
+            if (isset($property) && $property) {
                 $sceneWithSpin = $property->scenes()->whereNotNull('spin_id')->first();
-                $spinReady = $sceneWithSpin && $sceneWithSpin->spin && $sceneWithSpin->spin->status === 'ready';
+                if ($sceneWithSpin && $sceneWithSpin->spin && $sceneWithSpin->spin->status === 'ready') {
+                    $spinReady = true;
+                    $spinActiveVal = (bool) data_get($property, 'spin_active', false);
+                    $spinAutoVal = (bool) data_get($property, 'spin_auto_rotate', true);
+                }
             }
-        @endphp
-        @if($spinReady)
-            <div class="row mb-3">
-                <div class="col-lg-12">
-                    <div class="card" style="border-left: 4px solid #007bff;">
-                        <div class="card-body py-3">
-                            <div class="d-flex align-items-center justify-content-between flex-wrap">
-                                <div>
-                                    <h6 class="mb-1"><i class="fa fa-refresh mr-2"></i>Spin 360 en Landing Page</h6>
-                                    <small class="text-muted">Configura cómo se muestra el spin en las tarjetas de publicaciones</small>
+        } catch (\Throwable $e) {
+            $spinReady = false;
+        }
+    @endphp
+    @if($spinReady)
+        <div class="row mb-3">
+            <div class="col-lg-12">
+                <div class="card" style="border-left: 4px solid #007bff;">
+                    <div class="card-body py-3">
+                        <div class="d-flex align-items-center justify-content-between flex-wrap">
+                            <div>
+                                <h6 class="mb-1"><i class="fa fa-refresh mr-2"></i>Spin 360 en Landing Page</h6>
+                                <small class="text-muted">Configura cómo se muestra el spin en las tarjetas de publicaciones</small>
+                            </div>
+                            <div class="d-flex align-items-center" style="gap: 20px;">
+                                <div class="custom-control custom-switch">
+                                    <input type="checkbox" class="custom-control-input" id="spin_active"
+                                        {{ $spinActiveVal ? 'checked' : '' }}>
+                                    <label class="custom-control-label" for="spin_active">Spin activo</label>
                                 </div>
-                                <div class="d-flex align-items-center" style="gap: 20px;">
-                                    <div class="custom-control custom-switch">
-                                        <input type="checkbox" class="custom-control-input" id="spin_active"
-                                            {{ $property->spin_active ? 'checked' : '' }}>
-                                        <label class="custom-control-label" for="spin_active">Spin activo</label>
-                                    </div>
-                                    <div class="custom-control custom-switch">
-                                        <input type="checkbox" class="custom-control-input" id="spin_auto_rotate"
-                                            {{ $property->spin_auto_rotate ? 'checked' : '' }}>
-                                        <label class="custom-control-label" for="spin_auto_rotate">Auto-rotate</label>
-                                    </div>
-                                    <span id="spinSettingsStatus" class="text-success" style="font-size: 12px; display: none;">
-                                        <i class="fa fa-check"></i> Guardado
-                                    </span>
+                                <div class="custom-control custom-switch">
+                                    <input type="checkbox" class="custom-control-input" id="spin_auto_rotate"
+                                        {{ $spinAutoVal ? 'checked' : '' }}>
+                                    <label class="custom-control-label" for="spin_auto_rotate">Auto-rotate</label>
                                 </div>
+                                <span id="spinSettingsStatus" class="text-success" style="font-size: 12px; display: none;">
+                                    <i class="fa fa-check"></i> Guardado
+                                </span>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        @endif
+        </div>
     @endif
 
     <div class="row">
