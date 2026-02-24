@@ -1487,6 +1487,11 @@
 
                 setTimeout(function() {
                     hideVideoViewer();
+                    // Modificar config ANTES de cargar para que abra directo en la orientación
+                    if (pendingOrientation && pannellumConfig.scenes[targetSceneId]) {
+                        pannellumConfig.scenes[targetSceneId].yaw = pendingOrientation.yaw;
+                        pannellumConfig.scenes[targetSceneId].pitch = pendingOrientation.pitch;
+                    }
                     viewer.loadScene(targetSceneId);
                     $transitionOverlay.css({
                         transition: 'opacity 0.6s ease'
@@ -1662,6 +1667,12 @@
                     if (progress < 1) {
                         requestAnimationFrame(animateWalkIn);
                     } else {
+                        // Modificar la config de la escena ANTES de cargarla
+                        // para que Pannellum la abra directamente en la orientación deseada
+                        if (pendingOrientation && pannellumConfig.scenes[targetSceneId]) {
+                            pannellumConfig.scenes[targetSceneId].yaw = pendingOrientation.yaw;
+                            pannellumConfig.scenes[targetSceneId].pitch = pendingOrientation.pitch;
+                        }
                         // Pequeña pausa antes de cambiar escena
                         setTimeout(function() {
                             viewer.loadScene(targetSceneId);
@@ -1697,9 +1708,8 @@
                 renderScenePolygons();
 
                 if (pendingOrientation) {
-                    // Aplicar orientación y mantener zoom cercano
-                    viewer.setYaw(pendingOrientation.yaw);
-                    viewer.setPitch(pendingOrientation.pitch);
+                    // La orientación ya se aplicó via config antes de loadScene,
+                    // solo forzar el zoom cercano para el efecto de llegada
                     viewer.setHfov(pendingOrientation.minHfov);
 
                     // Zoom OUT continuo (simula llegar al destino)
