@@ -98,6 +98,14 @@
                                     </select>
                                 </div>
 
+                                {{-- Mini visor para elegir dirección de llegada --}}
+                                <div class="form-group mb-2" id="cardTargetYawContainer" style="display: none;">
+                                    <label class="small mb-1"><i class="fa fa-eye mr-1"></i> Dirección al llegar <small class="text-muted">(mueve el visor)</small></label>
+                                    <div id="cardTargetViewer" style="width:100%; height:140px; border-radius:6px; overflow:hidden; border:1px solid #ddd; background:#111;"></div>
+                                    <input type="hidden" id="cardTargetYaw">
+                                    <input type="hidden" id="cardTargetPitch">
+                                </div>
+
                                 <div class="form-group mb-2">
                                     <label class="small mb-1"><i class="fa fa-comment mr-1"></i> Información</label>
                                     <textarea class="form-control form-control-sm" id="cardInfo" rows="2" placeholder="Descripción del hotspot..."></textarea>
@@ -287,8 +295,8 @@
                                 <div class="form-group col-md-6 target-scene-container" id="targetSceneContainer-{{ $hotspot->id }}" style="{{ $hotspot->type == 'info' ? 'display: none;' : '' }}">
                                     <label for="targetScene-{{ $hotspot->id }}"
                                         class="d-flex justify-content-left">Objetivo de la escena</label>
-                                    <select class="form-control form-control-lg input-rounded mb-4" name="targetScene"
-                                        id="targetScene-{{ $hotspot->id }}">
+                                    <select class="form-control form-control-lg input-rounded mb-4 target-scene-edit-select" name="targetScene"
+                                        id="targetScene-{{ $hotspot->id }}" data-hotspot-id="{{ $hotspot->id }}">
                                         <option value="" disabled {{ !$hotspot->targetScene ? 'selected' : '' }}>Seleccione uno</option>
                                         @foreach ($scene as $scenes)
                                             <option value="{{ $scenes->id }}"
@@ -296,6 +304,15 @@
                                                 {{ $scenes->title }}</option>
                                         @endforeach
                                     </select>
+                                </div>
+
+                                {{-- Mini visor para dirección de llegada --}}
+                                <div class="form-group col-md-12 target-yaw-container" id="targetYawContainer-{{ $hotspot->id }}" style="{{ $hotspot->type == 'scene' && $hotspot->targetScene ? '' : 'display: none;' }}">
+                                    <label><i class="fa fa-eye mr-1"></i> Dirección al llegar <small class="text-muted">(mueve el visor donde quieres que mire la cámara)</small></label>
+                                    <div id="targetViewer-{{ $hotspot->id }}" class="target-viewer-edit" style="width:100%; height:200px; border-radius:6px; overflow:hidden; border:1px solid #ddd; background:#111;" data-hotspot-id="{{ $hotspot->id }}"></div>
+                                    <input type="hidden" name="target_yaw" id="targetYaw-{{ $hotspot->id }}" value="{{ $hotspot->target_yaw }}">
+                                    <input type="hidden" name="target_pitch" id="targetPitch-{{ $hotspot->id }}" value="{{ $hotspot->target_pitch }}">
+                                    <small class="text-muted">Navega el panorama y posiciónalo donde quieras que la cámara apunte al llegar.</small>
                                 </div>
 
                                 {{-- Campos panorama 360 --}}
@@ -427,6 +444,23 @@
         var sceneTitleMap = {
             @foreach ($scene as $scenes)
                 {{ $scenes->id }}: "{{ addslashes($scenes->title) }}",
+            @endforeach
+        };
+        var scenePanoramaMap = {
+            @foreach ($scene as $scenes)
+                @if($scenes->image && $scenes->type === 'equirectangular')
+                {{ $scenes->id }}: "{{ route('file', $scenes->image) }}",
+                @endif
+            @endforeach
+        };
+        var sceneDefaultYaw = {
+            @foreach ($scene as $scenes)
+                {{ $scenes->id }}: {{ (float) $scenes->yaw }},
+            @endforeach
+        };
+        var sceneDefaultPitch = {
+            @foreach ($scene as $scenes)
+                {{ $scenes->id }}: {{ (float) $scenes->pitch }},
             @endforeach
         };
 
@@ -567,6 +601,10 @@
             $('#cardType').val('info');
             $('#cardTargetScene').val('');
             $('#cardTargetContainer').hide();
+            $('#cardTargetYawContainer').hide();
+            $('#cardTargetYaw').val('');
+            $('#cardTargetPitch').val('');
+            if (cardTargetViewerInstance) { cardTargetViewerInstance.destroy(); cardTargetViewerInstance = null; }
             $('#cardInfo').val('');
             $('#cardImageFile').val('');
             $('#cardImagePreview').attr('src', defaultHotspotImage);
@@ -801,13 +839,49 @@
         });
 
         // Cambio de tipo en card
+        var cardTargetViewerInstance = null;
+
         $('#cardType').on('change', function() {
             if ($(this).val() === 'scene') {
                 $('#cardTargetContainer').show();
             } else {
                 $('#cardTargetContainer').hide();
+                $('#cardTargetYawContainer').hide();
                 $('#cardTargetScene').val('');
+                if (cardTargetViewerInstance) { cardTargetViewerInstance.destroy(); cardTargetViewerInstance = null; }
             }
+        });
+
+        $('#cardTargetScene').on('change', function() {
+            var sceneId = $(this).val();
+            if (!sceneId || !scenePanoramaMap[sceneId]) {
+                $('#cardTargetYawContainer').hide();
+                if (cardTargetViewerInstance) { cardTargetViewerInstance.destroy(); cardTargetViewerInstance = null; }
+                return;
+            }
+            $('#cardTargetYawContainer').show();
+            if (cardTargetViewerInstance) { cardTargetViewerInstance.destroy(); cardTargetViewerInstance = null; }
+            var initYaw = parseFloat($('#cardTargetYaw').val()) || sceneDefaultYaw[sceneId] || 0;
+            var initPitch = parseFloat($('#cardTargetPitch').val()) || sceneDefaultPitch[sceneId] || 0;
+            cardTargetViewerInstance = pannellum.viewer('cardTargetViewer', {
+                type: 'equirectangular',
+                panorama: scenePanoramaMap[sceneId],
+                autoLoad: true,
+                showControls: false,
+                compass: false,
+                mouseZoom: false,
+                hfov: 100,
+                yaw: initYaw,
+                pitch: initPitch
+            });
+            cardTargetViewerInstance.on('mouseup', function() {
+                $('#cardTargetYaw').val(cardTargetViewerInstance.getYaw().toFixed(2));
+                $('#cardTargetPitch').val(cardTargetViewerInstance.getPitch().toFixed(2));
+            });
+            cardTargetViewerInstance.on('touchend', function() {
+                $('#cardTargetYaw').val(cardTargetViewerInstance.getYaw().toFixed(2));
+                $('#cardTargetPitch').val(cardTargetViewerInstance.getPitch().toFixed(2));
+            });
         });
 
         // Preview de imagen en el card
@@ -853,6 +927,8 @@
                 sourceScene: currentSceneId,
                 type: type,
                 targetScene: type === 'scene' ? targetScene : null,
+                target_yaw: type === 'scene' ? ($('#cardTargetYaw').val() || '') : '',
+                target_pitch: type === 'scene' ? ($('#cardTargetPitch').val() || '') : '',
                 info: info,
                 yaw: $('#cardYaw').val(),
                 pitch: $('#cardPitch').val(),
@@ -884,8 +960,14 @@
             if (!h) return;
 
             // Rellenar card con datos existentes
+            $('#cardTargetYaw').val(h.target_yaw || '');
+            $('#cardTargetPitch').val(h.target_pitch || '');
             $('#cardType').val(h.type).trigger('change');
-            $('#cardTargetScene').val(h.targetScene || '');
+            if (h.type === 'scene' && h.targetScene) {
+                $('#cardTargetScene').val(h.targetScene).trigger('change');
+            } else {
+                $('#cardTargetScene').val('');
+            }
             $('#cardInfo').val(h.info);
             $('#cardYaw').val(h.yaw || '');
             $('#cardPitch').val(h.pitch || '');
@@ -946,6 +1028,8 @@
                 formData.append('hotspots[' + idx + '][type]', h.type);
                 formData.append('hotspots[' + idx + '][info]', h.info);
                 if (h.targetScene) formData.append('hotspots[' + idx + '][targetScene]', h.targetScene);
+                if (h.target_yaw) formData.append('hotspots[' + idx + '][target_yaw]', h.target_yaw);
+                if (h.target_pitch) formData.append('hotspots[' + idx + '][target_pitch]', h.target_pitch);
                 if (h.yaw) formData.append('hotspots[' + idx + '][yaw]', h.yaw);
                 if (h.pitch) formData.append('hotspots[' + idx + '][pitch]', h.pitch);
                 if (h.video_time) formData.append('hotspots[' + idx + '][video_time]', h.video_time);
@@ -1116,14 +1200,103 @@
             var hotspotId = $(this).data('hotspot-id');
             var $container = $('#targetSceneContainer-' + hotspotId);
             var $select = $('#targetScene-' + hotspotId);
+            var $yawContainer = $('#targetYawContainer-' + hotspotId);
 
             if (selectedType === 'scene') {
                 $container.show();
                 $select.prop('required', true);
+                // Si ya hay escena seleccionada, mostrar visor
+                if ($select.val()) {
+                    $yawContainer.show();
+                    initEditTargetViewer(hotspotId, $select.val());
+                }
             } else {
                 $container.hide();
                 $select.prop('required', false).val('');
+                $yawContainer.hide();
+                destroyEditTargetViewer(hotspotId);
             }
+        });
+
+        // ====== Mini visor de dirección en modales de edición ======
+        var editTargetViewers = {}; // { hotspotId: pannellumInstance }
+
+        function destroyEditTargetViewer(hotspotId) {
+            if (editTargetViewers[hotspotId]) {
+                try { editTargetViewers[hotspotId].destroy(); } catch(e) {}
+                editTargetViewers[hotspotId] = null;
+            }
+        }
+
+        function initEditTargetViewer(hotspotId, sceneId) {
+            destroyEditTargetViewer(hotspotId);
+            if (!sceneId || !scenePanoramaMap[sceneId]) return;
+
+            var $yawInput = $('#targetYaw-' + hotspotId);
+            var $pitchInput = $('#targetPitch-' + hotspotId);
+            var initYaw = parseFloat($yawInput.val()) || sceneDefaultYaw[sceneId] || 0;
+            var initPitch = parseFloat($pitchInput.val()) || sceneDefaultPitch[sceneId] || 0;
+
+            editTargetViewers[hotspotId] = pannellum.viewer('targetViewer-' + hotspotId, {
+                type: 'equirectangular',
+                panorama: scenePanoramaMap[sceneId],
+                autoLoad: true,
+                showControls: false,
+                compass: false,
+                mouseZoom: false,
+                hfov: 100,
+                yaw: initYaw,
+                pitch: initPitch
+            });
+
+            editTargetViewers[hotspotId].on('mouseup', function() {
+                $yawInput.val(editTargetViewers[hotspotId].getYaw().toFixed(2));
+                $pitchInput.val(editTargetViewers[hotspotId].getPitch().toFixed(2));
+            });
+            editTargetViewers[hotspotId].on('touchend', function() {
+                $yawInput.val(editTargetViewers[hotspotId].getYaw().toFixed(2));
+                $pitchInput.val(editTargetViewers[hotspotId].getPitch().toFixed(2));
+            });
+        }
+
+        // Al cambiar la escena destino en un modal de edición
+        $(document).on('change', '.target-scene-edit-select', function() {
+            var hotspotId = $(this).data('hotspot-id');
+            var sceneId = $(this).val();
+            var $yawContainer = $('#targetYawContainer-' + hotspotId);
+
+            if (sceneId && scenePanoramaMap[sceneId]) {
+                $yawContainer.show();
+                // Limpiar valores anteriores para que use default de la nueva escena
+                $('#targetYaw-' + hotspotId).val('');
+                $('#targetPitch-' + hotspotId).val('');
+                initEditTargetViewer(hotspotId, sceneId);
+            } else {
+                $yawContainer.hide();
+                destroyEditTargetViewer(hotspotId);
+            }
+        });
+
+        // Inicializar mini visor al abrir modal de edición (si ya tiene target scene)
+        $('[id^="editHotspot"]').on('shown.bs.modal', function() {
+            var $modal = $(this);
+            var idNum = $modal.attr('id').match(/\d+/)[0];
+            var $typeSelect = $('#type-' + idNum);
+            var $targetSelect = $('#targetScene-' + idNum);
+
+            if ($typeSelect.val() === 'scene' && $targetSelect.val()) {
+                $('#targetYawContainer-' + idNum).show();
+                // Pequeño delay para que el DOM del modal esté listo
+                setTimeout(function() {
+                    initEditTargetViewer(idNum, $targetSelect.val());
+                }, 300);
+            }
+        });
+
+        // Destruir mini visor al cerrar modal de edición
+        $('[id^="editHotspot"]').on('hidden.bs.modal', function() {
+            var idNum = $(this).attr('id').match(/\d+/)[0];
+            destroyEditTargetViewer(idNum);
         });
     });
 </script>

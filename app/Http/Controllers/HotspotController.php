@@ -53,6 +53,8 @@ class HotspotController extends Controller
             'info' => $request['text'],
             'sourceScene' => $request['sourceScene'],
             'targetScene' => $targetScene,
+            'target_yaw' => $request->filled('target_yaw') ? (float) $request['target_yaw'] : null,
+            'target_pitch' => $request->filled('target_pitch') ? (float) $request['target_pitch'] : null,
             'image' => $image
         ]);
 
@@ -114,6 +116,8 @@ class HotspotController extends Controller
             'info' => $request['text'],
             'sourceScene' => $request['sourceScene'],
             'targetScene' => $targetScene,
+            'target_yaw' => $request->filled('target_yaw') ? (float) $request['target_yaw'] : null,
+            'target_pitch' => $request->filled('target_pitch') ? (float) $request['target_pitch'] : null,
             'image' => $image
         ]);
 
@@ -193,6 +197,8 @@ class HotspotController extends Controller
                     'info' => $hotspotData['info'],
                     'sourceScene' => $hotspotData['sourceScene'],
                     'targetScene' => $targetScene,
+                    'target_yaw' => isset($hotspotData['target_yaw']) && $hotspotData['target_yaw'] !== '' ? (float) $hotspotData['target_yaw'] : null,
+                    'target_pitch' => isset($hotspotData['target_pitch']) && $hotspotData['target_pitch'] !== '' ? (float) $hotspotData['target_pitch'] : null,
                     'image' => $image
                 ]);
 

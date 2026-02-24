@@ -509,11 +509,19 @@
                 // Para hotspots de tipo scene, agregar handler personalizado
                 if ($hotspot->type === 'scene' && $hotspot->targetScene) {
                     $hs['clickHandlerFunc'] = 'onHotspotClick';
-                    $hs['clickHandlerArgs'] = [
+                    $clickArgs = [
                         'targetSceneId' => (string) $hotspot->targetScene,
                         'yaw' => (float) $hotspot->yaw,
                         'pitch' => (float) $hotspot->pitch,
                     ];
+                    // Agregar target_yaw/target_pitch si el hotspot los tiene
+                    if ($hotspot->target_yaw !== null) {
+                        $clickArgs['targetYaw'] = (float) $hotspot->target_yaw;
+                    }
+                    if ($hotspot->target_pitch !== null) {
+                        $clickArgs['targetPitch'] = (float) $hotspot->target_pitch;
+                    }
+                    $hs['clickHandlerArgs'] = $clickArgs;
                 }
                 $hotspotsForScene[] = $hs;
             }
@@ -598,7 +606,7 @@
             // --- Handler de clic en hotspot (global) ---
             function onHotspotClick(e, args) {
                 if (window.walkToScene && args) {
-                    window.walkToScene(args.targetSceneId, args.yaw, args.pitch);
+                    window.walkToScene(args.targetSceneId, args.yaw, args.pitch, args.targetYaw, args.targetPitch);
                 }
             }
             window.onHotspotClick = onHotspotClick;
@@ -1370,6 +1378,10 @@
                     var px = hs.createTooltipArgs ? hs.createTooltipArgs.posX : null;
                     var py = hs.createTooltipArgs ? hs.createTooltipArgs.posY : null;
 
+                    // Capturar targetYaw/targetPitch del hotspot
+                    var hsTargetYaw = hs.clickHandlerArgs ? hs.clickHandlerArgs.targetYaw : undefined;
+                    var hsTargetPitch = hs.clickHandlerArgs ? hs.clickHandlerArgs.targetPitch : undefined;
+
                     if (vt !== null && vt !== undefined && px !== null && py !== null) {
                         // Hotspot posicionado en el video
                         var posDiv = document.createElement('div');
@@ -1396,20 +1408,24 @@
                         }
 
                         posDiv.appendChild(container);
-                        posDiv.addEventListener('click', function(e) {
-                            e.stopPropagation();
-                            navigateFromVideo(targetId);
-                        });
+                        (function(tid, tYaw, tPitch) {
+                            posDiv.addEventListener('click', function(e) {
+                                e.stopPropagation();
+                                navigateFromVideo(tid, tYaw, tPitch);
+                            });
+                        })(targetId, hsTargetYaw, hsTargetPitch);
                         videoOverlay.appendChild(posDiv);
                     } else {
                         // Hotspot sin posición en video → botón en barra inferior
                         var btn = document.createElement('button');
                         btn.className = 'video-hotspot-btn';
                         btn.textContent = displayText;
-                        btn.addEventListener('click', function(e) {
-                            e.stopPropagation();
-                            navigateFromVideo(targetId);
-                        });
+                        (function(tid, tYaw, tPitch) {
+                            btn.addEventListener('click', function(e) {
+                                e.stopPropagation();
+                                navigateFromVideo(tid, tYaw, tPitch);
+                            });
+                        })(targetId, hsTargetYaw, hsTargetPitch);
                         videoHotspotsBar.appendChild(btn);
                     }
                 });
@@ -1442,9 +1458,23 @@
                 });
             }
 
-            function navigateFromVideo(targetSceneId) {
+            function navigateFromVideo(targetSceneId, targetYawOverride, targetPitchOverride) {
                 if (isTransitioning) return;
                 isTransitioning = true;
+
+                // Determinar orientación al llegar
+                var targetScene = pannellumConfig.scenes[targetSceneId];
+                var arrivalYaw = (targetYawOverride !== undefined && targetYawOverride !== null)
+                    ? targetYawOverride : (targetScene ? targetScene.yaw : 0);
+                var arrivalPitch = (targetPitchOverride !== undefined && targetPitchOverride !== null)
+                    ? targetPitchOverride : (targetScene ? targetScene.pitch : 0);
+
+                pendingOrientation = {
+                    yaw: arrivalYaw,
+                    pitch: arrivalPitch,
+                    hfov: 100,
+                    minHfov: 2
+                };
 
                 // Fade out video
                 $transitionOverlay.css({
@@ -1539,7 +1569,7 @@
             });
 
             // --- Efecto de caminar: zoom continuo sin girar ---
-            window.walkToScene = function(targetSceneId, hotspotYaw, hotspotPitch) {
+            window.walkToScene = function(targetSceneId, hotspotYaw, hotspotPitch, targetYawOverride, targetPitchOverride) {
                 if (isTransitioning) return;
                 isTransitioning = true;
 
@@ -1585,15 +1615,28 @@
                 var fadeDuration = 300;
                 var startTime = Date.now();
 
-                // Obtener el yaw/pitch configurado de la escena destino
+                // Determinar orientación al llegar:
+                // 1. Si el hotspot tiene target_yaw/target_pitch → usar esos (dirección personalizada)
+                // 2. Si no → usar el yaw/pitch por defecto de la escena destino
                 var targetScene = pannellumConfig.scenes[targetSceneId];
-                var targetYaw = targetScene ? targetScene.yaw : 0;
-                var targetPitch = targetScene ? targetScene.pitch : 0;
+                var arrivalYaw, arrivalPitch;
 
-                // Guardar datos para la nueva escena (usar yaw/pitch de la escena, no del hotspot)
+                if (targetYawOverride !== undefined && targetYawOverride !== null) {
+                    arrivalYaw = targetYawOverride;
+                } else {
+                    arrivalYaw = targetScene ? targetScene.yaw : 0;
+                }
+
+                if (targetPitchOverride !== undefined && targetPitchOverride !== null) {
+                    arrivalPitch = targetPitchOverride;
+                } else {
+                    arrivalPitch = targetScene ? targetScene.pitch : 0;
+                }
+
+                // Guardar datos para la nueva escena
                 pendingOrientation = {
-                    yaw: targetYaw,
-                    pitch: targetPitch,
+                    yaw: arrivalYaw,
+                    pitch: arrivalPitch,
                     hfov: startHfov,
                     minHfov: minHfov
                 };
