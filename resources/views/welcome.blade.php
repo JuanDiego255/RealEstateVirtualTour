@@ -330,6 +330,50 @@
             border-style: solid;
             border-color: rgba(0, 0, 0, 0.85) transparent transparent transparent;
         }
+        /* ====== Responsive: móviles ====== */
+        @media (max-width: 768px) {
+            /* Hotspot imágenes circulares más pequeñas */
+            .circular-hotspot-img,
+            .video-pos-hotspot .circular-hotspot-img {
+                width: 32px;
+                height: 32px;
+                border-width: 1.5px;
+            }
+
+            /* Labels más compactos */
+            .hotspot-label {
+                font-size: 10px;
+                padding: 2px 6px;
+                margin-bottom: 3px;
+                max-width: 110px;
+            }
+
+            /* Botones de hotspot en video */
+            .video-hotspot-btn {
+                font-size: 10px;
+                padding: 4px 10px;
+            }
+
+            /* Nombre de escena */
+            .current-scene-name {
+                font-size: 12px;
+                padding: 5px 14px;
+                top: 10px;
+            }
+
+            /* Controles del visor */
+            #controls .ctrl {
+                width: 32px;
+                height: 32px;
+                font-size: 14px;
+            }
+
+            /* Tooltip polígonos */
+            #polygon-tooltip {
+                font-size: 12px;
+                padding: 6px 10px;
+            }
+        }
     </style>
 </head>
 
@@ -616,6 +660,21 @@
                 default: @json($pannellumDefault, $jsonOptions),
                 scenes: @json($scenesConfig, $jsonOptions)
             };
+
+            // --- Ajustar hfov en móviles para que la perspectiva sea natural ---
+            (function() {
+                var w = window.innerWidth;
+                if (w <= 768) {
+                    var mobileHfov = 75;
+                    pannellumConfig.default.hfov = mobileHfov;
+                    pannellumConfig.default.maxHfov = 100;
+                    // Ajustar también cada escena
+                    Object.keys(pannellumConfig.scenes).forEach(function(sid) {
+                        var s = pannellumConfig.scenes[sid];
+                        if (s.hfov > mobileHfov) s.hfov = mobileHfov;
+                    });
+                }
+            })();
 
             // Guardar yaw/pitch originales de cada escena para no perderlos al sobreescribir
             var originalSceneOrientation = {};
@@ -1479,7 +1538,7 @@
                 pendingOrientation = {
                     yaw: arrivalYaw,
                     pitch: arrivalPitch,
-                    hfov: 100,
+                    hfov: pannellumConfig.default.hfov || 100,
                     minHfov: 2
                 };
 
