@@ -152,6 +152,74 @@ class HotspotController extends Controller
     }
 
     /**
+     * Store multiple hotspots in batch.
+     */
+    public function storeBatch(Request $request)
+    {
+        $property_id = $request->input('property_id');
+        $hotspots = $request->input('hotspots', []);
+        $createdCount = 0;
+        $errors = [];
+
+        foreach ($hotspots as $index => $hotspotData) {
+            try {
+                if (empty($hotspotData['sourceScene']) || empty($hotspotData['type']) || empty($hotspotData['info'])) {
+                    $errors[] = "Hotspot #" . ($index + 1) . ": Datos incompletos";
+                    continue;
+                }
+
+                if ($hotspotData['type'] === 'scene' && empty($hotspotData['targetScene'])) {
+                    $errors[] = "Hotspot #" . ($index + 1) . ": Falta escena destino para tipo enlace";
+                    continue;
+                }
+
+                $targetScene = $hotspotData['type'] === 'scene' ? $hotspotData['targetScene'] : null;
+
+                $image = null;
+                $fileKey = 'images_' . $index;
+                if ($request->hasFile($fileKey)) {
+                    $image = $request->file($fileKey)->store('uploads', 'public');
+                }
+
+                Hotspot::create([
+                    'type' => $hotspotData['type'],
+                    'yaw' => isset($hotspotData['yaw']) ? (float) $hotspotData['yaw'] : 0,
+                    'pitch' => isset($hotspotData['pitch']) ? (float) $hotspotData['pitch'] : 0,
+                    'video_time' => isset($hotspotData['video_time']) && $hotspotData['video_time'] !== '' ? (float) $hotspotData['video_time'] : null,
+                    'pos_x' => isset($hotspotData['pos_x']) && $hotspotData['pos_x'] !== '' ? (float) $hotspotData['pos_x'] : null,
+                    'pos_y' => isset($hotspotData['pos_y']) && $hotspotData['pos_y'] !== '' ? (float) $hotspotData['pos_y'] : null,
+                    'info' => $hotspotData['info'],
+                    'sourceScene' => $hotspotData['sourceScene'],
+                    'targetScene' => $targetScene,
+                    'target_yaw' => isset($hotspotData['target_yaw']) && $hotspotData['target_yaw'] !== '' ? (float) $hotspotData['target_yaw'] : null,
+                    'target_pitch' => isset($hotspotData['target_pitch']) && $hotspotData['target_pitch'] !== '' ? (float) $hotspotData['target_pitch'] : null,
+                    'image' => $image
+                ]);
+
+                $createdCount++;
+            } catch (\Exception $e) {
+                $errors[] = "Hotspot #" . ($index + 1) . ": " . $e->getMessage();
+            }
+        }
+
+        if ($createdCount > 0) {
+            return response()->json([
+                'success' => true,
+                'message' => $createdCount . ' hotspot(s) creados exitosamente',
+                'created' => $createdCount,
+                'errors' => $errors,
+                'redirect' => route('config', $property_id)
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'No se pudo crear ningún hotspot',
+            'errors' => $errors
+        ], 422);
+    }
+
+    /**
      * Get hotspots for a specific scene (AJAX).
      */
     public function getByScene(Request $request)
