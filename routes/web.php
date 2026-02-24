@@ -64,6 +64,9 @@ Route::group(['middleware' => 'auth'], function () {
     Route::post('/addScene', 'SceneController@store')->name('addScene');
     Route::post('/addHotspot', 'HotspotController@store')->name('addHotspot');
     Route::post('/addHotspotBatch', 'HotspotController@storeBatch')->name('addHotspotBatch');
+    Route::post('/updateHotspotBatch', 'HotspotController@updateBatch')->name('updateHotspotBatch');
+    Route::get('/getHotspotsByScene', 'HotspotController@getByScene')->name('getHotspotsByScene');
+    Route::delete('/delHotspotAjax/{id}', 'HotspotController@destroyAjax')->name('delHotspotAjax');
     Route::post('/updateSpinSettings', 'SceneController@updateSpinSettings')->name('updateSpinSettings');
 
     // Rutas para subida de video en chunks (archivos grandes)

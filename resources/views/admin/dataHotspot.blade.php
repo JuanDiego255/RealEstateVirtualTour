@@ -172,6 +172,163 @@
     </div>
 </div>
 
+{{-- Botón Editar Hotspots --}}
+<button type="button" class="btn btn-rounded btn-outline-warning mb-3 ml-2" data-toggle="modal" data-target="#editHotspotMulti">
+    <i class="fa fa-pencil mr-1"></i> Editar HotSpots
+</button>
+
+{{-- Modal unificado para edición de hotspots --}}
+<div class="modal fade" id="editHotspotMulti">
+    <div class="modal-dialog modal-xl modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title"><i class="fa fa-pencil mr-2"></i>Editar Puntos de Acceso</h5>
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editPropertyId" value="{{ $id }}">
+
+                {{-- Paso 1: Seleccionar escena origen --}}
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="editSourceScene" class="font-weight-bold">
+                            <i class="fa fa-image mr-1"></i> Escena Origen
+                        </label>
+                        <select class="form-control form-control-lg" id="editSourceScene">
+                            <option value="" disabled selected>Seleccione una escena</option>
+                            @foreach ($scene as $item)
+                                <option value="{{ $item->id }}" data-type="{{ $item->type }}">{{ $item->title }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-6 d-flex align-items-end">
+                        <div class="alert alert-warning mb-0 w-100" style="font-size: 13px;">
+                            <i class="fa fa-info-circle mr-1"></i>
+                            Selecciona una escena para ver sus hotspots. Haz clic en <b>Editar</b> en la tabla para modificar cada uno.
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Visor con card flotante --}}
+                <div id="editViewerWrapper" style="position: relative; display: none;">
+                    <div id="panorama-edit-multi" style="width: 100%; height: 450px;"></div>
+                    <div id="video-edit-multi" style="width: 100%; height: 450px; display: none; position: relative; background: #000; cursor: crosshair; overflow: hidden;">
+                        <video id="video-edit-multi-player" muted playsinline preload="auto" style="width:100%; height:100%; object-fit:cover; pointer-events:none;"></video>
+                        <div id="video-edit-multi-marker" style="display:none; position:absolute; width:20px; height:20px; border:3px solid #e74c3c; border-radius:50%; background:rgba(231,76,60,0.3); transform:translate(-50%,-50%); pointer-events:none; z-index:5;"></div>
+                        <div style="position:absolute; bottom:0; left:0; width:100%; height:4px; background:rgba(255,255,255,0.2);">
+                            <div id="video-edit-multi-progress" style="height:100%; background:#ffc107; width:0%;"></div>
+                        </div>
+                        <div style="position:absolute; bottom:10px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.6); color:#fff; padding:4px 12px; border-radius:10px; font-size:11px;">
+                            <i class="fa fa-arrows-h"></i> Arrastra para navegar, haz clic para reubicar
+                        </div>
+                    </div>
+
+                    {{-- Card flotante (reutiliza misma estructura del add) --}}
+                    <div id="editHotspotCard" class="card shadow" style="display: none; position: absolute; width: 320px; z-index: 1000; border: 2px solid #ffc107;">
+                        <div class="card-header bg-warning text-dark py-2 d-flex justify-content-between align-items-center">
+                            <span><i class="fa fa-pencil mr-1"></i> Editar Hotspot</span>
+                            <button type="button" class="close" id="closeEditCard" style="font-size: 18px;">&times;</button>
+                        </div>
+                        <div class="card-body py-2">
+                            <input type="hidden" id="editCardHotspotId">
+                            <input type="hidden" id="editCardYaw">
+                            <input type="hidden" id="editCardPitch">
+                            <input type="hidden" id="editCardVideoTime">
+                            <input type="hidden" id="editCardPosX">
+                            <input type="hidden" id="editCardPosY">
+
+                            <div class="form-group mb-2">
+                                <label class="small mb-1"><i class="fa fa-tag mr-1"></i> Tipo</label>
+                                <select class="form-control form-control-sm" id="editCardType">
+                                    <option value="info">Información</option>
+                                    <option value="scene">Enlace a escena</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group mb-2" id="editCardTargetContainer" style="display: none;">
+                                <label class="small mb-1"><i class="fa fa-link mr-1"></i> Escena Destino</label>
+                                <select class="form-control form-control-sm" id="editCardTargetScene">
+                                    <option value="">Seleccione</option>
+                                    @foreach ($scene as $item)
+                                        <option value="{{ $item->id }}">{{ $item->title }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <div class="form-group mb-2" id="editCardTargetYawContainer" style="display: none;">
+                                <label class="small mb-1"><i class="fa fa-eye mr-1"></i> Dirección al llegar <small class="text-muted">(mueve el visor)</small></label>
+                                <div id="editCardTargetViewer" style="width:100%; height:140px; border-radius:6px; overflow:hidden; border:1px solid #ddd; background:#111;"></div>
+                                <input type="hidden" id="editCardTargetYaw">
+                                <input type="hidden" id="editCardTargetPitch">
+                            </div>
+
+                            <div class="form-group mb-2">
+                                <label class="small mb-1"><i class="fa fa-comment mr-1"></i> Información</label>
+                                <textarea class="form-control form-control-sm" id="editCardInfo" rows="2"></textarea>
+                            </div>
+
+                            <div class="form-group mb-2">
+                                <label class="small mb-1"><i class="fa fa-image mr-1"></i> Imagen</label>
+                                <div class="d-flex align-items-center">
+                                    <img id="editCardImagePreview" src="{{ url('virtualtour/images/hotspot.png') }}" alt="Preview" style="width: 40px; height: 40px; object-fit: cover; border-radius: 50%; border: 2px solid #ddd; margin-right: 8px;">
+                                    <div style="flex: 1;">
+                                        <input type="file" class="form-control-file" id="editCardImageFile" accept="image/*" style="font-size: 11px;">
+                                        <small class="text-muted">Dejar vacío para mantener la imagen actual.</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-between">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="cancelEditCard">
+                                    <i class="fa fa-times"></i> Cancelar
+                                </button>
+                                <button type="button" class="btn btn-sm btn-warning" id="applyEditBtn">
+                                    <i class="fa fa-check"></i> Aplicar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Tabla de hotspots existentes --}}
+                <div id="editHotspotsTableSection" style="display: none;" class="mt-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="mb-0"><i class="fa fa-list mr-1"></i> Hotspots de esta escena</h6>
+                        <span class="badge badge-warning" id="editHotspotCount">0</span>
+                    </div>
+                    <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+                        <table class="table table-sm table-hover mb-0" id="editHotspotsTable">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th style="width: 30px;">#</th>
+                                    <th style="width: 50px;">Img</th>
+                                    <th>Tipo</th>
+                                    <th>Destino</th>
+                                    <th>Info</th>
+                                    <th style="width: 60px;">Estado</th>
+                                    <th style="width: 110px;">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="editHotspotsTableBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="modal-footer px-0 pb-0 mt-3">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                        <i class="fa fa-times mr-1"></i> Cerrar
+                    </button>
+                    <button type="button" class="btn btn-warning" id="saveEditedHotspots" disabled>
+                        <i class="fa fa-save mr-1"></i> Guardar Cambios (<span id="editSaveCount">0</span>)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- Tabla principal de hotspots (solo lectura, DataTables) --}}
 <div class="table-responsive" style="width:100%;">
     <table class="table table-hover progress-table text-center hotspotTable" style="width:100%">
         <thead class="text-uppercase">
@@ -187,227 +344,6 @@
         {{-- ... tu tbody vía DataTables/Ajax ... --}}
     </table>
 </div>
-
-@foreach ($hotspots as $hotspot)
-    {{-- Detail Modal --}}
-    <div class="modal fade" id="detailHotspot{{ $hotspot->id }}">
-        <div class="modal-dialog modal-dialog-centered" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title justify-content-">Información punto de acceso</h5>
-                    <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
-                </div>
-                <input type="hidden" name="property_id" value="{{ $id }}">
-                <div class="modal-body">
-                    <p class="d-flex justify-content-left"><b>Tipo: </b>&nbsp;{{ $hotspot->type }}</p><br>
-                    <p class="d-flex justify-content-left"><b>Movimiento de rotación horizontal:
-                        </b>&nbsp;{{ $hotspot->yaw }}</p><br>
-                    <p class="d-flex justify-content-left"><b>Movimiento de rotación vertical:
-                        </b>&nbsp;{{ $hotspot->pitch }}</p><br>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    {{-- Edit Modal --}}
-    <center>
-        <div class="modal modal-xl fade text-center" id="editHotspot{{ $hotspot->id }}">
-            <div class="modal-dialog modal-dialog-centered" role="document">
-                <div class="modal-content modal-lg">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Cambiar punto de acceso</h5>
-                        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
-                    </div>
-                    <div class="modal-body">
-                        <form method="POST" action="{{ route('editHotspot') }}" enctype="multipart/form-data">
-                            @csrf
-                            @method('PUT')
-
-                            @if ($errors->any())
-                                @foreach ($errors->all() as $error)
-                                    <div class="alert-dismiss">
-                                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                                            <strong>{{ $error }}</strong>
-                                            <button type="button" class="close" data-dismiss="alert"
-                                                aria-label="Close">
-                                                <span class="fa fa-times"></span>
-                                            </button>
-                                        </div>
-                                    </div>
-                                @endforeach
-                            @endif
-
-                            @php
-                                $sourceScene = $scene->firstWhere('id', $hotspot->sourceScene);
-                                $isVideoHotspot = $sourceScene && $sourceScene->type === 'video';
-                            @endphp
-
-                            {{-- Visor panorama (escenas 360) --}}
-                            <div id="panorama-hotspot{{ $hotspot->id }}" style="width: 100%; height: 500px; {{ $isVideoHotspot ? 'display:none;' : '' }}"></div>
-
-                            {{-- Visor video (escenas de video dron) --}}
-                            <div id="video-hotspot-edit-{{ $hotspot->id }}" class="video-hotspot-edit-viewer" style="width: 100%; height: 500px; {{ !$isVideoHotspot ? 'display:none;' : '' }} position: relative; background: #000; cursor: crosshair; overflow: hidden;" data-hotspot-id="{{ $hotspot->id }}">
-                                <video class="video-hotspot-edit-player" muted playsinline preload="auto" style="width:100%; height:100%; object-fit:cover; pointer-events:none;"></video>
-                                <div class="video-hotspot-edit-marker" style="{{ $isVideoHotspot && $hotspot->pos_x !== null ? 'display:block;' : 'display:none;' }} position:absolute; width:20px; height:20px; border:3px solid #e74c3c; border-radius:50%; background:rgba(231,76,60,0.3); transform:translate(-50%,-50%); pointer-events:none; z-index:5; left:{{ $hotspot->pos_x ?? 50 }}%; top:{{ $hotspot->pos_y ?? 50 }}%;"></div>
-                                <div style="position:absolute; bottom:0; left:0; width:100%; height:4px; background:rgba(255,255,255,0.2);">
-                                    <div class="video-hotspot-edit-progress" style="height:100%; background:#007bff; width:0%;"></div>
-                                </div>
-                                <div style="position:absolute; bottom:10px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.6); color:#fff; padding:4px 12px; border-radius:10px; font-size:11px;">
-                                    <i class="fa fa-arrows-h"></i> Arrastra para navegar, haz clic para posicionar
-                                </div>
-                            </div>
-
-                            <input type="hidden" value="{{ $hotspot->id }}" name="id"
-                                id="id-{{ $hotspot->id }}">
-                            <input type="hidden" name="property_id" value="{{ $id }}">
-
-                            <div class="row">
-                                <div class="form-group col-md-6">
-                                    <label for="sourceScene-{{ $hotspot->id }}"
-                                        class="d-flex justify-content-left">Escena Principal</label>
-                                    <select class="form-control form-control-lg input-rounded mb-4 source-scene-edit" name="sourceScene"
-                                        id="sourceScene-{{ $hotspot->id }}" data-hotspot-id="{{ $hotspot->id }}" required>
-                                        <option value="" disabled>Seleccione uno</option>
-                                        @foreach ($scene as $scenes)
-                                            <option value="{{ $scenes->id }}" data-type="{{ $scenes->type }}"
-                                                {{ $hotspot->sourceScene == $scenes->id ? 'selected' : '' }}>
-                                                {{ $scenes->title }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-
-                                <div class="form-group col-md-6">
-                                    <label for="type-{{ $hotspot->id }}"
-                                        class="d-flex justify-content-left">Tipo</label>
-                                    <select class="form-control form-control-lg input-rounded mb-4 hotspot-type-select" name="type"
-                                        id="type-{{ $hotspot->id }}" data-hotspot-id="{{ $hotspot->id }}" required>
-                                        <option value="" disabled>Seleccione uno</option>
-                                        <option value="info" {{ $hotspot->type == 'info' ? 'selected' : '' }}>
-                                            Información</option>
-                                        <option value="scene" {{ $hotspot->type == 'scene' ? 'selected' : '' }}>
-                                            Enlace</option>
-                                    </select>
-                                </div>
-
-                                <div class="form-group col-md-6 target-scene-container" id="targetSceneContainer-{{ $hotspot->id }}" style="{{ $hotspot->type == 'info' ? 'display: none;' : '' }}">
-                                    <label for="targetScene-{{ $hotspot->id }}"
-                                        class="d-flex justify-content-left">Objetivo de la escena</label>
-                                    <select class="form-control form-control-lg input-rounded mb-4 target-scene-edit-select" name="targetScene"
-                                        id="targetScene-{{ $hotspot->id }}" data-hotspot-id="{{ $hotspot->id }}">
-                                        <option value="" disabled {{ !$hotspot->targetScene ? 'selected' : '' }}>Seleccione uno</option>
-                                        @foreach ($scene as $scenes)
-                                            <option value="{{ $scenes->id }}"
-                                                {{ $hotspot->targetScene == $scenes->id ? 'selected' : '' }}>
-                                                {{ $scenes->title }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-
-                                {{-- Mini visor para dirección de llegada --}}
-                                <div class="form-group col-md-12 target-yaw-container" id="targetYawContainer-{{ $hotspot->id }}" style="{{ $hotspot->type == 'scene' && $hotspot->targetScene ? '' : 'display: none;' }}">
-                                    <label><i class="fa fa-eye mr-1"></i> Dirección al llegar <small class="text-muted">(mueve el visor donde quieres que mire la cámara)</small></label>
-                                    <div id="targetViewer-{{ $hotspot->id }}" class="target-viewer-edit" style="width:100%; height:200px; border-radius:6px; overflow:hidden; border:1px solid #ddd; background:#111;" data-hotspot-id="{{ $hotspot->id }}"></div>
-                                    <input type="hidden" name="target_yaw" id="targetYaw-{{ $hotspot->id }}" value="{{ $hotspot->target_yaw }}">
-                                    <input type="hidden" name="target_pitch" id="targetPitch-{{ $hotspot->id }}" value="{{ $hotspot->target_pitch }}">
-                                    <small class="text-muted">Navega el panorama y posiciónalo donde quieras que la cámara apunte al llegar.</small>
-                                </div>
-
-                                {{-- Campos panorama 360 --}}
-                                <div class="form-group col-md-6 panorama-pos-edit-{{ $hotspot->id }}" style="{{ $isVideoHotspot ? 'display:none;' : '' }}">
-                                    <label for="yaw-{{ $hotspot->id }}"
-                                        class="d-flex justify-content-left">Movimiento de rotación horizontal</label>
-                                    <input id="yaw-{{ $hotspot->id }}" name="yaw"
-                                        class="form-control form-control-lg input-rounded mb-4" required
-                                        type="text" step="0.2" value="{{ $hotspot->yaw }}">
-                                </div>
-
-                                <div class="form-group col-md-6 panorama-pos-edit-{{ $hotspot->id }}" style="{{ $isVideoHotspot ? 'display:none;' : '' }}">
-                                    <label for="pitch-{{ $hotspot->id }}"
-                                        class="d-flex justify-content-left">Movimiento de rotación vertical</label>
-                                    <input id="pitch-{{ $hotspot->id }}" name="pitch"
-                                        class="form-control form-control-lg input-rounded mb-4" required
-                                        type="text" step="0.1" value="{{ $hotspot->pitch }}">
-                                </div>
-
-                                {{-- Campos video --}}
-                                <div class="form-group col-md-4 video-pos-edit-{{ $hotspot->id }}" style="{{ !$isVideoHotspot ? 'display:none;' : '' }}">
-                                    <label for="videoTime-{{ $hotspot->id }}"><i class="fa fa-clock-o"></i> Tiempo en video (seg)</label>
-                                    <input id="videoTime-{{ $hotspot->id }}" name="video_time"
-                                        class="form-control form-control-lg input-rounded mb-4" type="text"
-                                        step="0.1" value="{{ $hotspot->video_time }}">
-                                </div>
-
-                                <div class="form-group col-md-4 video-pos-edit-{{ $hotspot->id }}" style="{{ !$isVideoHotspot ? 'display:none;' : '' }}">
-                                    <label for="posX-{{ $hotspot->id }}">Posición X (%)</label>
-                                    <input id="posX-{{ $hotspot->id }}" name="pos_x"
-                                        class="form-control form-control-lg input-rounded mb-4" type="text"
-                                        step="0.1" min="0" max="100" value="{{ $hotspot->pos_x }}">
-                                </div>
-
-                                <div class="form-group col-md-4 video-pos-edit-{{ $hotspot->id }}" style="{{ !$isVideoHotspot ? 'display:none;' : '' }}">
-                                    <label for="posY-{{ $hotspot->id }}">Posición Y (%)</label>
-                                    <input id="posY-{{ $hotspot->id }}" name="pos_y"
-                                        class="form-control form-control-lg input-rounded mb-4" type="text"
-                                        step="0.1" min="0" max="100" value="{{ $hotspot->pos_y }}">
-                                </div>
-
-                                <div class="form-group col-md-12">
-                                    <label for="text-{{ $hotspot->id }}"
-                                        class="d-flex justify-content-left">Texto</label>
-                                    <textarea id="text-{{ $hotspot->id }}" class="form-control form-control-lg input-rounded mb-4" name="text"
-                                        required>{{ $hotspot->info }}</textarea>
-                                </div>
-                            </div>
-
-                            <div class="form-group">
-                                <label class="d-flex justify-content-left">Imagen Referencia</label>
-                                <img class="card-img-top img-fluid w-50 mb-2"
-                                    src="{{ !empty($hotspot->image) ? route('file', $hotspot->image) : url('virtualtour/images/hotspot.png') }}">
-                                <div class="custom-file">
-                                    <input class="form-control" type="file" name="image">
-                                </div>
-                            </div>
-
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-danger" data-dismiss="modal">Cancelar</button>
-                                <button type="submit" class="btn btn-primary">Editar</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </center>
-
-    {{-- Delete Modal --}}
-    <div id="deleteHotspot{{ $hotspot->id }}" class="modal fade">
-        <div class="modal-dialog modal-dialog-centered modal-confirm">
-            <div class="modal-content">
-                <div class="modal-header flex-column">
-                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-                    <div class="icon-box">
-                        <i class="fa fa-times-circle"></i>
-                    </div>
-                </div>
-                <div class="modal-body">
-                    <p class="text-center">¿Está seguro de que desea eliminar este punto de acceso?</p>
-                    <form method="POST" action="{{ route('delHotspot', ['id' => $hotspot->id]) }}">
-                        @csrf
-                        @method('DELETE')
-                        <input type="hidden" name="property_id" value="{{ $id }}">
-                        <div class="modal-footer justify-content-center">
-                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
-                            <button type="submit" class="btn btn-danger">Eliminar</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-@endforeach
 
 {{-- JS --}}
 <script>
@@ -1067,236 +1003,436 @@
             });
         });
 
-        // ====== EDIT (mantener funcionalidad existente) ======
-        $('[id^="editHotspot"]').on('shown.bs.modal', function() {
-            var $modal = $(this);
-            var idNum = $modal.attr('id').match(/\d+/)[0];
+        // ====== EDICIÓN UNIFICADA DE HOTSPOTS ======
+        var editViewerMulti = null;
+        var editSceneId = null;
+        var editIsVideo = false;
+        var editExistingHotspots = []; // hotspots cargados del server
+        var editModifiedIds = {};     // { id: { ...changes } }  hotspots con cambios pendientes
+        var editNewImageFiles = {};   // { id: File } nuevas imágenes por subir
+        var editCardTargetViewerInst = null;
+        var editDragState = { isMouseDown: false, startX: 0, startY: 0, hasMoved: false, coords: null, clientX: 0, clientY: 0 };
 
-            var panoramaContainerId = 'panorama-hotspot' + idNum;
-            var videoContainerId = 'video-hotspot-edit-' + idNum;
-            var $sourceSelect = $modal.find('#sourceScene-' + idNum);
-            var sceneId = $sourceSelect.val();
-            var sceneType = sceneTypeMap[sceneId] || 'equirectangular';
+        function hideEditCard() { $('#editHotspotCard').hide(); }
 
-            if (sceneType === 'video') {
-                // Escena de video - cargar video en el visor
-                var $videoViewer = $modal.find('.video-hotspot-edit-viewer');
-                var videoPlayer = $videoViewer.find('.video-hotspot-edit-player')[0];
-                var videoProgress = $videoViewer.find('.video-hotspot-edit-progress')[0];
-                var videoMarker = $videoViewer.find('.video-hotspot-edit-marker')[0];
-
-                var videoUrl = sceneVideoMap[sceneId];
-                if (videoUrl && videoPlayer) {
-                    videoPlayer.src = videoUrl;
-                    videoPlayer.load();
-
-                    // Si tiene video_time, navegar a ese punto
-                    var vt = $('#videoTime-' + idNum).val();
-                    if (vt) {
-                        videoPlayer.oncanplay = function() {
-                            videoPlayer.currentTime = parseFloat(vt) || 0;
-                            videoPlayer.oncanplay = null;
-                        };
-                    }
-                }
-
-                // Setup drag-to-scrub para este edit viewer
-                if (!$videoViewer.data('scrubSetup')) {
-                    setupVideoScrub($videoViewer[0], videoPlayer, videoProgress, function(x, y, time) {
-                        $('#videoTime-' + idNum).val(round3(time));
-                        $('#posX-' + idNum).val(round3(x));
-                        $('#posY-' + idNum).val(round3(y));
-                        videoMarker.style.display = 'block';
-                        videoMarker.style.left = x + '%';
-                        videoMarker.style.top = y + '%';
-                    });
-                    $videoViewer.data('scrubSetup', true);
-                }
-            } else {
-                // Escena panorama 360
-                var imageUrl = sceneImageMap[sceneId];
-                destroyViewer($modal.data('viewerEdit'));
-
-                if (imageUrl) {
-                    var viewerEdit = pannellum.viewer(panoramaContainerId, {
-                        type: "equirectangular",
-                        panorama: imageUrl,
-                        autoLoad: true
-                    });
-                    $modal.data('viewerEdit', viewerEdit);
-
-                    viewerEdit.on('mousedown', function(ev) {
-                        var coords = viewerEdit.mouseEventToCoords(ev);
-                        if (!coords) return;
-                        $('#yaw-' + idNum).val(round3(coords[1]));
-                        $('#pitch-' + idNum).val(round3(coords[0]));
-                    });
-                }
-            }
-
-            // Cambio de escena dentro del modal de edición
-            $sourceSelect.off('change._edit').on('change._edit', function() {
-                var newSceneId = $(this).val();
-                var newType = sceneTypeMap[newSceneId] || 'equirectangular';
-
-                if (newType === 'video') {
-                    // Cambiar a video
-                    $('#' + panoramaContainerId).hide();
-                    destroyViewer($modal.data('viewerEdit'));
-                    $('#' + videoContainerId).show();
-                    $('.panorama-pos-edit-' + idNum).hide();
-                    $('.video-pos-edit-' + idNum).show();
-
-                    var videoUrl = sceneVideoMap[newSceneId];
-                    var $videoViewer = $('#' + videoContainerId);
-                    var videoPlayer = $videoViewer.find('.video-hotspot-edit-player')[0];
-                    if (videoUrl && videoPlayer) {
-                        videoPlayer.src = videoUrl;
-                        videoPlayer.load();
-                    }
-                } else {
-                    // Cambiar a panorama
-                    $('#' + videoContainerId).hide();
-                    var videoPlayer2 = $('#' + videoContainerId).find('.video-hotspot-edit-player')[0];
-                    if (videoPlayer2) { videoPlayer2.pause(); videoPlayer2.removeAttribute('src'); }
-                    $('#' + panoramaContainerId).show();
-                    $('.panorama-pos-edit-' + idNum).show();
-                    $('.video-pos-edit-' + idNum).hide();
-
-                    var newUrl = sceneImageMap[newSceneId];
-                    if (newUrl) {
-                        destroyViewer($modal.data('viewerEdit'));
-                        var viewerEdit2 = pannellum.viewer(panoramaContainerId, {
-                            type: "equirectangular",
-                            panorama: newUrl,
-                            autoLoad: true
-                        });
-                        $modal.data('viewerEdit', viewerEdit2);
-                        viewerEdit2.on('mousedown', function(ev) {
-                            var coords = viewerEdit2.mouseEventToCoords(ev);
-                            if (!coords) return;
-                            $('#yaw-' + idNum).val(round3(coords[1]));
-                            $('#pitch-' + idNum).val(round3(coords[0]));
-                        });
-                    }
-                }
-            });
-        });
-
-        // Limpia viewer al cerrar
-        $('[id^="editHotspot"]').on('hidden.bs.modal', function() {
-            var $modal = $(this);
-            destroyViewer($modal.data('viewerEdit'));
-            $modal.removeData('viewerEdit');
-            // Pausar video si existe
-            $modal.find('.video-hotspot-edit-player').each(function() {
-                this.pause();
-            });
-        });
-
-        // ====== Control de visibilidad de targetScene según tipo ======
-        $(document).on('change', '.hotspot-type-select', function() {
-            var selectedType = $(this).val();
-            var hotspotId = $(this).data('hotspot-id');
-            var $container = $('#targetSceneContainer-' + hotspotId);
-            var $select = $('#targetScene-' + hotspotId);
-            var $yawContainer = $('#targetYawContainer-' + hotspotId);
-
-            if (selectedType === 'scene') {
-                $container.show();
-                $select.prop('required', true);
-                // Si ya hay escena seleccionada, mostrar visor
-                if ($select.val()) {
-                    $yawContainer.show();
-                    initEditTargetViewer(hotspotId, $select.val());
-                }
-            } else {
-                $container.hide();
-                $select.prop('required', false).val('');
-                $yawContainer.hide();
-                destroyEditTargetViewer(hotspotId);
-            }
-        });
-
-        // ====== Mini visor de dirección en modales de edición ======
-        var editTargetViewers = {}; // { hotspotId: pannellumInstance }
-
-        function destroyEditTargetViewer(hotspotId) {
-            if (editTargetViewers[hotspotId]) {
-                try { editTargetViewers[hotspotId].destroy(); } catch(e) {}
-                editTargetViewers[hotspotId] = null;
-            }
+        function showEditCard(x, y) {
+            var $card = $('#editHotspotCard');
+            var $wrapper = $('#editViewerWrapper');
+            var wrapperOffset = $wrapper.offset();
+            var wrapperW = $wrapper.width();
+            var wrapperH = $wrapper.height();
+            var cardW = 320, cardH = 420;
+            var cardLeft = x - wrapperOffset.left + 15;
+            var cardTop = y - wrapperOffset.top - 20;
+            if (cardLeft + cardW > wrapperW) cardLeft = wrapperW - cardW - 10;
+            if (cardTop + cardH > wrapperH) cardTop = wrapperH - cardH - 10;
+            if (cardLeft < 10) cardLeft = 10;
+            if (cardTop < 10) cardTop = 10;
+            $card.css({ left: cardLeft + 'px', top: cardTop + 'px' }).show();
         }
 
-        function initEditTargetViewer(hotspotId, sceneId) {
-            destroyEditTargetViewer(hotspotId);
-            if (!sceneId || !scenePanoramaMap[sceneId]) return;
-
-            var $yawInput = $('#targetYaw-' + hotspotId);
-            var $pitchInput = $('#targetPitch-' + hotspotId);
-            var initYaw = parseFloat($yawInput.val()) || sceneDefaultYaw[sceneId] || 0;
-            var initPitch = parseFloat($pitchInput.val()) || sceneDefaultPitch[sceneId] || 0;
-
-            editTargetViewers[hotspotId] = pannellum.viewer('targetViewer-' + hotspotId, {
-                type: 'equirectangular',
-                panorama: scenePanoramaMap[sceneId],
-                autoLoad: true,
-                showControls: false,
-                compass: false,
-                mouseZoom: false,
-                hfov: 100,
-                yaw: initYaw,
-                pitch: initPitch
+        function renderEditTable() {
+            var $tbody = $('#editHotspotsTableBody');
+            $tbody.empty();
+            var modCount = Object.keys(editModifiedIds).length;
+            editExistingHotspots.forEach(function(h, idx) {
+                var imgSrc = h.image_url || defaultHotspotImage;
+                var destName = h.targetScene ? (sceneTitleMap[h.targetScene] || 'Escena ' + h.targetScene) : '-';
+                var typeLabel = h.type === 'scene' ? '<span class="badge badge-info">Enlace</span>' : '<span class="badge badge-secondary">Info</span>';
+                var shortInfo = (h.info || '').substring(0, 30);
+                var isModified = !!editModifiedIds[h.id];
+                var stateHtml = isModified ? '<span class="badge badge-warning" title="Modificado"><i class="fa fa-pencil"></i></span>' : '<span class="badge badge-light" title="Sin cambios">-</span>';
+                $tbody.append(
+                    '<tr' + (isModified ? ' class="table-warning"' : '') + '>' +
+                    '<td>' + (idx + 1) + '</td>' +
+                    '<td><img src="' + imgSrc + '" style="width:30px;height:30px;object-fit:cover;border-radius:50%;"></td>' +
+                    '<td>' + typeLabel + '</td>' +
+                    '<td style="font-size:12px;">' + destName + '</td>' +
+                    '<td style="font-size:12px;" title="' + (h.info || '').replace(/"/g, '&quot;') + '">' + shortInfo + '</td>' +
+                    '<td>' + stateHtml + '</td>' +
+                    '<td>' +
+                        '<button class="btn btn-sm btn-outline-warning edit-existing-hotspot mr-1" data-index="' + idx + '" title="Editar"><i class="fa fa-pencil"></i></button>' +
+                        '<button class="btn btn-sm btn-outline-danger delete-existing-hotspot" data-index="' + idx + '" data-id="' + h.id + '" title="Eliminar"><i class="fa fa-trash"></i></button>' +
+                    '</td>' +
+                    '</tr>'
+                );
             });
+            $('#editHotspotCount').text(editExistingHotspots.length);
+            $('#editSaveCount').text(modCount);
+            $('#saveEditedHotspots').prop('disabled', modCount === 0);
+            $('#editHotspotsTableSection').toggle(editExistingHotspots.length > 0);
+        }
 
-            editTargetViewers[hotspotId].on('mouseup', function() {
-                $yawInput.val(editTargetViewers[hotspotId].getYaw().toFixed(2));
-                $pitchInput.val(editTargetViewers[hotspotId].getPitch().toFixed(2));
-            });
-            editTargetViewers[hotspotId].on('touchend', function() {
-                $yawInput.val(editTargetViewers[hotspotId].getYaw().toFixed(2));
-                $pitchInput.val(editTargetViewers[hotspotId].getPitch().toFixed(2));
+        function updateEditViewerMarkers() {
+            if (!editViewerMulti || editIsVideo) return;
+            try {
+                // Quitar marcadores previos
+                var allHs = editViewerMulti.getConfig().hotSpots || [];
+                allHs.forEach(function(h) { try { editViewerMulti.removeHotSpot(h.id); } catch(e) {} });
+            } catch(e) {}
+            editExistingHotspots.forEach(function(h, idx) {
+                if (h.yaw !== null && h.pitch !== null) {
+                    try {
+                        editViewerMulti.addHotSpot({
+                            id: 'edit_marker_' + idx,
+                            pitch: parseFloat(h.pitch),
+                            yaw: parseFloat(h.yaw),
+                            type: 'info',
+                            text: (idx + 1) + '',
+                            cssClass: 'pending-hotspot-marker'
+                        });
+                    } catch(e) {}
+                }
             });
         }
 
-        // Al cambiar la escena destino en un modal de edición
-        $(document).on('change', '.target-scene-edit-select', function() {
-            var hotspotId = $(this).data('hotspot-id');
+        function loadEditSceneHotspots(sceneId) {
+            editExistingHotspots = [];
+            editModifiedIds = {};
+            editNewImageFiles = {};
+            hideEditCard();
+            $.get('{{ route("getHotspotsByScene") }}', { scene_id: sceneId }, function(resp) {
+                if (resp.success) {
+                    editExistingHotspots = resp.hotspots;
+                    renderEditTable();
+                    updateEditViewerMarkers();
+                }
+            });
+        }
+
+        // Cambio de escena origen en el modal de edición
+        $('#editSourceScene').on('change', function() {
             var sceneId = $(this).val();
-            var $yawContainer = $('#targetYawContainer-' + hotspotId);
+            if (!sceneId) return;
+            editSceneId = sceneId;
+            hideEditCard();
 
-            if (sceneId && scenePanoramaMap[sceneId]) {
-                $yawContainer.show();
-                // Limpiar valores anteriores para que use default de la nueva escena
-                $('#targetYaw-' + hotspotId).val('');
-                $('#targetPitch-' + hotspotId).val('');
-                initEditTargetViewer(hotspotId, sceneId);
+            var type = sceneTypeMap[sceneId] || 'equirectangular';
+            editIsVideo = (type === 'video');
+            var $wrapper = $('#editViewerWrapper');
+            $wrapper.show();
+
+            if (editIsVideo) {
+                $('#panorama-edit-multi').hide();
+                destroyViewer(editViewerMulti); editViewerMulti = null;
+                var $videoC = $('#video-edit-multi').show();
+                var videoEl = document.getElementById('video-edit-multi-player');
+                var progressEl = document.getElementById('video-edit-multi-progress');
+                var videoUrl = sceneVideoMap[sceneId];
+                if (videoUrl && videoEl) { videoEl.src = videoUrl; videoEl.load(); }
+                if (!$videoC.data('editScrub')) {
+                    setupVideoScrub($videoC[0], videoEl, progressEl, function(x, y, time) {
+                        // Reubicar hotspot activo si hay card abierta
+                        var activeId = $('#editCardHotspotId').val();
+                        if (activeId && $('#editHotspotCard').is(':visible')) {
+                            $('#editCardVideoTime').val(round3(time));
+                            $('#editCardPosX').val(round3(x));
+                            $('#editCardPosY').val(round3(y));
+                            var marker = document.getElementById('video-edit-multi-marker');
+                            marker.style.display = 'block';
+                            marker.style.left = x + '%';
+                            marker.style.top = y + '%';
+                        }
+                    });
+                    $videoC.data('editScrub', true);
+                }
             } else {
-                $yawContainer.hide();
-                destroyEditTargetViewer(hotspotId);
+                $('#video-edit-multi').hide();
+                var videoPlayer = document.getElementById('video-edit-multi-player');
+                if (videoPlayer) { videoPlayer.pause(); videoPlayer.removeAttribute('src'); }
+                $('#panorama-edit-multi').show();
+                destroyViewer(editViewerMulti);
+                var imgUrl = sceneImageMap[sceneId];
+                if (imgUrl) {
+                    editViewerMulti = pannellum.viewer('panorama-edit-multi', {
+                        type: 'equirectangular', panorama: imgUrl, autoLoad: true, showControls: false
+                    });
+                    editViewerMulti.on('mousedown', function(ev) {
+                        var coords = editViewerMulti.mouseEventToCoords(ev);
+                        editDragState.isMouseDown = true;
+                        editDragState.hasMoved = false;
+                        editDragState.startX = ev.clientX;
+                        editDragState.startY = ev.clientY;
+                        editDragState.coords = coords;
+                        editDragState.clientX = ev.clientX;
+                        editDragState.clientY = ev.clientY;
+                    });
+                    $(document).off('mousemove.editDrag').on('mousemove.editDrag', function(e) {
+                        if (!editDragState.isMouseDown) return;
+                        var dx = e.clientX - editDragState.startX;
+                        var dy = e.clientY - editDragState.startY;
+                        if (Math.abs(dx) > 5 || Math.abs(dy) > 5) editDragState.hasMoved = true;
+                    });
+                    $(document).off('mouseup.editDrag').on('mouseup.editDrag', function(e) {
+                        if (!editDragState.isMouseDown) return;
+                        editDragState.isMouseDown = false;
+                        if (editDragState.hasMoved) return;
+                        // Clic (no drag): si hay un hotspot activo, reubicar
+                        var activeId = $('#editCardHotspotId').val();
+                        if (activeId && $('#editHotspotCard').is(':visible') && editDragState.coords) {
+                            $('#editCardYaw').val(round3(editDragState.coords[1]));
+                            $('#editCardPitch').val(round3(editDragState.coords[0]));
+                        }
+                    });
+                }
+            }
+
+            loadEditSceneHotspots(sceneId);
+        });
+
+        // Click en "Editar" en tabla de hotspots existentes
+        $(document).on('click', '.edit-existing-hotspot', function() {
+            var idx = $(this).data('index');
+            var h = editExistingHotspots[idx];
+            if (!h) return;
+            // Aplicar cambios pendientes si existen
+            var merged = $.extend({}, h, editModifiedIds[h.id] || {});
+
+            $('#editCardHotspotId').val(h.id);
+            $('#editCardYaw').val(merged.yaw || '');
+            $('#editCardPitch').val(merged.pitch || '');
+            $('#editCardVideoTime').val(merged.video_time || '');
+            $('#editCardPosX').val(merged.pos_x || '');
+            $('#editCardPosY').val(merged.pos_y || '');
+            $('#editCardTargetYaw').val(merged.target_yaw || '');
+            $('#editCardTargetPitch').val(merged.target_pitch || '');
+            $('#editCardInfo').val(merged.info || '');
+            $('#editCardImageFile').val('');
+            $('#editCardImagePreview').attr('src', merged.image_url || defaultHotspotImage);
+
+            // Tipo y destino
+            $('#editCardType').val(merged.type || 'info');
+            if (merged.type === 'scene') {
+                $('#editCardTargetContainer').show();
+                $('#editCardTargetScene').val(merged.targetScene || '');
+                if (merged.targetScene && scenePanoramaMap[merged.targetScene]) {
+                    $('#editCardTargetYawContainer').show();
+                    initEditCardTargetViewer(merged.targetScene, merged.target_yaw, merged.target_pitch);
+                } else {
+                    $('#editCardTargetYawContainer').hide();
+                }
+            } else {
+                $('#editCardTargetContainer').hide();
+                $('#editCardTargetYawContainer').hide();
+            }
+
+            // Posicionar card cerca del hotspot en el visor
+            var $wrapper = $('#editViewerWrapper');
+            var wrapperOff = $wrapper.offset();
+            var cx = wrapperOff.left + $wrapper.width() / 2;
+            var cy = wrapperOff.top + 60;
+            showEditCard(cx, cy);
+
+            $('#applyEditBtn').html('<i class="fa fa-check"></i> Aplicar');
+        });
+
+        // Cerrar card de edición
+        $('#closeEditCard, #cancelEditCard').on('click', hideEditCard);
+
+        // Tipo cambia en card de edición
+        $('#editCardType').on('change', function() {
+            if ($(this).val() === 'scene') {
+                $('#editCardTargetContainer').show();
+                var ts = $('#editCardTargetScene').val();
+                if (ts && scenePanoramaMap[ts]) {
+                    $('#editCardTargetYawContainer').show();
+                    initEditCardTargetViewer(ts, '', '');
+                }
+            } else {
+                $('#editCardTargetContainer').hide();
+                $('#editCardTargetYawContainer').hide();
+                destroyEditCardTargetViewer();
             }
         });
 
-        // Inicializar mini visor al abrir modal de edición (si ya tiene target scene)
-        $('[id^="editHotspot"]').on('shown.bs.modal', function() {
-            var $modal = $(this);
-            var idNum = $modal.attr('id').match(/\d+/)[0];
-            var $typeSelect = $('#type-' + idNum);
-            var $targetSelect = $('#targetScene-' + idNum);
-
-            if ($typeSelect.val() === 'scene' && $targetSelect.val()) {
-                $('#targetYawContainer-' + idNum).show();
-                // Pequeño delay para que el DOM del modal esté listo
-                setTimeout(function() {
-                    initEditTargetViewer(idNum, $targetSelect.val());
-                }, 300);
+        // Escena destino cambia en card de edición
+        $('#editCardTargetScene').on('change', function() {
+            var sid = $(this).val();
+            if (sid && scenePanoramaMap[sid]) {
+                $('#editCardTargetYawContainer').show();
+                $('#editCardTargetYaw').val('');
+                $('#editCardTargetPitch').val('');
+                initEditCardTargetViewer(sid, '', '');
+            } else {
+                $('#editCardTargetYawContainer').hide();
+                destroyEditCardTargetViewer();
             }
         });
 
-        // Destruir mini visor al cerrar modal de edición
-        $('[id^="editHotspot"]').on('hidden.bs.modal', function() {
-            var idNum = $(this).attr('id').match(/\d+/)[0];
-            destroyEditTargetViewer(idNum);
+        // Preview imagen en card edición
+        $('#editCardImageFile').on('change', function() {
+            var file = this.files[0];
+            if (file) {
+                var reader = new FileReader();
+                reader.onload = function(e) { $('#editCardImagePreview').attr('src', e.target.result); };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Mini visor target para el card de edición
+        function destroyEditCardTargetViewer() {
+            if (editCardTargetViewerInst) { try { editCardTargetViewerInst.destroy(); } catch(e) {} editCardTargetViewerInst = null; }
+        }
+        function initEditCardTargetViewer(sceneId, tyaw, tpitch) {
+            destroyEditCardTargetViewer();
+            if (!scenePanoramaMap[sceneId]) return;
+            var initYaw = parseFloat(tyaw) || sceneDefaultYaw[sceneId] || 0;
+            var initPitch = parseFloat(tpitch) || sceneDefaultPitch[sceneId] || 0;
+            editCardTargetViewerInst = pannellum.viewer('editCardTargetViewer', {
+                type: 'equirectangular', panorama: scenePanoramaMap[sceneId],
+                autoLoad: true, showControls: false, compass: false, mouseZoom: false, hfov: 100,
+                yaw: initYaw, pitch: initPitch
+            });
+            editCardTargetViewerInst.on('mouseup', function() {
+                $('#editCardTargetYaw').val(editCardTargetViewerInst.getYaw().toFixed(2));
+                $('#editCardTargetPitch').val(editCardTargetViewerInst.getPitch().toFixed(2));
+            });
+            editCardTargetViewerInst.on('touchend', function() {
+                $('#editCardTargetYaw').val(editCardTargetViewerInst.getYaw().toFixed(2));
+                $('#editCardTargetPitch').val(editCardTargetViewerInst.getPitch().toFixed(2));
+            });
+        }
+
+        // Aplicar cambios del card al hotspot
+        $('#applyEditBtn').on('click', function() {
+            var hId = $('#editCardHotspotId').val();
+            if (!hId) return;
+
+            var type = $('#editCardType').val();
+            var info = $('#editCardInfo').val();
+            if (!info) { alert('Ingrese información del hotspot'); return; }
+            if (type === 'scene' && !$('#editCardTargetScene').val()) { alert('Seleccione escena destino'); return; }
+
+            var changes = {
+                type: type,
+                info: info,
+                targetScene: type === 'scene' ? $('#editCardTargetScene').val() : null,
+                target_yaw: $('#editCardTargetYaw').val() || null,
+                target_pitch: $('#editCardTargetPitch').val() || null,
+                yaw: $('#editCardYaw').val(),
+                pitch: $('#editCardPitch').val(),
+                video_time: $('#editCardVideoTime').val() || null,
+                pos_x: $('#editCardPosX').val() || null,
+                pos_y: $('#editCardPosY').val() || null,
+            };
+
+            // Guardar imagen nueva si se seleccionó
+            var imageFile = $('#editCardImageFile')[0].files[0];
+            if (imageFile) {
+                editNewImageFiles[hId] = imageFile;
+                // Actualizar preview en la tabla
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    // Actualizar image_url en el array para que la tabla muestre la nueva
+                    var idx = editExistingHotspots.findIndex(function(x) { return x.id == hId; });
+                    if (idx >= 0) editExistingHotspots[idx].image_url = e.target.result;
+                    renderEditTable();
+                };
+                reader.readAsDataURL(imageFile);
+            }
+
+            editModifiedIds[hId] = changes;
+
+            // Actualizar el array local para reflejar cambios en tabla
+            var idx = editExistingHotspots.findIndex(function(x) { return x.id == hId; });
+            if (idx >= 0) {
+                $.extend(editExistingHotspots[idx], changes);
+            }
+
+            renderEditTable();
+            updateEditViewerMarkers();
+            hideEditCard();
+        });
+
+        // Eliminar hotspot desde la tabla de edición
+        $(document).on('click', '.delete-existing-hotspot', function() {
+            var hId = $(this).data('id');
+            var idx = $(this).data('index');
+            if (!confirm('¿Eliminar este hotspot?')) return;
+
+            $.ajax({
+                url: '{{ url("delHotspotAjax") }}/' + hId,
+                method: 'DELETE',
+                data: { _token: '{{ csrf_token() }}' },
+                success: function(resp) {
+                    if (resp.success) {
+                        editExistingHotspots.splice(idx, 1);
+                        delete editModifiedIds[hId];
+                        delete editNewImageFiles[hId];
+                        renderEditTable();
+                        updateEditViewerMarkers();
+                    } else {
+                        alert('Error: ' + (resp.message || 'No se pudo eliminar'));
+                    }
+                },
+                error: function() { alert('Error al eliminar el hotspot'); }
+            });
+        });
+
+        // Guardar todos los cambios editados
+        $('#saveEditedHotspots').on('click', function() {
+            var modIds = Object.keys(editModifiedIds);
+            if (modIds.length === 0) return;
+
+            var $btn = $(this);
+            $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Guardando...');
+
+            var formData = new FormData();
+            formData.append('_token', '{{ csrf_token() }}');
+            formData.append('property_id', $('#editPropertyId').val());
+
+            var formIdx = 0;
+            modIds.forEach(function(hId) {
+                var c = editModifiedIds[hId];
+                var h = editExistingHotspots.find(function(x) { return x.id == hId; });
+                formData.append('hotspots[' + formIdx + '][id]', hId);
+                formData.append('hotspots[' + formIdx + '][sourceScene]', h ? h.sourceScene : editSceneId);
+                formData.append('hotspots[' + formIdx + '][type]', c.type || '');
+                formData.append('hotspots[' + formIdx + '][info]', c.info || '');
+                if (c.targetScene) formData.append('hotspots[' + formIdx + '][targetScene]', c.targetScene);
+                if (c.target_yaw) formData.append('hotspots[' + formIdx + '][target_yaw]', c.target_yaw);
+                if (c.target_pitch) formData.append('hotspots[' + formIdx + '][target_pitch]', c.target_pitch);
+                if (c.yaw) formData.append('hotspots[' + formIdx + '][yaw]', c.yaw);
+                if (c.pitch) formData.append('hotspots[' + formIdx + '][pitch]', c.pitch);
+                if (c.video_time) formData.append('hotspots[' + formIdx + '][video_time]', c.video_time);
+                if (c.pos_x) formData.append('hotspots[' + formIdx + '][pos_x]', c.pos_x);
+                if (c.pos_y) formData.append('hotspots[' + formIdx + '][pos_y]', c.pos_y);
+                if (editNewImageFiles[hId]) formData.append('images_' + formIdx, editNewImageFiles[hId]);
+                formIdx++;
+            });
+
+            $.ajax({
+                url: '{{ route("updateHotspotBatch") }}',
+                method: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(resp) {
+                    if (resp.success) {
+                        alert(resp.message);
+                        window.location.href = resp.redirect;
+                    } else {
+                        alert('Error: ' + resp.message);
+                        $btn.prop('disabled', false).html('<i class="fa fa-save mr-1"></i> Guardar Cambios (<span id="editSaveCount">' + modIds.length + '</span>)');
+                    }
+                },
+                error: function(xhr) {
+                    alert('Error al guardar: ' + (xhr.responseJSON ? xhr.responseJSON.message : 'Error desconocido'));
+                    $btn.prop('disabled', false).html('<i class="fa fa-save mr-1"></i> Guardar Cambios (<span id="editSaveCount">' + modIds.length + '</span>)');
+                }
+            });
+        });
+
+        // Limpiar al cerrar el modal de edición
+        $('#editHotspotMulti').on('hidden.bs.modal', function() {
+            destroyViewer(editViewerMulti); editViewerMulti = null;
+            destroyEditCardTargetViewer();
+            hideEditCard();
+            var videoEl = document.getElementById('video-edit-multi-player');
+            if (videoEl) { videoEl.pause(); videoEl.removeAttribute('src'); }
+            editExistingHotspots = [];
+            editModifiedIds = {};
+            editNewImageFiles = {};
         });
     });
 </script>

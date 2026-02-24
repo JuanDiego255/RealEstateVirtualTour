@@ -150,12 +150,7 @@ class SceneController extends Controller
 
         return YajraDataTables::of($hotspots)
             ->addColumn('action', function ($row) {
-                return '<a href="#" class="text-success" data-toggle="modal"
-                    data-target="#detailHotspot' . $row->id . '"><i class="ti-eye"></i></a>
-                        <a href="#" class="text-info" data-toggle="modal"
-                    data-target="#editHotspot' . $row->id . '"><i class="ti-pencil"></i></a>
-                        <a href="#" class="text-danger" data-toggle="modal"
-                    data-target="#deleteHotspot' . $row->id . '"><i class="ti-trash"></i></a>';
+                return '<span class="badge badge-light text-muted" title="Yaw: ' . $row->yaw . ' | Pitch: ' . $row->pitch . '"><i class="ti-eye"></i> #' . $row->id . '</span>';
             })
             ->editColumn('targetSceneName', function ($row) {
                 return $row->targetSceneName ?? 'N/A (Solo información)';
