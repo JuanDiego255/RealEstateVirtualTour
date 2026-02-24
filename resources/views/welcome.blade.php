@@ -617,6 +617,13 @@
                 scenes: @json($scenesConfig, $jsonOptions)
             };
 
+            // Guardar yaw/pitch originales de cada escena para no perderlos al sobreescribir
+            var originalSceneOrientation = {};
+            Object.keys(pannellumConfig.scenes).forEach(function(sid) {
+                var s = pannellumConfig.scenes[sid];
+                originalSceneOrientation[sid] = { yaw: s.yaw || 0, pitch: s.pitch || 0 };
+            });
+
             // --- Polígonos por escena ---
             const scenePolygons = @json($polygonsConfig ?? [], $jsonOptions);
 
@@ -1462,12 +1469,12 @@
                 if (isTransitioning) return;
                 isTransitioning = true;
 
-                // Determinar orientación al llegar
-                var targetScene = pannellumConfig.scenes[targetSceneId];
+                // Determinar orientación al llegar (usar originales como fallback, no la config que pudo ser sobreescrita)
+                var origOri = originalSceneOrientation[targetSceneId] || { yaw: 0, pitch: 0 };
                 var arrivalYaw = (targetYawOverride !== undefined && targetYawOverride !== null)
-                    ? targetYawOverride : (targetScene ? targetScene.yaw : 0);
+                    ? targetYawOverride : origOri.yaw;
                 var arrivalPitch = (targetPitchOverride !== undefined && targetPitchOverride !== null)
-                    ? targetPitchOverride : (targetScene ? targetScene.pitch : 0);
+                    ? targetPitchOverride : origOri.pitch;
 
                 pendingOrientation = {
                     yaw: arrivalYaw,
@@ -1622,20 +1629,20 @@
 
                 // Determinar orientación al llegar:
                 // 1. Si el hotspot tiene target_yaw/target_pitch → usar esos (dirección personalizada)
-                // 2. Si no → usar el yaw/pitch por defecto de la escena destino
-                var targetScene = pannellumConfig.scenes[targetSceneId];
+                // 2. Si no → usar el yaw/pitch ORIGINAL de la escena destino (no el config que pudo ser sobreescrito)
+                var origOri = originalSceneOrientation[targetSceneId] || { yaw: 0, pitch: 0 };
                 var arrivalYaw, arrivalPitch;
 
                 if (targetYawOverride !== undefined && targetYawOverride !== null) {
                     arrivalYaw = targetYawOverride;
                 } else {
-                    arrivalYaw = targetScene ? targetScene.yaw : 0;
+                    arrivalYaw = origOri.yaw;
                 }
 
                 if (targetPitchOverride !== undefined && targetPitchOverride !== null) {
                     arrivalPitch = targetPitchOverride;
                 } else {
-                    arrivalPitch = targetScene ? targetScene.pitch : 0;
+                    arrivalPitch = origOri.pitch;
                 }
 
                 // Guardar datos para la nueva escena
@@ -1711,6 +1718,13 @@
                     // La orientación ya se aplicó via config antes de loadScene,
                     // solo forzar el zoom cercano para el efecto de llegada
                     viewer.setHfov(pendingOrientation.minHfov);
+
+                    // Restaurar config original para que futuras navegaciones sin target usen el valor correcto
+                    var loadedId = String(viewer.getScene());
+                    if (originalSceneOrientation[loadedId] && pannellumConfig.scenes[loadedId]) {
+                        pannellumConfig.scenes[loadedId].yaw = originalSceneOrientation[loadedId].yaw;
+                        pannellumConfig.scenes[loadedId].pitch = originalSceneOrientation[loadedId].pitch;
+                    }
 
                     // Zoom OUT continuo (simula llegar al destino)
                     var startHfov = pendingOrientation.minHfov;
