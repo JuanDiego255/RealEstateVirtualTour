@@ -813,11 +813,13 @@
                 left: 0,
                 width: '100%',
                 height: '100%',
-                backgroundColor: '#000',
+                backgroundColor: 'rgba(255,255,255,0)',
                 opacity: 0,
                 pointerEvents: 'none',
                 zIndex: 1000,
-                transition: 'none'
+                transition: 'none',
+                backdropFilter: 'blur(0px)',
+                webkitBackdropFilter: 'blur(0px)'
             });
             $('#pannellum').append($transitionOverlay);
 
@@ -1542,8 +1544,11 @@
                     minHfov: 2
                 };
 
-                // Fade out video
+                // Fade out video (usar negro para video→panorama)
                 $transitionOverlay.css({
+                    backgroundColor: 'rgba(0,0,0,0.95)',
+                    backdropFilter: 'none',
+                    webkitBackdropFilter: 'none',
                     opacity: 0,
                     transition: 'opacity 0.4s ease'
                 });
@@ -1565,7 +1570,12 @@
                     setTimeout(function() {
                         $transitionOverlay.css('opacity', 0);
                         setTimeout(function() {
-                            $transitionOverlay.css('transition', 'none');
+                            $transitionOverlay.css({
+                                transition: 'none',
+                                backgroundColor: 'rgba(255,255,255,0)',
+                                backdropFilter: 'blur(0px)',
+                                webkitBackdropFilter: 'blur(0px)'
+                            });
                             isTransitioning = false;
                         }, 600);
                     }, 100);
@@ -1639,7 +1649,7 @@
                 }
             });
 
-            // --- Efecto de caminar: zoom continuo sin girar ---
+            // --- Efecto de caminar: zoom continuo con blur suave (sin negro) ---
             window.walkToScene = function(targetSceneId, hotspotYaw, hotspotPitch, targetYawOverride, targetPitchOverride) {
                 if (isTransitioning) return;
                 isTransitioning = true;
@@ -1653,6 +1663,9 @@
                 // Si el destino es video, usar transición fade en lugar de zoom
                 if (isVideoScene(targetSceneId)) {
                     $transitionOverlay.css({
+                        backgroundColor: 'rgba(0,0,0,0.95)',
+                        backdropFilter: 'none',
+                        webkitBackdropFilter: 'none',
                         opacity: 0,
                         transition: 'opacity 0.4s ease'
                     });
@@ -1670,7 +1683,12 @@
                         setTimeout(function() {
                             $transitionOverlay.css('opacity', 0);
                             setTimeout(function() {
-                                $transitionOverlay.css('transition', 'none');
+                                $transitionOverlay.css({
+                                    transition: 'none',
+                                    backgroundColor: 'rgba(255,255,255,0)',
+                                    backdropFilter: 'blur(0px)',
+                                    webkitBackdropFilter: 'blur(0px)'
+                                });
                                 isTransitioning = false;
                             }, 600);
                         }, 100);
@@ -1680,15 +1698,13 @@
 
                 var startHfov = viewer.getHfov();
 
-                // Zoom muy profundo para simular caminar hasta casi llegar a la escena
-                var minHfov = 2;
-                var zoomInDuration = 1200;
-                var fadeDuration = 300;
+                // Zoom profundo para simular caminar - a hfov tan bajo el cambio de escena es imperceptible
+                var minHfov = 5;
+                var zoomInDuration = 900;
+                var maxBlur = 12; // px de blur máximo durante el cambio
                 var startTime = Date.now();
 
                 // Determinar orientación al llegar:
-                // 1. Si el hotspot tiene target_yaw/target_pitch → usar esos (dirección personalizada)
-                // 2. Si no → usar el yaw/pitch ORIGINAL de la escena destino (no el config que pudo ser sobreescrito)
                 var origOri = originalSceneOrientation[targetSceneId] || { yaw: 0, pitch: 0 };
                 var arrivalYaw, arrivalPitch;
 
@@ -1712,37 +1728,48 @@
                     minHfov: minHfov
                 };
 
-                // Zoom IN continuo (sin girar, solo acercarse)
+                // Asegurar que el overlay está limpio al inicio
+                $transitionOverlay.css({
+                    opacity: 1,
+                    backgroundColor: 'rgba(255,255,255,0)',
+                    backdropFilter: 'blur(0px)',
+                    webkitBackdropFilter: 'blur(0px)',
+                    transition: 'none'
+                });
+
+                // Zoom IN continuo con blur progresivo (sin negro)
                 function animateWalkIn() {
                     var elapsed = Date.now() - startTime;
                     var progress = Math.min(elapsed / zoomInDuration, 1);
 
-                    // Easing: empieza lento, acelera (como caminar)
-                    var eased = progress * progress * progress;
+                    // Easing: empieza lento, acelera (como dar un paso hacia adelante)
+                    var eased = progress * progress * (3 - 2 * progress); // smoothstep
 
-                    // Solo interpolar el zoom, no la rotación
+                    // Interpolar el zoom
                     var newHfov = startHfov - ((startHfov - minHfov) * eased);
                     viewer.setHfov(newHfov);
 
-                    // Fade in del overlay en el último 25% del zoom
-                    if (progress > 0.75) {
-                        var fadeProgress = (progress - 0.75) / 0.25;
-                        $transitionOverlay.css('opacity', fadeProgress * 0.9);
+                    // Blur progresivo en el último 40% del zoom
+                    if (progress > 0.6) {
+                        var blurProgress = (progress - 0.6) / 0.4;
+                        var blurVal = blurProgress * maxBlur;
+                        $transitionOverlay.css({
+                            backdropFilter: 'blur(' + blurVal + 'px)',
+                            webkitBackdropFilter: 'blur(' + blurVal + 'px)'
+                        });
                     }
 
                     if (progress < 1) {
                         requestAnimationFrame(animateWalkIn);
                     } else {
-                        // Modificar la config de la escena ANTES de cargarla
-                        // para que Pannellum la abra directamente en la orientación deseada
+                        // En este punto el hfov es tan bajo que casi no se ve nada
+                        // El blur cubre cualquier cambio visual al cargar la nueva escena
                         if (pendingOrientation && pannellumConfig.scenes[targetSceneId]) {
                             pannellumConfig.scenes[targetSceneId].yaw = pendingOrientation.yaw;
                             pannellumConfig.scenes[targetSceneId].pitch = pendingOrientation.pitch;
                         }
-                        // Pequeña pausa antes de cambiar escena
-                        setTimeout(function() {
-                            viewer.loadScene(targetSceneId);
-                        }, 100);
+                        // Cargar escena inmediatamente (el blur oculta el cambio)
+                        viewer.loadScene(targetSceneId);
                     }
                 }
 
@@ -1785,43 +1812,78 @@
                         pannellumConfig.scenes[loadedId].pitch = originalSceneOrientation[loadedId].pitch;
                     }
 
-                    // Zoom OUT continuo (simula llegar al destino)
                     var startHfov = pendingOrientation.minHfov;
                     var targetHfov = pendingOrientation.hfov;
-                    var zoomOutDuration = 800;
+                    var isMenuTransition = !!pendingOrientation.fromMenu;
+                    var maxBlurOut = 12;
+                    var zoomOutDuration = isMenuTransition ? 500 : 700;
                     var startTime = Date.now();
 
-                    function animateWalkOut() {
-                        var elapsed = Date.now() - startTime;
-                        var progress = Math.min(elapsed / zoomOutDuration, 1);
+                    if (isMenuTransition) {
+                        // Menú: zoom out simple sin blur
+                        function animateMenuZoomOut() {
+                            var elapsed = Date.now() - startTime;
+                            var progress = Math.min(elapsed / zoomOutDuration, 1);
+                            var eased = 1 - Math.pow(1 - progress, 3);
 
-                        // Easing: empieza rápido, desacelera (como llegar)
-                        var eased = 1 - Math.pow(1 - progress, 3);
+                            var newHfov = startHfov + ((targetHfov - startHfov) * eased);
+                            viewer.setHfov(newHfov);
 
-                        var newHfov = startHfov + ((targetHfov - startHfov) * eased);
-                        viewer.setHfov(newHfov);
-
-                        // Fade out del overlay en el primer 40% del zoom out
-                        if (progress < 0.4) {
-                            var fadeProgress = 1 - (progress / 0.4);
-                            $transitionOverlay.css('opacity', fadeProgress * 0.9);
-                        } else {
-                            $transitionOverlay.css('opacity', 0);
+                            if (progress < 1) {
+                                requestAnimationFrame(animateMenuZoomOut);
+                            } else {
+                                isTransitioning = false;
+                                pendingOrientation = null;
+                            }
                         }
+                        requestAnimationFrame(animateMenuZoomOut);
+                    } else {
+                        // Hotspot: zoom out con blur desvaneciéndose (efecto caminar)
+                        function animateWalkOut() {
+                            var elapsed = Date.now() - startTime;
+                            var progress = Math.min(elapsed / zoomOutDuration, 1);
 
-                        if (progress < 1) {
-                            requestAnimationFrame(animateWalkOut);
-                        } else {
-                            isTransitioning = false;
-                            pendingOrientation = null;
-                            $transitionOverlay.css('opacity', 0);
+                            // Easing: desacelera suavemente (como desacelerar al llegar)
+                            var eased = 1 - Math.pow(1 - progress, 2.5);
+
+                            var newHfov = startHfov + ((targetHfov - startHfov) * eased);
+                            viewer.setHfov(newHfov);
+
+                            // Blur se desvanece durante el primer 50% del zoom out
+                            if (progress < 0.5) {
+                                var blurVal = maxBlurOut * (1 - progress / 0.5);
+                                $transitionOverlay.css({
+                                    backdropFilter: 'blur(' + blurVal + 'px)',
+                                    webkitBackdropFilter: 'blur(' + blurVal + 'px)'
+                                });
+                            } else {
+                                $transitionOverlay.css({
+                                    backdropFilter: 'blur(0px)',
+                                    webkitBackdropFilter: 'blur(0px)'
+                                });
+                            }
+
+                            if (progress < 1) {
+                                requestAnimationFrame(animateWalkOut);
+                            } else {
+                                isTransitioning = false;
+                                pendingOrientation = null;
+                                $transitionOverlay.css({
+                                    opacity: 0,
+                                    backdropFilter: 'blur(0px)',
+                                    webkitBackdropFilter: 'blur(0px)'
+                                });
+                            }
                         }
+                        requestAnimationFrame(animateWalkOut);
                     }
-
-                    requestAnimationFrame(animateWalkOut);
                 } else {
                     isTransitioning = false;
-                    $transitionOverlay.css('opacity', 0);
+                    $transitionOverlay.css({
+                        opacity: 0,
+                        backdropFilter: 'blur(0px)',
+                        webkitBackdropFilter: 'blur(0px)'
+                    });
                 }
 
                 var currentScene = viewer.getScene();
@@ -1887,6 +1949,9 @@
                     // Función para transición fade (usada para video)
                     function fadeTransition(onMiddle) {
                         $transitionOverlay.css({
+                            backgroundColor: 'rgba(0,0,0,0.95)',
+                            backdropFilter: 'none',
+                            webkitBackdropFilter: 'none',
                             opacity: 0,
                             transition: 'opacity 0.4s ease'
                         });
@@ -1901,7 +1966,12 @@
                             setTimeout(function() {
                                 $transitionOverlay.css('opacity', 0);
                                 setTimeout(function() {
-                                    $transitionOverlay.css('transition', 'none');
+                                    $transitionOverlay.css({
+                                        transition: 'none',
+                                        backgroundColor: 'rgba(255,255,255,0)',
+                                        backdropFilter: 'blur(0px)',
+                                        webkitBackdropFilter: 'blur(0px)'
+                                    });
                                     isTransitioning = false;
                                 }, 600);
                             }, 100);
@@ -1934,12 +2004,13 @@
                         return;
                     }
 
-                    // Panorama → Panorama: usar zoom
+                    // Panorama → Panorama: usar zoom (menú = sin blur)
                     pendingOrientation = {
                         yaw: viewer.getYaw(),
                         pitch: viewer.getPitch(),
                         hfov: viewer.getHfov(),
-                        minHfov: 15
+                        minHfov: 15,
+                        fromMenu: true
                     };
 
                     // Zoom in rápido, luego cambiar escena
