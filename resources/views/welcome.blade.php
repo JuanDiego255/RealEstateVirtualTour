@@ -1699,9 +1699,9 @@
                 var startHfov = viewer.getHfov();
 
                 // Zoom profundo para simular caminar - a hfov tan bajo el cambio de escena es imperceptible
-                var minHfov = 5;
-                var zoomInDuration = 900;
-                var maxBlur = 12; // px de blur máximo durante el cambio
+                var minHfov = 2;
+                var zoomInDuration = 550;
+                var maxBlur = 14; // px de blur máximo durante el cambio
                 var startTime = Date.now();
 
                 // Determinar orientación al llegar:
@@ -1749,9 +1749,9 @@
                     var newHfov = startHfov - ((startHfov - minHfov) * eased);
                     viewer.setHfov(newHfov);
 
-                    // Blur progresivo en el último 40% del zoom
-                    if (progress > 0.6) {
-                        var blurProgress = (progress - 0.6) / 0.4;
+                    // Blur progresivo en el último 20% del zoom (más zoom visible antes del blur)
+                    if (progress > 0.8) {
+                        var blurProgress = (progress - 0.8) / 0.2;
                         var blurVal = blurProgress * maxBlur;
                         $transitionOverlay.css({
                             backdropFilter: 'blur(' + blurVal + 'px)',
@@ -1815,8 +1815,8 @@
                     var startHfov = pendingOrientation.minHfov;
                     var targetHfov = pendingOrientation.hfov;
                     var isMenuTransition = !!pendingOrientation.fromMenu;
-                    var maxBlurOut = 12;
-                    var zoomOutDuration = isMenuTransition ? 500 : 700;
+                    var maxBlurOut = 14;
+                    var zoomOutDuration = isMenuTransition ? 400 : 450;
                     var startTime = Date.now();
 
                     if (isMenuTransition) {
