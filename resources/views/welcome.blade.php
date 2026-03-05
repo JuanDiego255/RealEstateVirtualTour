@@ -4,12 +4,12 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Virtual Tour | Su propiedad en occidente</title>
+    <title>Virtual Tour | Space 360 CR</title>
 
     {{-- Bootstrap CSS --}}
     <link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet" media="all">
     {{-- Icon --}}
-    <link rel="icon" href="{{ asset('img/UnsoedIcon.png') }}">
+    <link rel="icon" href="{{ asset('img/space360icon.png') }}">
 
     {{-- Fonts --}}
     <link href="https://fonts.googleapis.com/css?family=Fahkwang:400,500,600,700&display=swap" rel="stylesheet">
