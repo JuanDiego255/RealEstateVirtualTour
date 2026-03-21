@@ -374,10 +374,499 @@
                 padding: 6px 10px;
             }
         }
+
+        /* ====== MATTERPORT STYLE UI ====== */
+
+        /* Ocultar menú lateral antiguo por defecto - ahora como modal de búsqueda */
+        #menu-nav-wrap {
+            display: none;
+            position: fixed;
+            top: 70px;
+            left: 16px;
+            right: auto;
+            margin: 0;
+            width: 280px;
+            max-height: 70vh;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            z-index: 1100;
+            visibility: visible;
+            transform: none;
+            padding: 16px;
+            overflow-y: auto;
+        }
+
+        #menu-nav-wrap.matterport-menu-open {
+            display: block;
+        }
+
+        #menu-nav-wrap h3 {
+            font-size: 16px;
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+
+        #menu-nav-wrap .nav-list {
+            margin: 0;
+            padding: 0;
+        }
+
+        #menu-nav-wrap .nav-list li {
+            line-height: 1.4;
+            margin-bottom: 10px;
+        }
+
+        #menu-nav-wrap .nav-list li a {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px;
+            border-radius: 8px;
+            transition: background 0.2s;
+        }
+
+        #menu-nav-wrap .nav-list li a:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        #menu-nav-wrap .nav-list li a .circular {
+            width: 50px;
+            height: 50px;
+            border-radius: 8px;
+            box-shadow: none;
+        }
+
+        /* Header info superior izquierda */
+        .matterport-header {
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            z-index: 1000;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            transition: opacity 0.4s ease;
+        }
+
+        .matterport-toolbar,
+        .matterport-actions,
+        .matterport-scenes-carousel,
+        .matterport-carousel-toggle {
+            transition: opacity 0.4s ease;
+        }
+
+        .matterport-search-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.7);
+            border: none;
+            color: #fff;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .matterport-search-btn:hover {
+            background: rgba(0, 0, 0, 0.85);
+            transform: scale(1.05);
+        }
+
+        .matterport-info {
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            border-radius: 8px;
+            padding: 10px 16px;
+            color: #fff;
+        }
+
+        .matterport-info-provider {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-bottom: 2px;
+        }
+
+        .matterport-info-title {
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .matterport-info-title i {
+            color: #e74c3c;
+            font-size: 12px;
+        }
+
+        /* Barra de herramientas inferior izquierda */
+        .matterport-toolbar {
+            position: fixed;
+            bottom: 100px;
+            left: 16px;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            border-radius: 8px;
+            padding: 6px 8px;
+        }
+
+        .matterport-toolbar-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 6px;
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .matterport-toolbar-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .matterport-toolbar-btn.active {
+            background: rgba(255, 255, 255, 0.2);
+            color: #e91e63;
+        }
+
+        .matterport-toolbar-btn.active i {
+            color: #e91e63;
+        }
+
+        .matterport-toolbar-divider {
+            width: 1px;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.2);
+            margin: 0 4px;
+        }
+
+        /* Tooltip para botones */
+        .matterport-toolbar-btn[data-tooltip]:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: #fff;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            margin-bottom: 8px;
+        }
+
+        /* Botones de acciones a la derecha */
+        .matterport-actions {
+            position: fixed;
+            bottom: 100px;
+            right: 16px;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .matterport-action-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            border: none;
+            color: #fff;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .matterport-action-btn:hover {
+            background: rgba(0, 0, 0, 0.85);
+            transform: scale(1.05);
+        }
+
+        /* Carrusel de escenas en la parte inferior */
+        .matterport-scenes-carousel {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 999;
+            background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 70%, transparent 100%);
+            padding: 16px 16px 20px;
+        }
+
+        .matterport-scenes-wrapper {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            padding: 4px 0;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .matterport-scenes-wrapper::-webkit-scrollbar {
+            height: 4px;
+        }
+
+        .matterport-scenes-wrapper::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px;
+        }
+
+        .matterport-scenes-wrapper::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.3);
+            border-radius: 2px;
+        }
+
+        .matterport-scene-item {
+            flex-shrink: 0;
+            width: 120px;
+            height: 70px;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            position: relative;
+            border: 2px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+        .matterport-scene-item:hover {
+            transform: scale(1.05);
+            border-color: rgba(255,255,255,0.5);
+        }
+
+        .matterport-scene-item.active {
+            border-color: #e91e63;
+            box-shadow: 0 0 12px rgba(233, 30, 99, 0.5);
+        }
+
+        .matterport-scene-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .matterport-scene-item .scene-icon {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 28px;
+            height: 28px;
+            background: rgba(255,255,255,0.95);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .matterport-scene-item:hover .scene-icon {
+            opacity: 1;
+        }
+
+        .matterport-scene-item .scene-icon i {
+            color: #333;
+            font-size: 12px;
+        }
+
+        .matterport-scene-item.video-scene .scene-badge {
+            position: absolute;
+            top: 6px;
+            left: 6px;
+            background: rgba(0,0,0,0.7);
+            color: #fff;
+            font-size: 9px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .matterport-scene-item .scene-title {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+            color: #fff;
+            font-size: 10px;
+            padding: 16px 6px 6px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Toggle para mostrar/ocultar carrusel */
+        .matterport-carousel-toggle {
+            position: fixed;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1001;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            border: none;
+            color: #fff;
+            width: 44px;
+            height: 28px;
+            border-radius: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .matterport-carousel-toggle:hover {
+            background: rgba(0, 0, 0, 0.85);
+        }
+
+        .matterport-carousel-toggle i {
+            transition: transform 0.3s ease;
+        }
+
+        .matterport-carousel-toggle.collapsed i {
+            transform: rotate(180deg);
+        }
+
+        .matterport-scenes-carousel.collapsed {
+            transform: translateY(calc(100% - 28px));
+        }
+
+        /* Ocultar controles antiguos */
+        #controls {
+            display: none !important;
+        }
+
+        /* Ajustar nombre de escena para nueva UI */
+        .current-scene-name {
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        /* ====== Responsive Matterport UI ====== */
+        @media (max-width: 768px) {
+            .matterport-header {
+                top: 10px;
+                left: 10px;
+                gap: 8px;
+            }
+
+            .matterport-search-btn {
+                width: 36px;
+                height: 36px;
+                font-size: 14px;
+            }
+
+            .matterport-info {
+                padding: 8px 12px;
+            }
+
+            .matterport-info-provider {
+                font-size: 10px;
+            }
+
+            .matterport-info-title {
+                font-size: 12px;
+            }
+
+            .matterport-toolbar {
+                bottom: 85px;
+                left: 10px;
+                padding: 4px 6px;
+            }
+
+            .matterport-toolbar-btn {
+                width: 34px;
+                height: 34px;
+                font-size: 14px;
+            }
+
+            .matterport-actions {
+                bottom: 85px;
+                right: 10px;
+            }
+
+            .matterport-action-btn {
+                width: 36px;
+                height: 36px;
+                font-size: 14px;
+            }
+
+            .matterport-scene-item {
+                width: 90px;
+                height: 55px;
+            }
+
+            .matterport-scenes-carousel {
+                padding: 12px 10px 16px;
+            }
+
+            .matterport-scene-item .scene-title {
+                font-size: 9px;
+                padding: 12px 4px 4px;
+            }
+
+            .current-scene-name {
+                top: 65px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .matterport-info {
+                max-width: 180px;
+            }
+
+            .matterport-info-title {
+                font-size: 11px;
+            }
+
+            .matterport-toolbar {
+                gap: 2px;
+                padding: 3px 5px;
+            }
+
+            .matterport-toolbar-btn {
+                width: 30px;
+                height: 30px;
+                font-size: 13px;
+            }
+
+            .matterport-scene-item {
+                width: 75px;
+                height: 48px;
+            }
+        }
     </style>
 </head>
 
 <body id="top">
+    {{-- Antiguo menú lateral (oculto por CSS pero mantenido para compatibilidad) --}}
     <header>
         <nav id="menu-nav-wrap">
             <h3>Virtual Tour</h3>
@@ -397,6 +886,81 @@
             </ul>
         </nav>
     </header>
+
+    {{-- ====== NUEVA UI ESTILO MATTERPORT ====== --}}
+
+    {{-- Header con info de la propiedad --}}
+    <div class="matterport-header">
+        <button class="matterport-search-btn" id="matterport-menu-toggle" title="Buscar escenas">
+            <i class="fa fa-search"></i>
+        </button>
+        <div class="matterport-info">
+            <div class="matterport-info-provider">Virtual Tour 360</div>
+            <div class="matterport-info-title">
+                <i class="fa fa-map-marker"></i>
+                <span>{{ $fscene->property_name ?? 'Propiedad' }}</span>
+            </div>
+        </div>
+    </div>
+
+    {{-- Barra de herramientas inferior izquierda --}}
+    <div class="matterport-toolbar">
+        <button class="matterport-toolbar-btn" id="matterport-toggle-carousel" data-tooltip="Escenas">
+            <i class="fa fa-chevron-down"></i>
+        </button>
+        <button class="matterport-toolbar-btn" id="matterport-autorotate" data-tooltip="Auto-rotar">
+            <i class="fa fa-play"></i>
+        </button>
+        <div class="matterport-toolbar-divider"></div>
+        <button class="matterport-toolbar-btn" id="matterport-prev-scene" data-tooltip="Escena anterior">
+            <i class="fa fa-chevron-left"></i>
+        </button>
+        <button class="matterport-toolbar-btn active" id="matterport-walk-mode" data-tooltip="Modo caminar">
+            <i class="fa fa-male"></i>
+        </button>
+        <button class="matterport-toolbar-btn" id="matterport-next-scene" data-tooltip="Siguiente escena">
+            <i class="fa fa-chevron-right"></i>
+        </button>
+    </div>
+
+    {{-- Botones de acciones a la derecha --}}
+    <div class="matterport-actions">
+        <button class="matterport-action-btn" id="matterport-share" title="Compartir">
+            <i class="fa fa-share-alt"></i>
+        </button>
+        <button class="matterport-action-btn" id="matterport-fullscreen" title="Pantalla completa">
+            <i class="fa fa-expand"></i>
+        </button>
+    </div>
+
+    {{-- Carrusel de escenas --}}
+    <div class="matterport-scenes-carousel" id="matterport-scenes-carousel">
+        <div class="matterport-scenes-wrapper">
+            @foreach ($scenes as $index => $scene)
+                <div class="matterport-scene-item {{ $scene->type === 'video' ? 'video-scene' : '' }} {{ $index === 0 ? 'active' : '' }}"
+                     data-scene-id="{{ $scene->id }}"
+                     data-scene-type="{{ $scene->type }}">
+                    <img src="{{ isset($scene->image_ref) ? route('file', $scene->image_ref) : (isset($scene->image) ? route('file', $scene->image) : url('images/producto-sin-imagen.PNG')) }}"
+                         alt="{{ $scene->title }}">
+                    @if($scene->type === 'video')
+                        <div class="scene-badge">
+                            <i class="fa fa-video-camera"></i>
+                            360
+                        </div>
+                    @endif
+                    <div class="scene-icon">
+                        <i class="fa {{ $scene->type === 'video' ? 'fa-play' : 'fa-male' }}"></i>
+                    </div>
+                    <div class="scene-title">{{ $scene->title }}</div>
+                </div>
+            @endforeach
+        </div>
+    </div>
+
+    {{-- Toggle del carrusel --}}
+    <button class="matterport-carousel-toggle" id="matterport-carousel-toggle">
+        <i class="fa fa-chevron-down"></i>
+    </button>
 
     {{-- Modal Mapa --}}
     <div class="modal fade" id="denahModal" tabindex="-1" role="dialog" aria-hidden="true">
@@ -429,7 +993,8 @@
 
     {{-- Visor --}}
     <div id="pannellum">
-        <div id="controls">
+        {{-- Controles antiguos (ocultos) --}}
+        <div id="controls" style="display: none;">
             <div class="ctrl btn-tooltip" id="menu-trigger-ctrl" title="Menú">
                 <i class="fa fa-cubes"></i>
             </div>
@@ -2054,6 +2619,237 @@
             setTimeout(function() {
                 preloadAdjacentScenes(pannellumConfig.default.firstScene);
             }, 1000);
+
+            // ===== MATTERPORT STYLE UI - JavaScript =====
+
+            // Lista de IDs de escenas para navegación
+            var sceneIds = Object.keys(pannellumConfig.scenes);
+            var currentSceneIndex = 0;
+
+            // Función para actualizar escena activa en el carrusel
+            function updateActiveSceneInCarousel(sceneId) {
+                $('.matterport-scene-item').removeClass('active');
+                $('.matterport-scene-item[data-scene-id="' + sceneId + '"]').addClass('active');
+
+                // Actualizar índice actual
+                currentSceneIndex = sceneIds.indexOf(String(sceneId));
+                if (currentSceneIndex === -1) currentSceneIndex = 0;
+
+                // Scroll al elemento activo
+                var $activeItem = $('.matterport-scene-item.active');
+                if ($activeItem.length) {
+                    var $wrapper = $('.matterport-scenes-wrapper');
+                    var scrollLeft = $activeItem.position().left + $wrapper.scrollLeft() - ($wrapper.width() / 2) + ($activeItem.width() / 2);
+                    $wrapper.animate({ scrollLeft: scrollLeft }, 300);
+                }
+            }
+
+            // Escuchar cambios de escena en Pannellum
+            viewer.on('scenechange', function(sceneId) {
+                updateActiveSceneInCarousel(sceneId);
+            });
+
+            // Toggle del carrusel de escenas
+            $('#matterport-carousel-toggle, #matterport-toggle-carousel').on('click', function() {
+                var $carousel = $('#matterport-scenes-carousel');
+                var $toggle = $('#matterport-carousel-toggle');
+                var $toolbarBtn = $('#matterport-toggle-carousel');
+
+                $carousel.toggleClass('collapsed');
+                $toggle.toggleClass('collapsed');
+
+                if ($carousel.hasClass('collapsed')) {
+                    $toolbarBtn.find('i').removeClass('fa-chevron-down').addClass('fa-chevron-up');
+                } else {
+                    $toolbarBtn.find('i').removeClass('fa-chevron-up').addClass('fa-chevron-down');
+                }
+            });
+
+            // Clic en una escena del carrusel
+            $('.matterport-scene-item').on('click', function() {
+                var sceneId = $(this).data('scene-id');
+                var sceneType = $(this).data('scene-type');
+
+                if (sceneType === 'video') {
+                    // Mostrar visor de video
+                    if (typeof showVideoViewer === 'function') {
+                        fadeTransition(function() {
+                            showVideoViewer(sceneId);
+                            showSceneName(pannellumConfig.scenes[sceneId]?.title || 'Escena');
+                        });
+                    }
+                } else {
+                    // Cargar escena panorámica
+                    viewer.loadScene(String(sceneId));
+                }
+            });
+
+            // Auto-rotar toggle
+            var autoRotateEnabled = false;
+            $('#matterport-autorotate').on('click', function() {
+                autoRotateEnabled = !autoRotateEnabled;
+                var $btn = $(this);
+
+                if (autoRotateEnabled) {
+                    $btn.addClass('active');
+                    $btn.find('i').removeClass('fa-play').addClass('fa-pause');
+                    IDLE_ROTATE.enable();
+                    // Forzar inicio inmediato
+                    if (typeof viewer.startAutoRotate === 'function') {
+                        viewer.startAutoRotate(-1);
+                    } else if (typeof viewer.setAutoRotate === 'function') {
+                        viewer.setAutoRotate(-1);
+                    }
+                } else {
+                    $btn.removeClass('active');
+                    $btn.find('i').removeClass('fa-pause').addClass('fa-play');
+                    IDLE_ROTATE.disable();
+                }
+            });
+
+            // Navegación entre escenas
+            $('#matterport-prev-scene').on('click', function() {
+                currentSceneIndex = (currentSceneIndex - 1 + sceneIds.length) % sceneIds.length;
+                var sceneId = sceneIds[currentSceneIndex];
+                var sceneConfig = pannellumConfig.scenes[sceneId];
+
+                if (sceneConfig && sceneConfig.type === 'video') {
+                    if (typeof showVideoViewer === 'function') {
+                        fadeTransition(function() {
+                            showVideoViewer(sceneId);
+                            showSceneName(sceneConfig.title || 'Escena');
+                        });
+                    }
+                } else {
+                    viewer.loadScene(sceneId);
+                }
+            });
+
+            $('#matterport-next-scene').on('click', function() {
+                currentSceneIndex = (currentSceneIndex + 1) % sceneIds.length;
+                var sceneId = sceneIds[currentSceneIndex];
+                var sceneConfig = pannellumConfig.scenes[sceneId];
+
+                if (sceneConfig && sceneConfig.type === 'video') {
+                    if (typeof showVideoViewer === 'function') {
+                        fadeTransition(function() {
+                            showVideoViewer(sceneId);
+                            showSceneName(sceneConfig.title || 'Escena');
+                        });
+                    }
+                } else {
+                    viewer.loadScene(sceneId);
+                }
+            });
+
+            // Pantalla completa
+            $('#matterport-fullscreen').on('click', function() {
+                var elem = document.documentElement;
+                var $btn = $(this);
+
+                if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                    if (elem.requestFullscreen) {
+                        elem.requestFullscreen();
+                    } else if (elem.webkitRequestFullscreen) {
+                        elem.webkitRequestFullscreen();
+                    }
+                    $btn.find('i').removeClass('fa-expand').addClass('fa-compress');
+                } else {
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                    } else if (document.webkitExitFullscreen) {
+                        document.webkitExitFullscreen();
+                    }
+                    $btn.find('i').removeClass('fa-compress').addClass('fa-expand');
+                }
+            });
+
+            // Detectar salida de pantalla completa
+            document.addEventListener('fullscreenchange', function() {
+                if (!document.fullscreenElement) {
+                    $('#matterport-fullscreen i').removeClass('fa-compress').addClass('fa-expand');
+                }
+            });
+
+            // Compartir
+            $('#matterport-share').on('click', function() {
+                var url = window.location.href;
+                var title = '{{ $fscene->property_name ?? "Virtual Tour" }}';
+
+                if (navigator.share) {
+                    navigator.share({
+                        title: title,
+                        text: 'Mira este tour virtual: ' + title,
+                        url: url
+                    }).catch(function() {});
+                } else {
+                    // Fallback: copiar al portapapeles
+                    navigator.clipboard.writeText(url).then(function() {
+                        alert('Enlace copiado al portapapeles');
+                    }).catch(function() {
+                        prompt('Copia este enlace:', url);
+                    });
+                }
+            });
+
+            // Ocultar/mostrar UI durante el intro
+            function hideMatterportUI() {
+                $('.matterport-header, .matterport-toolbar, .matterport-actions, .matterport-scenes-carousel, .matterport-carousel-toggle').css('opacity', '0').css('pointer-events', 'none');
+            }
+
+            function showMatterportUI() {
+                $('.matterport-header, .matterport-toolbar, .matterport-actions, .matterport-scenes-carousel, .matterport-carousel-toggle').css('opacity', '1').css('pointer-events', 'auto');
+            }
+
+            // Inicialmente ocultar UI (se muestra cuando inicia el tour)
+            hideMatterportUI();
+
+            // Mostrar UI cuando se inicia el tour
+            $(document).on('click', '#btn-start-tour', function() {
+                setTimeout(showMatterportUI, 800);
+            });
+
+            // Si hay solo una escena o se quiere iniciar automáticamente
+            if ($('.home-content-table').is(':hidden') || $('.home-content-table').css('display') === 'none') {
+                showMatterportUI();
+            }
+
+            // Menú de búsqueda/escenas (reutiliza el menú antiguo)
+            $('#matterport-menu-toggle').on('click', function(e) {
+                e.stopPropagation();
+                var $menu = $('#menu-nav-wrap');
+                $menu.toggleClass('matterport-menu-open');
+
+                // Cambiar icono
+                var $icon = $(this).find('i');
+                if ($menu.hasClass('matterport-menu-open')) {
+                    $icon.removeClass('fa-search').addClass('fa-times');
+                } else {
+                    $icon.removeClass('fa-times').addClass('fa-search');
+                }
+            });
+
+            // Cerrar menú al hacer clic fuera
+            $(document).on('click', function(e) {
+                var $menu = $('#menu-nav-wrap');
+                var $toggle = $('#matterport-menu-toggle');
+
+                if ($menu.hasClass('matterport-menu-open') &&
+                    !$menu.is(e.target) &&
+                    $menu.has(e.target).length === 0 &&
+                    !$toggle.is(e.target) &&
+                    $toggle.has(e.target).length === 0) {
+                    $menu.removeClass('matterport-menu-open');
+                    $toggle.find('i').removeClass('fa-times').addClass('fa-search');
+                }
+            });
+
+            // Cerrar menú al seleccionar una escena
+            $('#menu-nav-wrap .js-load-scene').on('click', function() {
+                $('#menu-nav-wrap').removeClass('matterport-menu-open');
+                $('#matterport-menu-toggle i').removeClass('fa-times').addClass('fa-search');
+            });
+
         })();
     </script>
 
