@@ -1145,6 +1145,8 @@
                     ? route('file', $scene->image)
                     : url('images/producto-sin-imagen.PNG'),
                 'video' => $scene->video ? route('file', $scene->video) : null,
+                'spinFramesDir' => $scene->spin_frames_dir ?? null,
+                'spinFramesCount' => $scene->spin_frames_count ?? null,
                 'hotSpots' => $hotspotsForScene,
             ];
         }
@@ -1748,6 +1750,19 @@
                 canvasHeight: 0
             };
 
+            // Spin cache: para frames pre-generados por CloudConvert
+            var spinCache = {
+                frames: [],
+                totalFrames: 0,
+                currentIndex: 0,
+                framesDir: null,
+                loaded: 0,
+                ready: false,
+                canvasWidth: 0,
+                canvasHeight: 0
+            };
+            var isSpinMode = false; // true cuando se usa spin pre-generado, false para video
+
             var videoDragState = {
                 isDragging: false,
                 startX: 0,
@@ -1760,8 +1775,20 @@
                 return sc && sc.type === 'video' && sc.video;
             }
 
+            // Verificar si una escena de video tiene frames de spin pre-generados
+            function hasSpinFrames(sceneId) {
+                var sc = pannellumConfig.scenes[sceneId];
+                return sc && sc.type === 'video' && sc.spinFramesDir && sc.spinFramesCount > 0;
+            }
+
             // Mostrar un frame del cache en el canvas (INSTANTÁNEO)
             function showFrameAt(normalizedTime) {
+                // Usar spin cache o video cache según el modo
+                if (isSpinMode) {
+                    showSpinFrameAt(normalizedTime);
+                    return;
+                }
+
                 if (frameCache.frames.length === 0) return;
 
                 // Wrap around 0-1
@@ -1789,14 +1816,62 @@
                 updateVideoPositionedHotspots();
             }
 
+            // Mostrar frame del spin pre-generado
+            function showSpinFrameAt(normalizedTime) {
+                if (spinCache.frames.length === 0 || !spinCache.ready) return;
+
+                // Wrap around 0-1
+                while (normalizedTime < 0) normalizedTime += 1;
+                while (normalizedTime >= 1) normalizedTime -= 1;
+
+                // Los frames de spin están indexados 1-N
+                var idx = Math.round(normalizedTime * (spinCache.totalFrames - 1)) + 1;
+                idx = Math.max(1, Math.min(spinCache.totalFrames, idx));
+
+                if (idx === spinCache.currentIndex && droneCanvas.width > 0) return;
+
+                var frame = spinCache.frames[idx];
+                if (!frame) {
+                    // Buscar frame más cercano disponible
+                    for (var offset = 1; offset <= spinCache.totalFrames; offset++) {
+                        if (spinCache.frames[idx + offset]) { frame = spinCache.frames[idx + offset]; break; }
+                        if (spinCache.frames[idx - offset]) { frame = spinCache.frames[idx - offset]; break; }
+                    }
+                }
+                if (!frame) return;
+
+                spinCache.currentIndex = idx;
+
+                // Dibujar frame
+                droneCtx.drawImage(frame, 0, 0, droneCanvas.width, droneCanvas.height);
+
+                // Actualizar progreso visual
+                var pct = Math.round(normalizedTime * 100);
+                videoProgressFill.style.width = pct + '%';
+
+                // Actualizar hotspots posicionados para spin
+                updateSpinPositionedHotspots();
+            }
+
             // Obtener el tiempo actual del video basado en el frame mostrado
             function getCurrentVideoTime() {
+                if (isSpinMode) {
+                    // Para spin, calcular tiempo "virtual" basado en frame index
+                    if (spinCache.totalFrames <= 1) return 0;
+                    // Asumimos una duración virtual de ~10 segundos para el spin
+                    var virtualDuration = 10;
+                    return ((spinCache.currentIndex - 1) / (spinCache.totalFrames - 1)) * virtualDuration;
+                }
                 if (frameCache.frames.length === 0 || frameCache.duration === 0) return 0;
                 return (frameCache.currentIndex / (frameCache.frames.length - 1)) * frameCache.duration;
             }
 
             // Obtener posición normalizada (0-1) actual
             function getCurrentNormalized() {
+                if (isSpinMode) {
+                    if (spinCache.totalFrames <= 1) return 0;
+                    return (spinCache.currentIndex - 1) / (spinCache.totalFrames - 1);
+                }
                 if (frameCache.frames.length <= 1) return 0;
                 return frameCache.currentIndex / (frameCache.frames.length - 1);
             }
@@ -1919,8 +1994,15 @@
                 var sc = pannellumConfig.scenes[sceneId];
                 if (!sc || !sc.video) return;
 
+                // Si tiene frames de spin pre-generados, usar spin viewer
+                if (hasSpinFrames(sceneId)) {
+                    showSpinViewer(sceneId);
+                    return;
+                }
+
                 currentVideoSceneId = sceneId;
                 videoReady = false;
+                isSpinMode = false;
 
                 // Mostrar overlay
                 videoOverlay.style.display = 'block';
@@ -1953,6 +2035,117 @@
                 buildVideoHotspots(sceneId);
             }
 
+            // Mostrar spin viewer con frames pre-generados (carga más rápida)
+            function showSpinViewer(sceneId) {
+                var sc = pannellumConfig.scenes[sceneId];
+                if (!sc || !sc.spinFramesDir || !sc.spinFramesCount) return;
+
+                currentVideoSceneId = sceneId;
+                videoReady = false;
+                isSpinMode = true;
+
+                // Reset spin cache
+                spinCache.frames = [];
+                spinCache.totalFrames = sc.spinFramesCount;
+                spinCache.currentIndex = 1;
+                spinCache.framesDir = sc.spinFramesDir;
+                spinCache.loaded = 0;
+                spinCache.ready = false;
+
+                // Mostrar overlay
+                videoOverlay.style.display = 'block';
+                videoDragHint.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Cargando...';
+                videoDragHint.classList.add('visible');
+                videoExtractProgress.style.display = 'block';
+                videoExtractFill.style.width = '0%';
+                videoExtractText.textContent = 'Cargando vista 360: 0%';
+
+                // URL base de frames
+                var baseUrl = '/storage/app/public/' + sc.spinFramesDir + '/';
+                var totalFrames = sc.spinFramesCount;
+                var MIN_READY = Math.min(8, totalFrames);
+                var CONCURRENCY = 6;
+
+                function frameSrc(n) {
+                    return baseUrl + 'frame-' + String(n).padStart(3, '0') + '.webp';
+                }
+
+                function loadImage(n) {
+                    return new Promise(function(resolve) {
+                        if (spinCache.frames[n]) return resolve();
+                        var img = new Image();
+                        img.src = frameSrc(n);
+                        img.onload = function() {
+                            spinCache.frames[n] = img;
+                            spinCache.loaded++;
+
+                            // Actualizar progreso
+                            var pct = Math.round((spinCache.loaded / totalFrames) * 100);
+                            videoExtractFill.style.width = pct + '%';
+                            videoExtractText.textContent = 'Cargando vista 360: ' + pct + '%';
+
+                            // Configurar canvas con el primer frame
+                            if (spinCache.loaded === 1 && img.naturalWidth > 0) {
+                                droneCanvas.width = img.naturalWidth;
+                                droneCanvas.height = img.naturalHeight;
+                                spinCache.canvasWidth = img.naturalWidth;
+                                spinCache.canvasHeight = img.naturalHeight;
+                                // Dibujar primer frame
+                                droneCtx.drawImage(img, 0, 0, droneCanvas.width, droneCanvas.height);
+                            }
+
+                            // Listo para interacción cuando hay suficientes frames
+                            if (!spinCache.ready && spinCache.loaded >= MIN_READY) {
+                                spinCache.ready = true;
+                                videoReady = true;
+                                videoDragHint.innerHTML = '<i class="fa fa-arrows-h"></i> Arrastra para girar alrededor de la propiedad';
+                                setTimeout(function() {
+                                    videoDragHint.classList.remove('visible');
+                                }, 3000);
+                            }
+                            resolve();
+                        };
+                        img.onerror = function() { resolve(); };
+                    });
+                }
+
+                async function runQueue(queue) {
+                    var idx = 0;
+                    async function worker() {
+                        while (idx < queue.length) {
+                            var n = queue[idx++];
+                            if (!spinCache.frames[n]) await loadImage(n);
+                        }
+                    }
+                    var workers = [];
+                    for (var i = 0; i < CONCURRENCY; i++) workers.push(worker());
+                    await Promise.all(workers);
+                }
+
+                async function preloadFrames() {
+                    // Cargar primeros frames rápido
+                    var quick = [];
+                    for (var i = 1; i <= MIN_READY && i <= totalFrames; i++) quick.push(i);
+                    await runQueue(quick);
+
+                    // Cargar el resto
+                    var rest = [];
+                    for (var i = 1; i <= totalFrames; i++) {
+                        if (!spinCache.frames[i]) rest.push(i);
+                    }
+                    if (rest.length) await runQueue(rest);
+
+                    // Carga completa
+                    videoExtractProgress.style.display = 'none';
+                    console.log('[Spin] Frame cache listo:', spinCache.loaded, 'frames');
+                }
+
+                preloadFrames();
+
+                // Generar hotspots para el spin
+                buildSpinHotspots(sceneId);
+            }
+
             function hideVideoViewer() {
                 // Abortar extracción en curso
                 frameCache.aborted = true;
@@ -1976,6 +2169,15 @@
                 frameCache.totalFrames = 0;
                 frameCache.duration = 0;
                 frameCache.currentIndex = 0;
+
+                // Limpiar spin cache (liberar memoria)
+                spinCache.frames = [];
+                spinCache.totalFrames = 0;
+                spinCache.currentIndex = 0;
+                spinCache.framesDir = null;
+                spinCache.loaded = 0;
+                spinCache.ready = false;
+                isSpinMode = false;
 
                 videoHotspotsBar.innerHTML = '';
                 // Remover hotspots posicionados
@@ -2079,6 +2281,120 @@
                     var diff = Math.abs(currentTime - vt);
                     if (duration > 0) {
                         diff = Math.min(diff, duration - diff);
+                    }
+
+                    if (diff <= range) {
+                        el.style.display = 'block';
+                        var opacity = 1 - (diff / range) * 0.6; // fade basado en proximidad
+                        el.style.opacity = opacity;
+                    } else {
+                        el.style.display = 'none';
+                    }
+                });
+            }
+
+            // Construir hotspots para spin (mapea video_time a frame_index)
+            function buildSpinHotspots(sceneId) {
+                videoHotspotsBar.innerHTML = '';
+                // Remover hotspots posicionados previos
+                var oldPosHotspots = videoOverlay.querySelectorAll('.video-pos-hotspot');
+                oldPosHotspots.forEach(function(el) {
+                    el.remove();
+                });
+
+                var sc = pannellumConfig.scenes[sceneId];
+                if (!sc || !sc.hotSpots) return;
+
+                // Para spin, usamos duración virtual de 10 segundos para mapear video_time a frames
+                var virtualDuration = 10;
+                var totalFrames = spinCache.totalFrames || sc.spinFramesCount || 72;
+
+                sc.hotSpots.forEach(function(hs) {
+                    if (!hs.clickHandlerArgs || !hs.clickHandlerArgs.targetSceneId) return;
+                    var targetId = hs.clickHandlerArgs.targetSceneId;
+                    var targetScene = pannellumConfig.scenes[targetId];
+                    if (!targetScene) return;
+
+                    var displayText = hs.createTooltipArgs ? hs.createTooltipArgs.displayText : targetScene.title;
+                    var imageUrl = hs.createTooltipArgs ? hs.createTooltipArgs.imageUrl : null;
+
+                    // Obtener datos de posición del hotspot
+                    var vt = hs.createTooltipArgs ? hs.createTooltipArgs.videoTime : null;
+                    var px = hs.createTooltipArgs ? hs.createTooltipArgs.posX : null;
+                    var py = hs.createTooltipArgs ? hs.createTooltipArgs.posY : null;
+
+                    // Capturar targetYaw/targetPitch del hotspot
+                    var hsTargetYaw = hs.clickHandlerArgs ? hs.clickHandlerArgs.targetYaw : undefined;
+                    var hsTargetPitch = hs.clickHandlerArgs ? hs.clickHandlerArgs.targetPitch : undefined;
+
+                    if (vt !== null && vt !== undefined && px !== null && py !== null) {
+                        // Hotspot posicionado - mapear video_time a frame_index
+                        // Calcular el frame correspondiente al video_time
+                        var frameIndex = Math.round((vt / virtualDuration) * (totalFrames - 1)) + 1;
+                        frameIndex = Math.max(1, Math.min(totalFrames, frameIndex));
+
+                        var posDiv = document.createElement('div');
+                        posDiv.className = 'video-pos-hotspot';
+                        posDiv.style.left = px + '%';
+                        posDiv.style.top = py + '%';
+                        posDiv.setAttribute('data-frame-index', frameIndex);
+                        posDiv.setAttribute('data-frame-range', '8'); // visible ±8 frames
+
+                        var container = document.createElement('div');
+                        container.classList.add('hotspot-tooltip-container');
+
+                        var label = document.createElement('div');
+                        label.classList.add('hotspot-label', 'hotspot-label-scene');
+                        label.textContent = displayText;
+                        container.appendChild(label);
+
+                        if (imageUrl) {
+                            var img = document.createElement('img');
+                            img.classList.add('circular-hotspot-img');
+                            img.src = imageUrl;
+                            img.alt = displayText;
+                            container.appendChild(img);
+                        }
+
+                        posDiv.appendChild(container);
+                        (function(tid, tYaw, tPitch) {
+                            posDiv.addEventListener('click', function(e) {
+                                e.stopPropagation();
+                                navigateFromVideo(tid, tYaw, tPitch);
+                            });
+                        })(targetId, hsTargetYaw, hsTargetPitch);
+                        videoOverlay.appendChild(posDiv);
+                    } else {
+                        // Hotspot sin posición → botón en barra inferior
+                        var btn = document.createElement('button');
+                        btn.className = 'video-hotspot-btn';
+                        btn.textContent = displayText;
+                        (function(tid, tYaw, tPitch) {
+                            btn.addEventListener('click', function(e) {
+                                e.stopPropagation();
+                                navigateFromVideo(tid, tYaw, tPitch);
+                            });
+                        })(targetId, hsTargetYaw, hsTargetPitch);
+                        videoHotspotsBar.appendChild(btn);
+                    }
+                });
+            }
+
+            // Actualizar visibilidad de hotspots posicionados según frame actual del spin
+            function updateSpinPositionedHotspots() {
+                if (!currentVideoSceneId || !isSpinMode) return;
+                var currentFrame = spinCache.currentIndex;
+                var totalFrames = spinCache.totalFrames;
+                var posHotspots = videoOverlay.querySelectorAll('.video-pos-hotspot');
+
+                posHotspots.forEach(function(el) {
+                    var targetFrame = parseInt(el.getAttribute('data-frame-index')) || 1;
+                    var range = parseInt(el.getAttribute('data-frame-range')) || 8;
+
+                    // Calcular distancia de frames (con wrap-around)
+                    var diff = Math.abs(currentFrame - targetFrame);
+                    if (totalFrames > 0) {
+                        diff = Math.min(diff, totalFrames - diff);
                     }
 
                     if (diff <= range) {

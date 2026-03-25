@@ -169,15 +169,23 @@ class SceneController extends Controller
         if ($type === 'vehicle') {
             $fscene = DB::table('scenes')
                 ->join('vehicles', 'scenes.vehicle_id', '=', 'vehicles.id')
+                ->leftJoin('spins', function ($join) {
+                    $join->on('scenes.spin_id', '=', 'spins.id')
+                         ->where('spins.status', '=', 'ready');
+                })
                 ->where('scenes.vehicle_id', $id)
                 ->where('scenes.status', '1')
-                ->select('scenes.*', 'vehicles.name as property_name')
+                ->select('scenes.*', 'vehicles.name as property_name', 'spins.frames_dir as spin_frames_dir', 'spins.frames_count as spin_frames_count')
                 ->first();
 
             $scenes = DB::table('scenes')
                 ->where('vehicle_id', $id)
                 ->join('vehicles', 'scenes.vehicle_id', '=', 'vehicles.id')
-                ->select('scenes.*', 'vehicles.name as property_name')
+                ->leftJoin('spins', function ($join) {
+                    $join->on('scenes.spin_id', '=', 'spins.id')
+                         ->where('spins.status', '=', 'ready');
+                })
+                ->select('scenes.*', 'vehicles.name as property_name', 'spins.frames_dir as spin_frames_dir', 'spins.frames_count as spin_frames_count')
                 ->get();
 
             $hotspots = DB::table('hotspots')
@@ -189,15 +197,23 @@ class SceneController extends Controller
         } else {
             $fscene = DB::table('scenes')
                 ->join('properties', 'scenes.property_id', '=', 'properties.id')
+                ->leftJoin('spins', function ($join) {
+                    $join->on('scenes.spin_id', '=', 'spins.id')
+                         ->where('spins.status', '=', 'ready');
+                })
                 ->where('scenes.property_id', $id)
                 ->where('scenes.status', '1')
-                ->select('scenes.*', 'properties.name as property_name')
+                ->select('scenes.*', 'properties.name as property_name', 'spins.frames_dir as spin_frames_dir', 'spins.frames_count as spin_frames_count')
                 ->first();
 
             $scenes = DB::table('scenes')
                 ->where('property_id', $id)
                 ->join('properties', 'scenes.property_id', '=', 'properties.id')
-                ->select('scenes.*', 'properties.name as property_name')
+                ->leftJoin('spins', function ($join) {
+                    $join->on('scenes.spin_id', '=', 'spins.id')
+                         ->where('spins.status', '=', 'ready');
+                })
+                ->select('scenes.*', 'properties.name as property_name', 'spins.frames_dir as spin_frames_dir', 'spins.frames_count as spin_frames_count')
                 ->get();
 
             $hotspots = DB::table('hotspots')
