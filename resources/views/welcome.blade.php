@@ -2293,7 +2293,7 @@
                 });
             }
 
-            // Construir hotspots para spin (mapea video_time a frame_index)
+            // Construir hotspots para spin (mapea yaw del hotspot a frame_index)
             function buildSpinHotspots(sceneId) {
                 videoHotspotsBar.innerHTML = '';
                 // Remover hotspots posicionados previos
@@ -2305,8 +2305,6 @@
                 var sc = pannellumConfig.scenes[sceneId];
                 if (!sc || !sc.hotSpots) return;
 
-                // Para spin, usamos duración virtual de 10 segundos para mapear video_time a frames
-                var virtualDuration = 10;
                 var totalFrames = spinCache.totalFrames || sc.spinFramesCount || 72;
 
                 sc.hotSpots.forEach(function(hs) {
@@ -2318,65 +2316,60 @@
                     var displayText = hs.createTooltipArgs ? hs.createTooltipArgs.displayText : targetScene.title;
                     var imageUrl = hs.createTooltipArgs ? hs.createTooltipArgs.imageUrl : null;
 
-                    // Obtener datos de posición del hotspot
-                    var vt = hs.createTooltipArgs ? hs.createTooltipArgs.videoTime : null;
+                    // Obtener datos de posición visual del hotspot (px, py)
                     var px = hs.createTooltipArgs ? hs.createTooltipArgs.posX : null;
                     var py = hs.createTooltipArgs ? hs.createTooltipArgs.posY : null;
+
+                    // Obtener el yaw del hotspot para calcular el frame correspondiente
+                    var hsYaw = hs.yaw !== undefined ? hs.yaw : 0;
 
                     // Capturar targetYaw/targetPitch del hotspot
                     var hsTargetYaw = hs.clickHandlerArgs ? hs.clickHandlerArgs.targetYaw : undefined;
                     var hsTargetPitch = hs.clickHandlerArgs ? hs.clickHandlerArgs.targetPitch : undefined;
 
-                    if (vt !== null && vt !== undefined && px !== null && py !== null) {
-                        // Hotspot posicionado - mapear video_time a frame_index
-                        // Calcular el frame correspondiente al video_time
-                        var frameIndex = Math.round((vt / virtualDuration) * (totalFrames - 1)) + 1;
-                        frameIndex = Math.max(1, Math.min(totalFrames, frameIndex));
+                    // Usar posX/posY si están definidos, sino usar valores por defecto centrados
+                    var posX = px !== null ? px : 50;
+                    var posY = py !== null ? py : 50;
 
-                        var posDiv = document.createElement('div');
-                        posDiv.className = 'video-pos-hotspot';
-                        posDiv.style.left = px + '%';
-                        posDiv.style.top = py + '%';
-                        posDiv.setAttribute('data-frame-index', frameIndex);
-                        posDiv.setAttribute('data-frame-range', '8'); // visible ±8 frames
+                    // Calcular el frame correspondiente al yaw del hotspot
+                    // Normalizar yaw a rango [0, 360)
+                    var normalizedYaw = ((hsYaw % 360) + 360) % 360;
+                    // Mapear yaw a frame index (frame 1 = yaw 0, frame totalFrames = yaw ~360)
+                    var frameIndex = Math.round((normalizedYaw / 360) * totalFrames) + 1;
+                    if (frameIndex > totalFrames) frameIndex = 1; // wrap around
 
-                        var container = document.createElement('div');
-                        container.classList.add('hotspot-tooltip-container');
+                    // Crear el hotspot posicionado
+                    var posDiv = document.createElement('div');
+                    posDiv.className = 'video-pos-hotspot';
+                    posDiv.style.left = posX + '%';
+                    posDiv.style.top = posY + '%';
+                    posDiv.setAttribute('data-frame-index', frameIndex);
+                    posDiv.setAttribute('data-frame-range', '8'); // visible ±8 frames
 
-                        var label = document.createElement('div');
-                        label.classList.add('hotspot-label', 'hotspot-label-scene');
-                        label.textContent = displayText;
-                        container.appendChild(label);
+                    var container = document.createElement('div');
+                    container.classList.add('hotspot-tooltip-container');
 
-                        if (imageUrl) {
-                            var img = document.createElement('img');
-                            img.classList.add('circular-hotspot-img');
-                            img.src = imageUrl;
-                            img.alt = displayText;
-                            container.appendChild(img);
-                        }
+                    var label = document.createElement('div');
+                    label.classList.add('hotspot-label', 'hotspot-label-scene');
+                    label.textContent = displayText;
+                    container.appendChild(label);
 
-                        posDiv.appendChild(container);
-                        (function(tid, tYaw, tPitch) {
-                            posDiv.addEventListener('click', function(e) {
-                                e.stopPropagation();
-                                navigateFromVideo(tid, tYaw, tPitch);
-                            });
-                        })(targetId, hsTargetYaw, hsTargetPitch);
-                        videoOverlay.appendChild(posDiv);
-                    } else {
-                        // Hotspot sin posición → botón en barra inferior
-                        var btn = document.createElement('button');
-                        btn.className = 'video-hotspot-btn';
-                        btn.textContent = displayText;
-                        (function(tid, tYaw, tPitch) {
-                            btn.addEventListener('click', function(e) {
-                                e.stopPropagation();
-                                navigateFromVideo(tid, tYaw, tPitch);
-                            });
-                        })(targetId, hsTargetYaw, hsTargetPitch);
-                        videoHotspotsBar.appendChild(btn);
+                    if (imageUrl) {
+                        var img = document.createElement('img');
+                        img.classList.add('circular-hotspot-img');
+                        img.src = imageUrl;
+                        img.alt = displayText;
+                        container.appendChild(img);
                     }
+
+                    posDiv.appendChild(container);
+                    (function(tid, tYaw, tPitch) {
+                        posDiv.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            navigateFromVideo(tid, tYaw, tPitch);
+                        });
+                    })(targetId, hsTargetYaw, hsTargetPitch);
+                    videoOverlay.appendChild(posDiv);
                 });
             }
 
