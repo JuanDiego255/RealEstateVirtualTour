@@ -1,11 +1,7 @@
 @extends('frontend.front')
 
-@section('content')
-<!DOCTYPE html>
-<html lang="es">
-
-<head>
-    <style>
+@push('styles')
+<style>
         /* ===== COMPARADOR DE VEHICULOS - ESTILOS ===== */
         :root {
             --vc-primary: #c2ac1f;
@@ -27,11 +23,12 @@
             background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
             min-height: 100vh;
             padding-bottom: 60px;
+            margin-top: 0;
         }
 
         .vc-hero {
             background: linear-gradient(135deg, var(--vc-dark) 0%, #1a1a2e 100%);
-            padding: 60px 0 80px;
+            padding: 120px 0 80px;
             position: relative;
             overflow: hidden;
         }
@@ -58,6 +55,7 @@
             font-size: 2.5rem;
             font-weight: 700;
             margin-bottom: 15px;
+            color: #fff;
         }
 
         .vc-hero h1 i {
@@ -70,6 +68,7 @@
             opacity: 0.85;
             max-width: 600px;
             margin: 0 auto;
+            color: #fff;
         }
 
         /* Selectores */
@@ -722,14 +721,14 @@
             }
         }
     </style>
-</head>
+@endpush
 
-<body>
+@section('content')
     <div class="vc-page" id="vehicleCompareApp">
         <!-- Hero Section -->
         <div class="vc-hero">
             <div class="container vc-hero-content">
-                <h1><i class="fas fa-balance-scale"></i> Comparador de Vehículos</h1>
+                <h1><i class="fa fa-balance-scale"></i> Comparador de Vehículos</h1>
                 <p>Compara hasta 4 vehículos lado a lado. Analiza especificaciones, precios y encuentra el auto perfecto para ti.</p>
             </div>
         </div>
@@ -739,7 +738,7 @@
             <div class="vc-selectors vc-fade-in">
                 <div class="vc-selector-group">
                     <div class="vc-selector-item">
-                        <label><i class="fas fa-building"></i> Sucursal</label>
+                        <label><i class="fa fa-building"></i> Sucursal</label>
                         <select class="vc-select" id="categorySelect" v-model="selectedCategory" @change="onCategoryChange">
                             <option value="">-- Selecciona una sucursal --</option>
                             @foreach($categories as $category)
@@ -748,7 +747,7 @@
                         </select>
                     </div>
                     <div class="vc-selector-item">
-                        <label><i class="fas fa-tags"></i> Subcategoría (opcional)</label>
+                        <label><i class="fa fa-tags"></i> Subcategoría (opcional)</label>
                         <select class="vc-select" id="subcategorySelect" v-model="selectedSubcategory" @change="loadVehicles" :disabled="!selectedCategory || subcategories.length === 0">
                             <option value="">-- Todas las subcategorías --</option>
                             <option v-for="sub in subcategories" :key="sub.id" :value="sub.id">@{{ sub.name }}</option>
@@ -760,10 +759,10 @@
             <!-- Slots de Vehículos -->
             <div class="vc-slots-container" v-if="selectedCategory">
                 <div class="vc-slots-header">
-                    <h3><i class="fas fa-cars"></i> Vehículos a Comparar (@{{ selectedVehicles.length }}/4)</h3>
+                    <h3><i class="fa fa-car"></i> Vehículos a Comparar (@{{ selectedVehicles.length }}/4)</h3>
                     <div class="vc-slots-actions">
                         <button class="vc-btn vc-btn-outline" @click="clearAllVehicles" :disabled="selectedVehicles.length === 0">
-                            <i class="fas fa-trash-alt"></i> Limpiar Todo
+                            <i class="fa fa-trash"></i> Limpiar Todo
                         </button>
                     </div>
                 </div>
@@ -773,7 +772,7 @@
                     <div v-for="(vehicle, index) in selectedVehicles" :key="vehicle.id" class="vc-slot vc-fade-in">
                         <span class="vc-slot-number">@{{ index + 1 }}</span>
                         <button class="vc-slot-remove" @click="removeVehicle(index)" title="Quitar vehículo">
-                            <i class="fas fa-times"></i>
+                            <i class="fa fa-times"></i>
                         </button>
                         <img :src="vehicle.image" :alt="vehicle.name" class="vc-slot-image">
                         <div class="vc-slot-body">
@@ -784,14 +783,14 @@
                                 <span class="vc-slot-condition">@{{ vehicle.condition_label }}</span>
                             </div>
                             <a v-if="vehicle.has_virtual_tour" :href="vehicle.virtual_tour_url" target="_blank" class="vc-slot-tour-btn">
-                                <i class="fas fa-vr-cardboard"></i> Ver Tour Virtual 360°
+                                <i class="fa fa-eye"></i> Ver Tour Virtual 360°
                             </a>
                         </div>
                     </div>
 
                     <!-- Slots vacíos -->
                     <div v-for="n in (4 - selectedVehicles.length)" :key="'empty-' + n" class="vc-slot vc-slot-empty" @click="openVehicleModal">
-                        <i class="fas fa-plus-circle"></i>
+                        <i class="fa fa-plus-circle"></i>
                         <span>Agregar Vehículo</span>
                     </div>
                 </div>
@@ -799,7 +798,7 @@
 
             <!-- Mensaje inicial -->
             <div v-else class="vc-empty" style="margin-top: 60px;">
-                <i class="fas fa-hand-pointer"></i>
+                <i class="fa fa-hand-o-up"></i>
                 <h4>Selecciona una sucursal para comenzar</h4>
                 <p class="text-muted">Elige una sucursal del sector automotriz para ver sus vehículos disponibles y comenzar a comparar.</p>
             </div>
@@ -807,7 +806,7 @@
             <!-- Tabla Comparativa -->
             <div class="vc-comparison-section" v-if="selectedVehicles.length >= 2">
                 <div class="vc-comparison-header">
-                    <h2><i class="fas fa-chart-bar"></i> Tabla Comparativa</h2>
+                    <h2><i class="fa fa-bar-chart"></i> Tabla Comparativa</h2>
                 </div>
 
                 <div class="vc-comparison-table-wrapper vc-fade-in">
@@ -823,7 +822,7 @@
                         <tbody>
                             <!-- Precio -->
                             <tr>
-                                <td><i class="fas fa-tag"></i> Precio</td>
+                                <td><i class="fa fa-tag"></i> Precio</td>
                                 <td v-for="vehicle in selectedVehicles" :key="'price-' + vehicle.id"
                                     :class="getCellClass('price', vehicle.id, vehicle.price)">
                                     @{{ vehicle.price_formatted }}
@@ -831,7 +830,7 @@
                             </tr>
                             <!-- Año -->
                             <tr>
-                                <td><i class="fas fa-calendar-alt"></i> Año</td>
+                                <td><i class="fa fa-calendar-alt"></i> Año</td>
                                 <td v-for="vehicle in selectedVehicles" :key="'year-' + vehicle.id"
                                     :class="getCellClass('year', vehicle.id, vehicle.year)">
                                     @{{ vehicle.year }}
@@ -852,20 +851,20 @@
                 <!-- Acciones de exportación -->
                 <div class="vc-export-actions">
                     <button class="vc-btn vc-btn-primary" @click="printComparison">
-                        <i class="fas fa-print"></i> Imprimir Comparación
+                        <i class="fa fa-print"></i> Imprimir Comparación
                     </button>
                     <button class="vc-btn vc-btn-outline" @click="shareComparison">
-                        <i class="fas fa-share-alt"></i> Compartir
+                        <i class="fa fa-share-alt"></i> Compartir
                     </button>
                     <button class="vc-btn vc-btn-outline" @click="downloadComparison">
-                        <i class="fas fa-download"></i> Descargar PDF
+                        <i class="fa fa-download"></i> Descargar PDF
                     </button>
                 </div>
             </div>
 
             <!-- Mensaje para agregar más vehículos -->
             <div v-else-if="selectedVehicles.length === 1" class="vc-empty" style="margin-top: 40px;">
-                <i class="fas fa-info-circle"></i>
+                <i class="fa fa-info-circle"></i>
                 <h5>Agrega al menos un vehículo más</h5>
                 <p class="text-muted">Necesitas seleccionar al menos 2 vehículos para ver la tabla comparativa.</p>
             </div>
@@ -875,7 +874,7 @@
         <div class="vc-modal-overlay" :class="{ active: showModal }" @click.self="closeModal">
             <div class="vc-modal">
                 <div class="vc-modal-header">
-                    <h4><i class="fas fa-car"></i> Seleccionar Vehículo</h4>
+                    <h4><i class="fa fa-car"></i> Seleccionar Vehículo</h4>
                     <button class="vc-modal-close" @click="closeModal">&times;</button>
                 </div>
                 <div class="vc-modal-body">
@@ -884,12 +883,12 @@
                     </div>
 
                     <div v-if="loadingVehicles" class="vc-loading">
-                        <i class="fas fa-spinner"></i>
+                        <i class="fa fa-spinner"></i>
                         <p>Cargando vehículos...</p>
                     </div>
 
                     <div v-else-if="filteredVehicles.length === 0" class="vc-empty">
-                        <i class="fas fa-car-crash"></i>
+                        <i class="fa fa-car-crash"></i>
                         <p>No se encontraron vehículos disponibles</p>
                     </div>
 
@@ -943,7 +942,7 @@
                     { key: 'doors', label: 'Puertas', icon: 'fa-door-open', unit: '', comparison: 'neutral' },
                     { key: 'passengers', label: 'Pasajeros', icon: 'fa-users', unit: '', comparison: 'higher_better' },
                     { key: 'transmission', label: 'Transmisión', icon: 'fa-cogs', unit: '', comparison: 'neutral' },
-                    { key: 'drivetrain', label: 'Tracción', icon: 'fa-car-side', unit: '', comparison: 'neutral' },
+                    { key: 'drivetrain', label: 'Tracción', icon: 'fa-car', unit: '', comparison: 'neutral' },
                     { key: 'condition', label: 'Condición', icon: 'fa-star', unit: '', comparison: 'neutral' },
                 ]
             },
@@ -1180,6 +1179,4 @@
             }
         });
     </script>
-</body>
-</html>
 @endsection

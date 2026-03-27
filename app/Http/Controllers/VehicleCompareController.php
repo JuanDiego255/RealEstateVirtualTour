@@ -97,7 +97,7 @@ class VehicleCompareController extends Controller
             ->map(function ($v) {
                 return [
                     'id' => $v->id,
-                    'name' => $v->brand . ' ' . $v->model . ' ' . $v->year,
+                    'name' => $this->buildVehicleName($v->brand, $v->model, $v->year),
                     'brand' => $v->brand,
                     'model' => $v->model,
                     'year' => $v->year,
@@ -124,7 +124,7 @@ class VehicleCompareController extends Controller
 
         return response()->json([
             'id' => $vehicle->id,
-            'name' => $vehicle->brand . ' ' . $vehicle->model . ' ' . $vehicle->year,
+            'name' => $this->buildVehicleName($vehicle->brand, $vehicle->model, $vehicle->year),
             'brand' => $vehicle->brand,
             'model' => $vehicle->model,
             'year' => (int) $vehicle->year,
@@ -293,6 +293,21 @@ class VehicleCompareController extends Controller
         }
 
         return $comparison;
+    }
+
+    /**
+     * Construir nombre del vehículo evitando duplicación del año
+     */
+    private function buildVehicleName($brand, $model, $year)
+    {
+        $name = trim($brand . ' ' . $model);
+
+        // Solo agregar el año si no está ya incluido en el modelo
+        if ($year && !preg_match('/\b' . preg_quote($year, '/') . '\b/', $model)) {
+            $name .= ' ' . $year;
+        }
+
+        return $name;
     }
 
     /**
