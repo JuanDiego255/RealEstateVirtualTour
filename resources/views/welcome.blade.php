@@ -796,26 +796,34 @@
             }
 
             .matterport-toolbar {
-                bottom: 85px;
-                left: 10px;
-                padding: 4px 6px;
+                bottom: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                padding: 6px 10px;
+                border-radius: 10px;
             }
 
             .matterport-toolbar-btn {
-                width: 34px;
-                height: 34px;
-                font-size: 14px;
+                width: 36px;
+                height: 36px;
+                font-size: 15px;
+            }
+
+            /* Destacar botones de navegación entre escenas */
+            .matterport-toolbar-btn#matterport-prev-scene,
+            .matterport-toolbar-btn#matterport-next-scene {
+                background: rgba(255, 255, 255, 0.12);
             }
 
             .matterport-actions {
-                bottom: 85px;
+                bottom: 20px;
                 right: 10px;
             }
 
             .matterport-action-btn {
-                width: 36px;
-                height: 36px;
-                font-size: 14px;
+                width: 38px;
+                height: 38px;
+                font-size: 15px;
             }
 
             .matterport-scene-item {
@@ -847,19 +855,53 @@
             }
 
             .matterport-toolbar {
-                gap: 2px;
-                padding: 3px 5px;
+                left: 50%;
+                transform: translateX(-50%);
+                gap: 3px;
+                padding: 6px 10px;
+                bottom: 16px;
+                border-radius: 12px;
             }
 
             .matterport-toolbar-btn {
-                width: 30px;
-                height: 30px;
-                font-size: 13px;
+                width: 38px;
+                height: 38px;
+                font-size: 15px;
+                border-radius: 8px;
+            }
+
+            /* Destacar botones de navegación entre escenas en móvil */
+            .matterport-toolbar-btn#matterport-prev-scene,
+            .matterport-toolbar-btn#matterport-next-scene {
+                background: rgba(255, 255, 255, 0.15);
+            }
+
+            .matterport-toolbar-btn#matterport-prev-scene:active,
+            .matterport-toolbar-btn#matterport-next-scene:active {
+                background: rgba(255, 255, 255, 0.3);
+                transform: scale(0.95);
+            }
+
+            .matterport-toolbar-divider {
+                height: 20px;
+                margin: 0 2px;
             }
 
             .matterport-scene-item {
                 width: 75px;
                 height: 48px;
+            }
+
+            /* Ajustar posición de acciones en móvil */
+            .matterport-actions {
+                bottom: 16px;
+                right: 10px;
+            }
+
+            .matterport-action-btn {
+                width: 38px;
+                height: 38px;
+                font-size: 15px;
             }
         }
     </style>
