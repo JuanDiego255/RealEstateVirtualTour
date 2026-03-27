@@ -38,9 +38,23 @@ class SceneController extends Controller
         }
 
         if ($type === 'vehicle') {
-            $scene = Scene::where('vehicle_id', $id)->get();
+            $scene = DB::table('scenes')
+                ->where('scenes.vehicle_id', $id)
+                ->leftJoin('spins', function ($join) {
+                    $join->on('scenes.spin_id', '=', 'spins.id')
+                         ->where('spins.status', '=', 'ready');
+                })
+                ->select('scenes.*', 'spins.frames_dir as spin_frames_dir', 'spins.frames_count as spin_frames_count')
+                ->get();
         } else {
-            $scene = Scene::where('property_id', $id)->get();
+            $scene = DB::table('scenes')
+                ->where('scenes.property_id', $id)
+                ->leftJoin('spins', function ($join) {
+                    $join->on('scenes.spin_id', '=', 'spins.id')
+                         ->where('spins.status', '=', 'ready');
+                })
+                ->select('scenes.*', 'spins.frames_dir as spin_frames_dir', 'spins.frames_count as spin_frames_count')
+                ->get();
         }
 
         $sceneIds = $scene->pluck('id')->toArray();

@@ -66,6 +66,24 @@
                             </div>
                         </div>
 
+                        {{-- Visor spin (escenas 360 de vehículos) --}}
+                        <div id="spin-multi" style="width: 100%; height: 450px; display: none; position: relative; background: #1a1a1a; cursor: ew-resize; overflow: hidden;">
+                            <canvas id="spin-multi-canvas" style="width:100%; height:100%; object-fit:contain;"></canvas>
+                            <div id="spin-multi-marker" style="display:none; position:absolute; width:24px; height:24px; border:3px solid #27ae60; border-radius:50%; background:rgba(39,174,96,0.3); transform:translate(-50%,-50%); pointer-events:none; z-index:5;"></div>
+                            <div id="spin-multi-loading" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#fff; font-size:14px; background:rgba(0,0,0,0.7); padding:10px 20px; border-radius:8px;">
+                                <i class="fa fa-spinner fa-spin mr-2"></i> Cargando frames... <span id="spin-load-progress">0%</span>
+                            </div>
+                            <div style="position:absolute; bottom:0; left:0; width:100%; height:4px; background:rgba(255,255,255,0.2);">
+                                <div id="spin-multi-progress" style="height:100%; background:#27ae60; width:0%;"></div>
+                            </div>
+                            <div id="spin-multi-frame-indicator" style="position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.6); color:#fff; padding:4px 10px; border-radius:6px; font-size:12px;">
+                                Frame: <span id="spin-current-frame">1</span> / <span id="spin-total-frames">72</span> | Yaw: <span id="spin-current-yaw">0</span>&deg;
+                            </div>
+                            <div style="position:absolute; bottom:10px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.6); color:#fff; padding:4px 12px; border-radius:10px; font-size:11px;">
+                                <i class="fa fa-arrows-h"></i> Arrastra para rotar, haz clic para posicionar hotspot
+                            </div>
+                        </div>
+
                         {{-- Card flotante para configurar hotspot --}}
                         <div id="hotspotCard" class="card shadow" style="display: none; position: absolute; width: 320px; z-index: 1000; border: 2px solid #007bff;">
                             <div class="card-header bg-primary text-white py-2 d-flex justify-content-between align-items-center">
@@ -399,13 +417,44 @@
                 {{ $scenes->id }}: {{ (float) $scenes->pitch }},
             @endforeach
         };
+        var sceneSpinFramesDirMap = {
+            @foreach ($scene as $scenes)
+                @if($scenes->spin_frames_dir)
+                {{ $scenes->id }}: "{{ $scenes->spin_frames_dir }}",
+                @endif
+            @endforeach
+        };
+        var sceneSpinFramesCountMap = {
+            @foreach ($scene as $scenes)
+                @if($scenes->spin_frames_count)
+                {{ $scenes->id }}: {{ (int) $scenes->spin_frames_count }},
+                @endif
+            @endforeach
+        };
 
         // ====== Variables globales para creación múltiple ======
         var viewerMulti = null;
         var pendingHotspots = []; // Cada item: { ...datos, imageFile: File|null, imagePreviewUrl: string|null }
         var currentSceneId = null;
         var isVideoScene = false;
+        var isSpinScene = false;
         var defaultHotspotImage = '{{ url("virtualtour/images/hotspot.png") }}';
+
+        // ====== Variables para visor spin ======
+        var spinCache = {
+            frames: {},
+            totalFrames: 0,
+            currentIndex: 1,
+            framesDir: null,
+            loaded: 0,
+            ready: false
+        };
+        var spinDragState = {
+            isDragging: false,
+            startX: 0,
+            startIndex: 1,
+            sensitivity: 0.15
+        };
 
         // Estado para detectar click vs drag en panorama
         var panoramaDragState = {
@@ -500,6 +549,228 @@
                 dragState.isDragging = false;
             });
         }
+
+        // ====== Funciones para visor spin ======
+        function resetSpinCache() {
+            spinCache.frames = {};
+            spinCache.totalFrames = 0;
+            spinCache.currentIndex = 1;
+            spinCache.framesDir = null;
+            spinCache.loaded = 0;
+            spinCache.ready = false;
+            spinDragState.isDragging = false;
+            document.getElementById('spin-multi-marker').style.display = 'none';
+            document.getElementById('spin-multi-loading').style.display = 'block';
+        }
+
+        function loadSpinFrames(sceneId) {
+            var framesDir = sceneSpinFramesDirMap[sceneId];
+            var totalFrames = sceneSpinFramesCountMap[sceneId] || 72;
+
+            if (!framesDir) {
+                console.error('No frames directory for scene', sceneId);
+                return;
+            }
+
+            resetSpinCache();
+            spinCache.framesDir = framesDir;
+            spinCache.totalFrames = totalFrames;
+
+            document.getElementById('spin-total-frames').textContent = totalFrames;
+
+            var baseUrl = '{{ url("storage") }}/' + framesDir + '/';
+            var extension = '.jpg';
+
+            // Cargar todos los frames
+            for (var i = 1; i <= totalFrames; i++) {
+                (function(idx) {
+                    var img = new Image();
+                    img.onload = function() {
+                        spinCache.frames[idx] = img;
+                        spinCache.loaded++;
+                        var progress = Math.round((spinCache.loaded / totalFrames) * 100);
+                        document.getElementById('spin-load-progress').textContent = progress + '%';
+
+                        if (spinCache.loaded === totalFrames) {
+                            spinCache.ready = true;
+                            document.getElementById('spin-multi-loading').style.display = 'none';
+                            showSpinFrame(1);
+                        }
+                    };
+                    img.onerror = function() {
+                        // Intentar con otra extensión
+                        var img2 = new Image();
+                        img2.onload = function() {
+                            spinCache.frames[idx] = img2;
+                            spinCache.loaded++;
+                            var progress = Math.round((spinCache.loaded / totalFrames) * 100);
+                            document.getElementById('spin-load-progress').textContent = progress + '%';
+
+                            if (spinCache.loaded === totalFrames) {
+                                spinCache.ready = true;
+                                document.getElementById('spin-multi-loading').style.display = 'none';
+                                showSpinFrame(1);
+                            }
+                        };
+                        img2.onerror = function() {
+                            console.warn('Failed to load frame', idx);
+                            spinCache.loaded++;
+                            if (spinCache.loaded === totalFrames) {
+                                spinCache.ready = true;
+                                document.getElementById('spin-multi-loading').style.display = 'none';
+                                showSpinFrame(1);
+                            }
+                        };
+                        img2.src = baseUrl + 'frame_' + String(idx).padStart(4, '0') + '.png';
+                    };
+                    img.src = baseUrl + 'frame_' + String(idx).padStart(4, '0') + extension;
+                })(i);
+            }
+        }
+
+        function showSpinFrame(idx) {
+            if (!spinCache.ready) return;
+            idx = Math.max(1, Math.min(spinCache.totalFrames, idx));
+            spinCache.currentIndex = idx;
+
+            var canvas = document.getElementById('spin-multi-canvas');
+            var ctx = canvas.getContext('2d');
+            var frame = spinCache.frames[idx];
+
+            if (!frame) return;
+
+            // Ajustar tamaño del canvas
+            var container = document.getElementById('spin-multi');
+            canvas.width = container.offsetWidth;
+            canvas.height = container.offsetHeight;
+
+            // Dibujar frame centrado
+            var scale = Math.min(canvas.width / frame.width, canvas.height / frame.height);
+            var w = frame.width * scale;
+            var h = frame.height * scale;
+            var x = (canvas.width - w) / 2;
+            var y = (canvas.height - h) / 2;
+
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(frame, x, y, w, h);
+
+            // Actualizar indicadores
+            var yaw = calculateYawFromFrame(idx);
+            document.getElementById('spin-current-frame').textContent = idx;
+            document.getElementById('spin-current-yaw').textContent = yaw.toFixed(1);
+
+            // Actualizar barra de progreso
+            var pct = ((idx - 1) / (spinCache.totalFrames - 1)) * 100;
+            document.getElementById('spin-multi-progress').style.width = pct + '%';
+        }
+
+        function calculateYawFromFrame(frameIdx) {
+            // Mapear frame a yaw (frame 1 = 0°, frame N = ~360°)
+            if (spinCache.totalFrames <= 1) return 0;
+            return ((frameIdx - 1) / spinCache.totalFrames) * 360;
+        }
+
+        function calculateFrameFromYaw(yaw) {
+            // Normalizar yaw a [0, 360)
+            yaw = ((yaw % 360) + 360) % 360;
+            // Mapear yaw a frame
+            return Math.round((yaw / 360) * spinCache.totalFrames) + 1;
+        }
+
+        // Eventos drag para spin viewer
+        (function() {
+            var spinEl = document.getElementById('spin-multi');
+            var spinMarker = document.getElementById('spin-multi-marker');
+            var clickState = { startX: 0, startY: 0, hasMoved: false, clientX: 0, clientY: 0 };
+
+            spinEl.addEventListener('mousedown', function(e) {
+                if (!spinCache.ready) return;
+                spinDragState.isDragging = true;
+                spinDragState.startX = e.clientX;
+                spinDragState.startIndex = spinCache.currentIndex;
+                clickState.startX = e.clientX;
+                clickState.startY = e.clientY;
+                clickState.hasMoved = false;
+                clickState.clientX = e.clientX;
+                clickState.clientY = e.clientY;
+                e.preventDefault();
+            });
+
+            document.addEventListener('mousemove', function(e) {
+                if (!spinDragState.isDragging) return;
+                var deltaX = e.clientX - spinDragState.startX;
+                if (Math.abs(deltaX) > 3) clickState.hasMoved = true;
+
+                // Calcular nuevo frame
+                var deltaFrames = Math.round(deltaX * spinDragState.sensitivity);
+                var newIdx = spinDragState.startIndex + deltaFrames;
+
+                // Wrap around
+                while (newIdx < 1) newIdx += spinCache.totalFrames;
+                while (newIdx > spinCache.totalFrames) newIdx -= spinCache.totalFrames;
+
+                showSpinFrame(newIdx);
+            });
+
+            document.addEventListener('mouseup', function(e) {
+                if (!spinDragState.isDragging) return;
+                var wasDragging = clickState.hasMoved;
+                spinDragState.isDragging = false;
+
+                // Si no arrastró, es un click para colocar hotspot
+                if (!wasDragging && spinCache.ready && isSpinScene) {
+                    var rect = spinEl.getBoundingClientRect();
+                    var posX = ((e.clientX - rect.left) / rect.width) * 100;
+                    var posY = ((e.clientY - rect.top) / rect.height) * 100;
+                    posX = Math.max(0, Math.min(100, posX));
+                    posY = Math.max(0, Math.min(100, posY));
+
+                    // Calcular yaw desde el frame actual
+                    var yaw = calculateYawFromFrame(spinCache.currentIndex);
+
+                    // Mostrar marcador
+                    spinMarker.style.display = 'block';
+                    spinMarker.style.left = posX + '%';
+                    spinMarker.style.top = posY + '%';
+
+                    // Mostrar card - yaw calculado dinámicamente, pitch = 0 para spin
+                    showHotspotCard(clickState.clientX, clickState.clientY, round3(yaw), 0, null, round3(posX), round3(posY));
+                }
+            });
+
+            // Touch events
+            spinEl.addEventListener('touchstart', function(e) {
+                if (!spinCache.ready) return;
+                var touch = e.touches[0];
+                spinDragState.isDragging = true;
+                spinDragState.startX = touch.clientX;
+                spinDragState.startIndex = spinCache.currentIndex;
+                clickState.startX = touch.clientX;
+                clickState.startY = touch.clientY;
+                clickState.hasMoved = false;
+            }, { passive: true });
+
+            document.addEventListener('touchmove', function(e) {
+                if (!spinDragState.isDragging) return;
+                var touch = e.touches[0];
+                var deltaX = touch.clientX - spinDragState.startX;
+                if (Math.abs(deltaX) > 3) clickState.hasMoved = true;
+
+                var deltaFrames = Math.round(deltaX * spinDragState.sensitivity);
+                var newIdx = spinDragState.startIndex + deltaFrames;
+
+                while (newIdx < 1) newIdx += spinCache.totalFrames;
+                while (newIdx > spinCache.totalFrames) newIdx -= spinCache.totalFrames;
+
+                showSpinFrame(newIdx);
+            }, { passive: true });
+
+            document.addEventListener('touchend', function(e) {
+                if (!spinDragState.isDragging) return;
+                spinDragState.isDragging = false;
+            });
+        })();
 
         // ====== Mostrar card flotante ======
         function showHotspotCard(x, y, yaw, pitch, videoTime, posX, posY) {
@@ -658,6 +929,7 @@
             pendingHotspots = [];
             currentSceneId = null;
             isVideoScene = false;
+            isSpinScene = false;
             destroyViewer(viewerMulti);
             viewerMulti = null;
             $('#viewerWrapper').hide();
@@ -665,6 +937,7 @@
             hideHotspotCard();
             updatePendingList();
             videoMultiMarker.style.display = 'none';
+            resetSpinCache();
         });
 
         // Al cerrar el modal
@@ -677,13 +950,17 @@
                 videoMultiPlayer.pause();
                 videoMultiPlayer.removeAttribute('src');
             }
+            resetSpinCache();
         });
 
         // Cambio de escena origen
         $('#sourceSceneMulti').on('change', function() {
             currentSceneId = $(this).val();
             var sceneType = sceneTypeMap[currentSceneId] || 'equirectangular';
-            isVideoScene = (sceneType === 'video');
+            var hasSpinFrames = sceneSpinFramesDirMap[currentSceneId];
+
+            isVideoScene = (sceneType === 'video' && !hasSpinFrames);
+            isSpinScene = !!hasSpinFrames;
 
             $('#viewerWrapper').show();
             hideHotspotCard();
@@ -692,12 +969,28 @@
             pendingHotspots = [];
             updatePendingList();
 
-            if (isVideoScene) {
-                // Escena de video
-                panoramaMultiEl.style.display = 'none';
-                videoMultiEl.style.display = 'block';
+            // Ocultar todos los visores primero
+            panoramaMultiEl.style.display = 'none';
+            videoMultiEl.style.display = 'none';
+            document.getElementById('spin-multi').style.display = 'none';
+
+            if (isSpinScene) {
+                // Escena spin (360 de vehículos)
                 destroyViewer(viewerMulti);
                 viewerMulti = null;
+                if (videoMultiPlayer) {
+                    videoMultiPlayer.pause();
+                    videoMultiPlayer.removeAttribute('src');
+                }
+
+                document.getElementById('spin-multi').style.display = 'block';
+                loadSpinFrames(currentSceneId);
+            } else if (isVideoScene) {
+                // Escena de video
+                destroyViewer(viewerMulti);
+                viewerMulti = null;
+                resetSpinCache();
+                videoMultiEl.style.display = 'block';
 
                 var videoUrl = sceneVideoMap[currentSceneId];
                 if (videoUrl) {
@@ -707,11 +1000,11 @@
                 videoMultiMarker.style.display = 'none';
             } else {
                 // Escena panorama 360
-                videoMultiEl.style.display = 'none';
                 if (videoMultiPlayer) {
                     videoMultiPlayer.pause();
                     videoMultiPlayer.removeAttribute('src');
                 }
+                resetSpinCache();
                 panoramaMultiEl.style.display = 'block';
 
                 var imageUrl = sceneImageMap[currentSceneId];

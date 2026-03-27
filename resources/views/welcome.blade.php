@@ -795,27 +795,10 @@
                 font-size: 12px;
             }
 
-            .matterport-toolbar {
-                bottom: 85px;
-                left: 10px;
-                padding: 4px 6px;
-            }
-
-            .matterport-toolbar-btn {
-                width: 34px;
-                height: 34px;
-                font-size: 14px;
-            }
-
-            .matterport-actions {
-                bottom: 85px;
-                right: 10px;
-            }
-
-            .matterport-action-btn {
-                width: 36px;
-                height: 36px;
-                font-size: 14px;
+            /* Carrusel de escenas primero (más abajo en z-index) */
+            .matterport-scenes-carousel {
+                padding: 12px 10px 16px;
+                z-index: 998;
             }
 
             .matterport-scene-item {
@@ -823,17 +806,53 @@
                 height: 55px;
             }
 
-            .matterport-scenes-carousel {
-                padding: 12px 10px 16px;
-            }
-
             .matterport-scene-item .scene-title {
                 font-size: 9px;
                 padding: 12px 4px 4px;
             }
 
+            /* Toolbar centrada ENCIMA del carrusel */
+            .matterport-toolbar {
+                bottom: 95px;
+                left: 50%;
+                transform: translateX(-50%);
+                padding: 6px 10px;
+                border-radius: 10px;
+                z-index: 1000;
+            }
+
+            .matterport-toolbar-btn {
+                width: 36px;
+                height: 36px;
+                font-size: 15px;
+            }
+
+            /* Destacar botones de navegación entre escenas */
+            .matterport-toolbar-btn#matterport-prev-scene,
+            .matterport-toolbar-btn#matterport-next-scene {
+                background: rgba(255, 255, 255, 0.12);
+            }
+
+            /* Botones de acciones ENCIMA del carrusel */
+            .matterport-actions {
+                bottom: 95px;
+                right: 10px;
+                z-index: 1000;
+            }
+
+            .matterport-action-btn {
+                width: 38px;
+                height: 38px;
+                font-size: 15px;
+            }
+
             .current-scene-name {
                 top: 65px;
+            }
+
+            /* Ocultar toggle separado en móvil - usar el de la toolbar */
+            .matterport-carousel-toggle {
+                display: none;
             }
         }
 
@@ -846,20 +865,63 @@
                 font-size: 11px;
             }
 
-            .matterport-toolbar {
-                gap: 2px;
-                padding: 3px 5px;
-            }
-
-            .matterport-toolbar-btn {
-                width: 30px;
-                height: 30px;
-                font-size: 13px;
+            /* Carrusel más compacto en móviles pequeños */
+            .matterport-scenes-carousel {
+                padding: 10px 8px 14px;
+                z-index: 998;
             }
 
             .matterport-scene-item {
                 width: 75px;
                 height: 48px;
+            }
+
+            /* Toolbar ENCIMA del carrusel - ajustado para altura del carrusel */
+            .matterport-toolbar {
+                left: 50%;
+                transform: translateX(-50%);
+                gap: 3px;
+                padding: 6px 10px;
+                bottom: 85px;
+                border-radius: 12px;
+                z-index: 1000;
+            }
+
+            .matterport-toolbar-btn {
+                width: 38px;
+                height: 38px;
+                font-size: 15px;
+                border-radius: 8px;
+            }
+
+            /* Destacar botones de navegación entre escenas en móvil */
+            .matterport-toolbar-btn#matterport-prev-scene,
+            .matterport-toolbar-btn#matterport-next-scene {
+                background: rgba(255, 255, 255, 0.15);
+            }
+
+            .matterport-toolbar-btn#matterport-prev-scene:active,
+            .matterport-toolbar-btn#matterport-next-scene:active {
+                background: rgba(255, 255, 255, 0.3);
+                transform: scale(0.95);
+            }
+
+            .matterport-toolbar-divider {
+                height: 20px;
+                margin: 0 2px;
+            }
+
+            /* Botones de acciones ENCIMA del carrusel */
+            .matterport-actions {
+                bottom: 85px;
+                right: 10px;
+                z-index: 1000;
+            }
+
+            .matterport-action-btn {
+                width: 38px;
+                height: 38px;
+                font-size: 15px;
             }
         }
     </style>
@@ -898,7 +960,7 @@
             <div class="matterport-info-provider">Virtual Tour 360</div>
             <div class="matterport-info-title">
                 <i class="fa fa-map-marker"></i>
-                <span>{{ $fscene->property_name ?? 'Propiedad' }}</span>
+                <span>{{ $fscene ? ($fscene->property_name ?? 'Propiedad') : 'Propiedad' }}</span>
             </div>
         </div>
     </div>
@@ -981,7 +1043,7 @@
         <div class="home-content-tablecell">
             <div class="row">
                 <div class="col-twelve">
-                    <h1 class="animate-intro">Virtual Tour | Descubre {{ $fscene->property_name }}</h1>
+                    <h1 class="animate-intro">Virtual Tour | Descubre {{ $fscene ? ($fscene->property_name ?? 'la propiedad') : 'la propiedad' }}</h1>
                     <div class="more animate-intro">
                         <a id="btn-start-tour" class="button stroke" href="#">Empezar Tour</a>
                         <a class="button stroke" href="{{ url('/') }}">Más Propiedades</a>
@@ -1053,8 +1115,13 @@
         // 1) Opciones JSON pre-calculadas (evita usar "|" dentro de @json)
         $jsonOptions = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE;
 
+        // Si no hay escena principal ($fscene es null), usar la primera escena disponible
+        if (!$fscene && $scenes->isNotEmpty()) {
+            $fscene = $scenes->first();
+        }
+
         // Detectar si la primera escena es de tipo video
-        $firstSceneIsVideo = $fscene->type === 'video';
+        $firstSceneIsVideo = $fscene ? ($fscene->type === 'video') : false;
 
         // Si la primera escena es video, buscar la primera escena panorama como fallback para Pannellum
         $pannellumFirstScene = $fscene;
@@ -1067,7 +1134,7 @@
 
         // 2) Default Pannellum - Configuración para efecto de caminar con zoom
         $pannellumDefault = [
-            'firstScene' => (string) $pannellumFirstScene->id,
+            'firstScene' => $pannellumFirstScene ? (string) $pannellumFirstScene->id : '',
             'hfov' => 100,
             'minHfov' => 2,
             'maxHfov' => 120,
@@ -1085,7 +1152,7 @@
         ];
 
         // Guardar el ID real de la primera escena (puede ser video)
-        $realFirstSceneId = (string) $fscene->id;
+        $realFirstSceneId = $fscene ? (string) $fscene->id : '';
 
         // 3) Scenes + hotspots (misma lógica tuya, sólo formateado)
         $scenesConfig = [];
@@ -2293,7 +2360,7 @@
                 });
             }
 
-            // Construir hotspots para spin (mapea video_time a frame_index)
+            // Construir hotspots para spin (mapea yaw del hotspot a frame_index)
             function buildSpinHotspots(sceneId) {
                 videoHotspotsBar.innerHTML = '';
                 // Remover hotspots posicionados previos
@@ -2305,8 +2372,6 @@
                 var sc = pannellumConfig.scenes[sceneId];
                 if (!sc || !sc.hotSpots) return;
 
-                // Para spin, usamos duración virtual de 10 segundos para mapear video_time a frames
-                var virtualDuration = 10;
                 var totalFrames = spinCache.totalFrames || sc.spinFramesCount || 72;
 
                 sc.hotSpots.forEach(function(hs) {
@@ -2318,65 +2383,60 @@
                     var displayText = hs.createTooltipArgs ? hs.createTooltipArgs.displayText : targetScene.title;
                     var imageUrl = hs.createTooltipArgs ? hs.createTooltipArgs.imageUrl : null;
 
-                    // Obtener datos de posición del hotspot
-                    var vt = hs.createTooltipArgs ? hs.createTooltipArgs.videoTime : null;
+                    // Obtener datos de posición visual del hotspot (px, py)
                     var px = hs.createTooltipArgs ? hs.createTooltipArgs.posX : null;
                     var py = hs.createTooltipArgs ? hs.createTooltipArgs.posY : null;
+
+                    // Obtener el yaw del hotspot para calcular el frame correspondiente
+                    var hsYaw = hs.yaw !== undefined ? hs.yaw : 0;
 
                     // Capturar targetYaw/targetPitch del hotspot
                     var hsTargetYaw = hs.clickHandlerArgs ? hs.clickHandlerArgs.targetYaw : undefined;
                     var hsTargetPitch = hs.clickHandlerArgs ? hs.clickHandlerArgs.targetPitch : undefined;
 
-                    if (vt !== null && vt !== undefined && px !== null && py !== null) {
-                        // Hotspot posicionado - mapear video_time a frame_index
-                        // Calcular el frame correspondiente al video_time
-                        var frameIndex = Math.round((vt / virtualDuration) * (totalFrames - 1)) + 1;
-                        frameIndex = Math.max(1, Math.min(totalFrames, frameIndex));
+                    // Usar posX/posY si están definidos, sino usar valores por defecto centrados
+                    var posX = px !== null ? px : 50;
+                    var posY = py !== null ? py : 50;
 
-                        var posDiv = document.createElement('div');
-                        posDiv.className = 'video-pos-hotspot';
-                        posDiv.style.left = px + '%';
-                        posDiv.style.top = py + '%';
-                        posDiv.setAttribute('data-frame-index', frameIndex);
-                        posDiv.setAttribute('data-frame-range', '8'); // visible ±8 frames
+                    // Calcular el frame correspondiente al yaw del hotspot
+                    // Normalizar yaw a rango [0, 360)
+                    var normalizedYaw = ((hsYaw % 360) + 360) % 360;
+                    // Mapear yaw a frame index (frame 1 = yaw 0, frame totalFrames = yaw ~360)
+                    var frameIndex = Math.round((normalizedYaw / 360) * totalFrames) + 1;
+                    if (frameIndex > totalFrames) frameIndex = 1; // wrap around
 
-                        var container = document.createElement('div');
-                        container.classList.add('hotspot-tooltip-container');
+                    // Crear el hotspot posicionado
+                    var posDiv = document.createElement('div');
+                    posDiv.className = 'video-pos-hotspot';
+                    posDiv.style.left = posX + '%';
+                    posDiv.style.top = posY + '%';
+                    posDiv.setAttribute('data-frame-index', frameIndex);
+                    posDiv.setAttribute('data-frame-range', '3'); // visible ±3 frames (~30° con 72 frames)
 
-                        var label = document.createElement('div');
-                        label.classList.add('hotspot-label', 'hotspot-label-scene');
-                        label.textContent = displayText;
-                        container.appendChild(label);
+                    var container = document.createElement('div');
+                    container.classList.add('hotspot-tooltip-container');
 
-                        if (imageUrl) {
-                            var img = document.createElement('img');
-                            img.classList.add('circular-hotspot-img');
-                            img.src = imageUrl;
-                            img.alt = displayText;
-                            container.appendChild(img);
-                        }
+                    var label = document.createElement('div');
+                    label.classList.add('hotspot-label', 'hotspot-label-scene');
+                    label.textContent = displayText;
+                    container.appendChild(label);
 
-                        posDiv.appendChild(container);
-                        (function(tid, tYaw, tPitch) {
-                            posDiv.addEventListener('click', function(e) {
-                                e.stopPropagation();
-                                navigateFromVideo(tid, tYaw, tPitch);
-                            });
-                        })(targetId, hsTargetYaw, hsTargetPitch);
-                        videoOverlay.appendChild(posDiv);
-                    } else {
-                        // Hotspot sin posición → botón en barra inferior
-                        var btn = document.createElement('button');
-                        btn.className = 'video-hotspot-btn';
-                        btn.textContent = displayText;
-                        (function(tid, tYaw, tPitch) {
-                            btn.addEventListener('click', function(e) {
-                                e.stopPropagation();
-                                navigateFromVideo(tid, tYaw, tPitch);
-                            });
-                        })(targetId, hsTargetYaw, hsTargetPitch);
-                        videoHotspotsBar.appendChild(btn);
+                    if (imageUrl) {
+                        var img = document.createElement('img');
+                        img.classList.add('circular-hotspot-img');
+                        img.src = imageUrl;
+                        img.alt = displayText;
+                        container.appendChild(img);
                     }
+
+                    posDiv.appendChild(container);
+                    (function(tid, tYaw, tPitch) {
+                        posDiv.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            navigateFromVideo(tid, tYaw, tPitch);
+                        });
+                    })(targetId, hsTargetYaw, hsTargetPitch);
+                    videoOverlay.appendChild(posDiv);
                 });
             }
 
@@ -2389,7 +2449,7 @@
 
                 posHotspots.forEach(function(el) {
                     var targetFrame = parseInt(el.getAttribute('data-frame-index')) || 1;
-                    var range = parseInt(el.getAttribute('data-frame-range')) || 8;
+                    var range = parseInt(el.getAttribute('data-frame-range')) || 3;
 
                     // Calcular distancia de frames (con wrap-around)
                     var diff = Math.abs(currentFrame - targetFrame);
@@ -3090,7 +3150,7 @@
             // Compartir
             $('#matterport-share').on('click', function() {
                 var url = window.location.href;
-                var title = '{{ $fscene->property_name ?? "Virtual Tour" }}';
+                var title = '{{ $fscene ? ($fscene->property_name ?? "Virtual Tour") : "Virtual Tour" }}';
 
                 if (navigator.share) {
                     navigator.share({

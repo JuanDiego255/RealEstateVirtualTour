@@ -97,7 +97,7 @@
                                                 @if($property->transmission)<li><i class="fa fa-exchange"></i>{{ $property->transmission }}</li>@endif
                                                 @if($property->fuel_type)<li><i class="fa fa-tint"></i>{{ $property->fuel_type }}</li>@endif
                                             </ul>
-                                            <h5><a href="{{ route('virtual-tour', $property->id) }}">{{ $property->brand }} {{ $property->model }} {{ $property->year }}</a></h5>
+                                            <h5><a href="{{ route('virtual-tour', $property->id) }}">{{ $property->brand }} {{ $property->model }}</a></h5>
                                             <span class="location-text">
                                                 @if($property->mileage_km){{ number_format($property->mileage_km) }} km @endif
                                                 @if($property->doors)| {{ $property->doors }} puertas @endif
