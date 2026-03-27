@@ -19,6 +19,7 @@ use App\Http\Controllers\SpinController;
 use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\VehicleCompareController;
 use App\Models\Spin;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
@@ -289,6 +290,14 @@ Route::get('/category/{slug}', [CategoryController::class, 'show'])->name('categ
 Route::get('/category/{categorySlug}/subcategory/{subcategorySlug}', [CategoryController::class, 'showSubcategory'])->name('subcategory.show');
 Route::get('/propiedad/{id}', [PropertiesController::class, 'show'])->name('property.show');
 Route::get('virtual-tour/{id}', 'SceneController@pannellum')->name('virtual-tour');
+
+// Comparador de vehículos
+Route::get('/comparar-vehiculos', [VehicleCompareController::class, 'index'])->name('vehicle-compare');
+Route::get('/api/vehicle-compare/subcategories/{category}', [VehicleCompareController::class, 'getSubcategories']);
+Route::get('/api/vehicle-compare/vehicles', [VehicleCompareController::class, 'getVehicles']);
+Route::get('/api/vehicle-compare/vehicle/{vehicle}', [VehicleCompareController::class, 'getVehicleDetail']);
+Route::post('/api/vehicle-compare/compare', [VehicleCompareController::class, 'compare']);
+Route::get('/api/vehicle-compare/export-pdf', [VehicleCompareController::class, 'exportPdf']);
 
 // Planes y registro de empresa
 Route::get('/planes', [RegisterCompanyController::class, 'pricing'])->name('pricing');
