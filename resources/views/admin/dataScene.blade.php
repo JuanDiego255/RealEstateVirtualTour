@@ -186,7 +186,7 @@
 
 @foreach ($scene as $item)
     <!-- Detail Modal -->
-    <div class="modal fade" id="detailScene{{ $item['id'] }}">
+    <div class="modal fade" id="detailScene{{ $item->id }}">
         <div class="modal-dialog modal-dialog-centered" role="document">
             <div class="modal-content">
                 <div class="modal-header">
@@ -230,7 +230,7 @@
     </div>
 
     <!-- Edit Modal -->
-    <div class="modal fade  modal-xl" id="editModal{{ $item['id'] }}">
+    <div class="modal fade  modal-xl" id="editModal{{ $item->id }}">
         <div class="modal-dialog modal-dialog-centered" role="document">
             <div class="modal-content">
                 <div class="modal-header">
@@ -372,7 +372,7 @@
     </div>
 
     <!-- Delete Modal -->
-    <div id="deleteModal{{ $item['id'] }}" class="modal fade">
+    <div id="deleteModal{{ $item->id }}" class="modal fade">
         <div class="modal-dialog modal-dialog-centered modal-confirm">
             <div class="modal-content">
                 <div class="modal-header flex-column">
