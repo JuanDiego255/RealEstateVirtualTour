@@ -2344,7 +2344,7 @@
                     posDiv.style.left = posX + '%';
                     posDiv.style.top = posY + '%';
                     posDiv.setAttribute('data-frame-index', frameIndex);
-                    posDiv.setAttribute('data-frame-range', '8'); // visible ±8 frames
+                    posDiv.setAttribute('data-frame-range', '3'); // visible ±3 frames (~30° con 72 frames)
 
                     var container = document.createElement('div');
                     container.classList.add('hotspot-tooltip-container');
@@ -2382,7 +2382,7 @@
 
                 posHotspots.forEach(function(el) {
                     var targetFrame = parseInt(el.getAttribute('data-frame-index')) || 1;
-                    var range = parseInt(el.getAttribute('data-frame-range')) || 8;
+                    var range = parseInt(el.getAttribute('data-frame-range')) || 3;
 
                     // Calcular distancia de frames (con wrap-around)
                     var diff = Math.abs(currentFrame - targetFrame);
