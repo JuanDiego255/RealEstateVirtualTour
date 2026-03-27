@@ -41,7 +41,7 @@ class CategoryController extends Controller
         $subcategory = Subcategory::where('category_id', $category->id)
             ->where('slug', $subcategorySlug)
             ->where('is_active', true)
-            ->with(['properties'])
+            ->with(['properties.scenes'])
             ->firstOrFail();
 
         $sector = $category->sector;
