@@ -183,7 +183,8 @@
 
             $('.sceneTable tbody').on('click', 'input:checkbox', function() {
                 var getId = $(this).attr("id");
-                if ($('input[type=checkbox]:checked').length > 1) {
+                var checkedCount = $('.sceneTable tbody input[type=checkbox]:checked').length;
+                if (checkedCount > 1) {
                     $(this).prop('checked', false)
                     alert('Solo se permite una escena principal')
                 } else {
