@@ -42,7 +42,7 @@
         </div>
 
         {{-- PUBLICACIONES (propiedades + vehículos unificados) --}}
-        @if ($subcategory->properties->count() > 0)
+        @if ($publications->count() > 0)
             @include('frontend._spin-card-styles')
 
             <section class="ftco-section goto-here">
@@ -54,10 +54,14 @@
                         </div>
                     </div>
                     <div class="row">
-                        @foreach ($subcategory->properties as $property)
+                        @foreach ($publications as $property)
                             @php
                                 $spin = $property->active_spin;
                                 $hasSpin = !empty($spin);
+                                $isVehicleModel = $property instanceof \App\Vehicle;
+                                $tourUrl = $isVehicleModel
+                                    ? route('virtual-tour', ['id' => $property->id, 'type' => 'vehicle'])
+                                    : route('virtual-tour', $property->id);
                             @endphp
                             <div class="col-md-4 mb-4">
                                 <div class="card spin-card ftco-animate h-100">
@@ -75,7 +79,7 @@
                                             </div>
                                         </div>
                                     @else
-                                        <a href="{{ route('virtual-tour', $property->id) }}">
+                                        <a href="{{ $tourUrl }}">
                                             <div class="spin-img-wrap"
                                                 style="background-image: url('{{ isset($property->image) ? route('file', $property->image) : url('images/producto-sin-imagen.PNG') }}')">
                                             </div>
@@ -97,7 +101,7 @@
                                                 @if($property->transmission)<li><i class="fa fa-exchange"></i>{{ $property->transmission }}</li>@endif
                                                 @if($property->fuel_type)<li><i class="fa fa-tint"></i>{{ $property->fuel_type }}</li>@endif
                                             </ul>
-                                            <h5><a href="{{ route('virtual-tour', $property->id) }}">{{ $property->brand }} {{ $property->model }}</a></h5>
+                                            <h5><a href="{{ $tourUrl }}">{{ $property->brand }} {{ $property->model }}</a></h5>
                                             <span class="location-text">
                                                 @if($property->mileage_km){{ number_format($property->mileage_km) }} km @endif
                                                 @if($property->doors)| {{ $property->doors }} puertas @endif
@@ -109,11 +113,11 @@
                                                 <li><span class="flaticon-bathtub"></span>{{ $property->bathrooms }}</li>
                                                 <li><span class="flaticon-floor-plan"></span>{{ $property->construction }} Mt2</li>
                                             </ul>
-                                            <h5><a href="{{ route('virtual-tour', $property->id) }}">{{ $property->name }}</a></h5>
+                                            <h5><a href="{{ $tourUrl }}">{{ $property->name }}</a></h5>
                                             <span class="location-text">{{ $property->location ?? 'Ubicación no disponible' }}</span>
                                         @endif
 
-                                        <a href="{{ route('virtual-tour', $property->id) }}" class="btn-tour">
+                                        <a href="{{ $tourUrl }}" class="btn-tour">
                                             <i class="fa fa-play-circle mr-1"></i> Virtual Tour
                                         </a>
                                     </div>
@@ -128,7 +132,7 @@
         @endif
 
         {{-- SIN ITEMS --}}
-        @if ($subcategory->properties->count() == 0)
+        @if ($publications->count() == 0)
             <section class="ftco-section goto-here">
                 <div class="container">
                     <div class="row justify-content-center">

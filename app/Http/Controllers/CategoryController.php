@@ -19,7 +19,7 @@ class CategoryController extends Controller
         $category = Category::where('slug', $slug)
             ->where('status', true)
             ->with(['sector', 'subcategories' => function ($q) {
-                $q->active()->ordered()->with(['properties']);
+                $q->active()->ordered()->with(['properties', 'vehicles']);
             }])
             ->firstOrFail();
 
@@ -41,12 +41,15 @@ class CategoryController extends Controller
         $subcategory = Subcategory::where('category_id', $category->id)
             ->where('slug', $subcategorySlug)
             ->where('is_active', true)
-            ->with(['properties.scenes'])
+            ->with(['properties.scenes', 'vehicles.scenes'])
             ->firstOrFail();
 
         $sector = $category->sector;
 
-        return view('frontend.subcategory', compact('category', 'subcategory', 'sector'));
+        // Combinar propiedades y vehículos en una sola colección
+        $publications = $subcategory->properties->merge($subcategory->vehicles);
+
+        return view('frontend.subcategory', compact('category', 'subcategory', 'sector', 'publications'));
     }
 
     /**

@@ -579,7 +579,7 @@
             document.getElementById('spin-total-frames').textContent = totalFrames;
 
             var baseUrl = '{{ url("storage") }}/' + framesDir + '/';
-            var extension = '.jpg';
+            var extension = '.webp';
 
             // Cargar todos los frames
             for (var i = 1; i <= totalFrames; i++) {
@@ -621,9 +621,9 @@
                                 showSpinFrame(1);
                             }
                         };
-                        img2.src = baseUrl + 'frame_' + String(idx).padStart(4, '0') + '.png';
+                        img2.src = baseUrl + 'frame-' + String(idx).padStart(3, '0') + '.png';
                     };
-                    img.src = baseUrl + 'frame_' + String(idx).padStart(4, '0') + extension;
+                    img.src = baseUrl + 'frame-' + String(idx).padStart(3, '0') + extension;
                 })(i);
             }
         }
