@@ -114,11 +114,30 @@
         margin-bottom: 12px;
         display: block;
     }
+    .spin-card .btn-detail {
+        display: inline-block;
+        padding: 8px 16px;
+        border-radius: 8px;
+        background: #fff;
+        color: #333;
+        border: 1px solid #ddd;
+        text-align: center;
+        font-size: 13px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.2s;
+        margin-right: 8px;
+    }
+    .spin-card .btn-detail:hover {
+        background: #f8f9fa;
+        border-color: #c2ac1f;
+        color: #c2ac1f;
+        text-decoration: none;
+    }
     .spin-card .btn-tour {
-        display: block;
-        width: 100%;
-        padding: 10px;
-        border-radius: 10px;
+        display: inline-block;
+        padding: 8px 16px;
+        border-radius: 8px;
         background: #c2ac1f;
         color: #fff;
         text-align: center;

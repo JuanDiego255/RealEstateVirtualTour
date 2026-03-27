@@ -224,25 +224,41 @@
                         @endphp
                         <div class="col-md-4 col-lg-3 mb-4">
                             <div class="card spin-card ftco-animate h-100">
-                                @if($hasSpin)
-                                    <div class="spin-viewer-wrap" id="spinViewer{{ $property->id }}"
-                                         data-frames-dir="{{ $spin->frames_dir }}"
-                                         data-frames-count="{{ $spin->frames_count }}"
-                                         data-auto-rotate="{{ $property->spin_auto_rotate ? '1' : '0' }}">
-                                        <canvas></canvas>
-                                        <div class="spin-overlay">
-                                            <span class="spin-arrows">&larr;</span>
-                                            <span>Spin 360</span>
-                                            <span class="spin-arrows">&rarr;</span>
+                                <div style="position: relative;">
+                                    @if($hasSpin)
+                                        <div class="spin-viewer-wrap" id="spinViewer{{ $property->id }}"
+                                             data-frames-dir="{{ $spin->frames_dir }}"
+                                             data-frames-count="{{ $spin->frames_count }}"
+                                             data-auto-rotate="{{ $property->spin_auto_rotate ? '1' : '0' }}">
+                                            <canvas></canvas>
+                                            <div class="spin-overlay">
+                                                <span class="spin-arrows">&larr;</span>
+                                                <span>Spin 360</span>
+                                                <span class="spin-arrows">&rarr;</span>
+                                            </div>
                                         </div>
-                                    </div>
-                                @else
-                                    <a href="{{ route('property.show', $property->id) }}">
-                                        <div class="spin-img-wrap"
-                                            style="background-image: url('{{ $property->image_url }}')">
-                                        </div>
-                                    </a>
-                                @endif
+                                    @else
+                                        <a href="{{ route('property.show', $property->id) }}">
+                                            <div class="spin-img-wrap"
+                                                style="background-image: url('{{ $property->image_url }}')">
+                                            </div>
+                                        </a>
+                                    @endif
+
+                                    {{-- Botón de favorito --}}
+                                    @auth
+                                        @php
+                                            $isFav = \App\Favorite::isFavorite(auth()->id(), $property->id);
+                                        @endphp
+                                        <button onclick="toggleFavorite({{ $property->id }}, this)"
+                                                class="btn btn-sm btn-link position-absolute"
+                                                style="top: 10px; right: 10px; font-size: 1.5rem; z-index: 10; padding: 5px 10px; background: rgba(255,255,255,0.9); border-radius: 50%; line-height: 1;"
+                                                title="{{ $isFav ? 'Quitar de favoritos' : 'Agregar a favoritos' }}">
+                                            <i class="fa fa-heart{{ $isFav ? '' : '-o' }}" style="color: #dc3545;"></i>
+                                        </button>
+                                    @endauth
+                                </div>
+
                                 <div class="card-info">
                                     <div class="price-row">
                                         <span class="price-main">{{ $property->formatted_price }}</span>
@@ -259,28 +275,15 @@
                                     @endif
                                     <h5><a href="{{ route('property.show', $property->id) }}">{{ \Illuminate\Support\Str::limit($property->name, 30) }}</a></h5>
                                     <span class="location-text">{{ $property->location ?? 'Ubicación no disponible' }}</span>
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <a href="{{ route('property.show', $property->id) }}" class="btn-detail">
-                                                <i class="fa fa-info-circle mr-1"></i> Detalle
+                                    <div class="d-flex justify-content-between">
+                                        <a href="{{ route('property.show', $property->id) }}" class="btn-detail">
+                                            <i class="fa fa-info-circle mr-1"></i> Detalle
+                                        </a>
+                                        @if($property->has_virtual_tour)
+                                            <a href="{{ route('virtual-tour', $property->id) }}" class="btn-tour">
+                                                <i class="fa fa-play-circle mr-1"></i> Tour 360°
                                             </a>
-                                            @if($property->has_virtual_tour)
-                                                <a href="{{ route('virtual-tour', $property->id) }}" class="btn-tour">
-                                                    <i class="fa fa-play-circle mr-1"></i> Tour 360°
-                                                </a>
-                                            @endif
-                                        </div>
-                                        @auth
-                                            @php
-                                                $isFav = \App\Favorite::isFavorite(auth()->id(), $property->id);
-                                            @endphp
-                                            <button onclick="toggleFavorite({{ $property->id }}, this)"
-                                                    class="btn btn-sm btn-link p-0 ml-2"
-                                                    style="font-size: 1.5rem; color: #dc3545; border: none; background: none;"
-                                                    title="{{ $isFav ? 'Quitar de favoritos' : 'Agregar a favoritos' }}">
-                                                <i class="fa fa-heart{{ $isFav ? '' : '-o' }}"></i>
-                                            </button>
-                                        @endauth
+                                        @endif
                                     </div>
                                 </div>
                             </div>

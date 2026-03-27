@@ -43,9 +43,13 @@ class SearchController extends Controller
 
         // Construir query base
         $query = Properties::query()
-            ->with(['category.sector', 'subcategory', 'user'])
-            ->published()
-            ->available();
+            ->with(['category.sector', 'subcategory', 'user']);
+
+        // Solo filtrar por disponibles si no hay búsqueda específica
+        // Esto permite encontrar más propiedades
+        if (!$request->filled('status')) {
+            $query->available();
+        }
 
         // Aplicar filtros si existen
         $filters = [];

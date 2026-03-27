@@ -3,7 +3,7 @@
 @section('title', $property->name)
 
 @section('content')
-<div class="container mt-5 pt-5">
+<div class="container" style="margin-top: 100px; padding-top: 20px;">
     <div class="row">
         {{-- Columna Principal --}}
         <div class="col-lg-8">
@@ -464,4 +464,37 @@
         }
     }
 </script>
+@endpush
+
+@push('styles')
+<style>
+    /* Navbar fixed para página de detalle */
+    #ftco-navbar {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0;
+        right: 0;
+        z-index: 1040 !important;
+        background: #fff !important;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+    }
+
+    #ftco-navbar .navbar-brand .logo {
+        max-height: 50px;
+        width: auto;
+        display: block;
+    }
+
+    #ftco-navbar .navbar-nav > .nav-item > .nav-link {
+        color: #000 !important;
+    }
+
+    #ftco-navbar .navbar-nav > .nav-item > .nav-link:hover {
+        color: #c2ac1f !important;
+    }
+
+    #ftco-navbar .navbar-nav > .nav-item.active > .nav-link {
+        color: #c2ac1f !important;
+    }
+</style>
 @endpush

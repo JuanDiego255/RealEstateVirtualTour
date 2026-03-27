@@ -234,7 +234,6 @@
 
             {{-- Resultados --}}
             @if($properties->count() > 0)
-                @include('frontend._spin-card-styles')
                 <div class="row">
                     @foreach($properties as $property)
                         @php
@@ -349,8 +348,191 @@
 @endsection
 
 @push('styles')
-<link rel="stylesheet" href="{{ asset('css/spin-viewer.css') }}">
 <style>
+    /* Estilos para spin cards */
+    .spin-card {
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.10);
+        border: none;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        background: #fff;
+    }
+    .spin-card:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 16px 40px rgba(0,0,0,0.15);
+    }
+    .spin-card .spin-viewer-wrap {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 16/10;
+        background: #111;
+        overflow: hidden;
+        cursor: grab;
+    }
+    .spin-card .spin-viewer-wrap:active {
+        cursor: grabbing;
+    }
+    .spin-card .spin-viewer-wrap canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+    }
+    .spin-card .spin-viewer-wrap .spin-overlay {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 8px 0;
+        background: linear-gradient(transparent, rgba(0,0,0,0.45));
+        pointer-events: none;
+    }
+    .spin-card .spin-overlay span {
+        color: rgba(255,255,255,0.7);
+        font-size: 12px;
+        font-weight: 500;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        font-family: system-ui, -apple-system, sans-serif;
+    }
+    .spin-card .spin-overlay .spin-arrows {
+        color: rgba(255,255,255,0.55);
+        font-size: 14px;
+        letter-spacing: 2px;
+    }
+    .spin-card .spin-img-wrap {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 16/10;
+        background-size: cover;
+        background-position: center;
+        background-color: #eee;
+    }
+    .spin-card .card-info {
+        padding: 18px 20px 20px;
+    }
+    .spin-card .card-info .price-row {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        margin-bottom: 8px;
+    }
+    .spin-card .card-info .price-main {
+        font-size: 18px;
+        font-weight: 700;
+        color: #222;
+    }
+    .spin-card .card-info .price-sub {
+        font-size: 13px;
+        color: #999;
+    }
+    .spin-card .card-info .prop-features {
+        list-style: none;
+        padding: 0;
+        margin: 0 0 8px;
+        display: flex;
+        gap: 14px;
+        flex-wrap: wrap;
+    }
+    .spin-card .card-info .prop-features li {
+        font-size: 13px;
+        color: #666;
+    }
+    .spin-card .card-info .prop-features li i,
+    .spin-card .card-info .prop-features li span[class^="flaticon"] {
+        margin-right: 4px;
+        color: #c2ac1f;
+    }
+    .spin-card .card-info h5 {
+        font-size: 15px;
+        font-weight: 600;
+        margin: 0 0 4px;
+    }
+    .spin-card .card-info h5 a {
+        color: #333;
+        text-decoration: none;
+    }
+    .spin-card .card-info h5 a:hover {
+        color: #c2ac1f;
+    }
+    .spin-card .card-info .location-text {
+        font-size: 12px;
+        color: #999;
+        margin-bottom: 12px;
+        display: block;
+    }
+    .spin-card .btn-detail {
+        display: inline-block;
+        padding: 8px 16px;
+        border-radius: 8px;
+        background: #fff;
+        color: #333;
+        border: 1px solid #ddd;
+        text-align: center;
+        font-size: 13px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.2s;
+        margin-right: 8px;
+    }
+    .spin-card .btn-detail:hover {
+        background: #f8f9fa;
+        border-color: #c2ac1f;
+        color: #c2ac1f;
+        text-decoration: none;
+    }
+    .spin-card .btn-tour {
+        display: inline-block;
+        padding: 8px 16px;
+        border-radius: 8px;
+        background: #c2ac1f;
+        color: #fff;
+        text-align: center;
+        font-size: 13px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: background 0.2s;
+        border: none;
+    }
+    .spin-card .btn-tour:hover {
+        background: #a89618;
+        color: #fff;
+        text-decoration: none;
+    }
+
+    /* Navbar fixed para página de búsqueda */
+    #ftco-navbar {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0;
+        right: 0;
+        z-index: 1040 !important;
+        background: #fff !important;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+    }
+
+    #ftco-navbar .navbar-brand .logo {
+        max-height: 50px;
+        width: auto;
+        display: block;
+    }
+
+    #ftco-navbar .navbar-nav > .nav-item > .nav-link {
+        color: #000 !important;
+    }
+
+    #ftco-navbar .navbar-nav > .nav-item > .nav-link:hover {
+        color: #c2ac1f !important;
+    }
+
+    #ftco-navbar .navbar-nav > .nav-item.active > .nav-link {
+        color: #c2ac1f !important;
+    }
+
     .sticky-top {
         position: sticky;
         top: 100px;
@@ -368,26 +550,8 @@
 
 @push('scripts')
 <script src="{{ asset('js/favorites.js') }}"></script>
-<script src="{{ asset('js/spin-viewer.js') }}"></script>
 <script>
     $(document).ready(function() {
-        // Inicializar spin viewers
-        $('.spin-viewer-wrap').each(function() {
-            const $wrap = $(this);
-            const framesDir = $wrap.data('frames-dir');
-            const framesCount = parseInt($wrap.data('frames-count'));
-            const autoRotate = $wrap.data('auto-rotate') === '1';
-
-            if (framesDir && framesCount > 0 && typeof SpinViewer !== 'undefined') {
-                new SpinViewer({
-                    element: this,
-                    framesDir: framesDir,
-                    framesCount: framesCount,
-                    autoRotate: autoRotate
-                });
-            }
-        });
-
         // Auto-submit al cambiar ordenamiento
         $('select[name="sort_by"]').on('change', function() {
             $('#searchForm').submit();
