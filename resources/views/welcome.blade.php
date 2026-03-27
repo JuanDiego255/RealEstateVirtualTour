@@ -940,7 +940,7 @@
             <div class="matterport-info-provider">Virtual Tour 360</div>
             <div class="matterport-info-title">
                 <i class="fa fa-map-marker"></i>
-                <span>{{ $fscene->property_name ?? 'Propiedad' }}</span>
+                <span>{{ $fscene ? ($fscene->property_name ?? 'Propiedad') : 'Propiedad' }}</span>
             </div>
         </div>
     </div>
@@ -1023,7 +1023,7 @@
         <div class="home-content-tablecell">
             <div class="row">
                 <div class="col-twelve">
-                    <h1 class="animate-intro">Virtual Tour | Descubre {{ $fscene->property_name }}</h1>
+                    <h1 class="animate-intro">Virtual Tour | Descubre {{ $fscene ? ($fscene->property_name ?? 'la propiedad') : 'la propiedad' }}</h1>
                     <div class="more animate-intro">
                         <a id="btn-start-tour" class="button stroke" href="#">Empezar Tour</a>
                         <a class="button stroke" href="{{ url('/') }}">Más Propiedades</a>
@@ -1095,8 +1095,13 @@
         // 1) Opciones JSON pre-calculadas (evita usar "|" dentro de @json)
         $jsonOptions = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE;
 
+        // Si no hay escena principal ($fscene es null), usar la primera escena disponible
+        if (!$fscene && $scenes->isNotEmpty()) {
+            $fscene = $scenes->first();
+        }
+
         // Detectar si la primera escena es de tipo video
-        $firstSceneIsVideo = $fscene->type === 'video';
+        $firstSceneIsVideo = $fscene ? ($fscene->type === 'video') : false;
 
         // Si la primera escena es video, buscar la primera escena panorama como fallback para Pannellum
         $pannellumFirstScene = $fscene;
@@ -1109,7 +1114,7 @@
 
         // 2) Default Pannellum - Configuración para efecto de caminar con zoom
         $pannellumDefault = [
-            'firstScene' => (string) $pannellumFirstScene->id,
+            'firstScene' => $pannellumFirstScene ? (string) $pannellumFirstScene->id : '',
             'hfov' => 100,
             'minHfov' => 2,
             'maxHfov' => 120,
@@ -1127,7 +1132,7 @@
         ];
 
         // Guardar el ID real de la primera escena (puede ser video)
-        $realFirstSceneId = (string) $fscene->id;
+        $realFirstSceneId = $fscene ? (string) $fscene->id : '';
 
         // 3) Scenes + hotspots (misma lógica tuya, sólo formateado)
         $scenesConfig = [];
@@ -3125,7 +3130,7 @@
             // Compartir
             $('#matterport-share').on('click', function() {
                 var url = window.location.href;
-                var title = '{{ $fscene->property_name ?? "Virtual Tour" }}';
+                var title = '{{ $fscene ? ($fscene->property_name ?? "Virtual Tour") : "Virtual Tour" }}';
 
                 if (navigator.share) {
                     navigator.share({
