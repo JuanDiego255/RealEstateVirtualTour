@@ -2128,7 +2128,7 @@
                 videoExtractText.textContent = 'Cargando vista 360: 0%';
 
                 // URL base de frames
-                var baseUrl = '/storage/app/public/' + sc.spinFramesDir + '/';
+                var baseUrl = '/storage/' + sc.spinFramesDir + '/';
                 var totalFrames = sc.spinFramesCount;
                 var MIN_READY = Math.min(8, totalFrames);
                 var CONCURRENCY = 6;

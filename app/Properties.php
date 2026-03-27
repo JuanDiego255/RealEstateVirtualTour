@@ -177,14 +177,18 @@ class Properties extends Model
     public function getActiveSpinAttribute()
     {
         try {
-            if (!data_get($this->attributes, 'spin_active', false)) return null;
+            // Verificar si spin_active está habilitado
+            $spinActive = $this->spin_active ?? data_get($this->attributes, 'spin_active', false);
+            if (!$spinActive) return null;
         } catch (\Throwable $e) {
             return null;
         }
 
+        // Buscar escena con spin_id asignado
         $scene = $this->scenes()->whereNotNull('spin_id')->first();
         if (!$scene) return null;
 
+        // Buscar el spin con estado 'ready'
         $spin = \App\Models\Spin::where('id', $scene->spin_id)
             ->where('status', 'ready')
             ->first();

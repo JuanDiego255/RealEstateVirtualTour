@@ -46,11 +46,12 @@ class VehicleCompareController extends Controller
     {
         $subcategories = $category->subcategories()
             ->where('is_active', true)
-            ->whereHas('vehicles', function ($q) {
-                $q->where('status', true);
-            })
             ->orderBy('name')
-            ->get(['id', 'name', 'slug']);
+            ->get(['id', 'name', 'slug'])
+            ->map(function ($sub) {
+                $sub->vehicle_count = $sub->vehicles()->where('status', true)->count();
+                return $sub;
+            });
 
         return response()->json($subcategories);
     }
