@@ -77,6 +77,9 @@
                 <li class="nav-item {{ request()->is('/') ? 'active' : '' }}">
                     <a href="{{ url('/') }}" class="nav-link"><i class="fa fa-home mr-2"></i> Inicio</a>
                 </li>
+                <li class="nav-item {{ request()->is('buscar') ? 'active' : '' }}">
+                    <a href="{{ route('search') }}" class="nav-link"><i class="fa fa-search mr-2"></i> Buscar</a>
+                </li>
                 @php
                     $navSectors = \App\Sector::where('status', true)->get();
                 @endphp

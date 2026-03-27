@@ -380,4 +380,21 @@ class Properties extends Model
     {
         return $query->where('property_type', '!=', self::TYPE_VEHICLE);
     }
+
+    /**
+     * Favoritos de esta propiedad
+     */
+    public function favorites()
+    {
+        return $this->hasMany(Favorite::class, 'property_id');
+    }
+
+    /**
+     * Usuarios que han marcado como favorita esta propiedad
+     */
+    public function favoritedBy()
+    {
+        return $this->belongsToMany(User::class, 'favorites', 'property_id', 'user_id')
+            ->withTimestamps();
+    }
 }

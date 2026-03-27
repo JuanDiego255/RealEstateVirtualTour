@@ -16,6 +16,9 @@ use App\Http\Controllers\Admin\SubcategoryController;
 use App\Http\Controllers\CloudConvertWebhookController;
 use App\Http\Controllers\RegisterCompanyController;
 use App\Http\Controllers\SpinController;
+use App\Http\Controllers\FavoriteController;
+use App\Http\Controllers\SearchController;
+use App\Http\Controllers\ReviewController;
 use App\Models\Spin;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
@@ -98,6 +101,11 @@ Route::group(['middleware' => 'auth'], function () {
     Route::get('/property', [PropertiesController::class, 'indexAdmin'])->name('property');
     Route::delete('/delete/property/{id}', [PropertiesController::class, 'destroy']);
     Route::delete('/property/{propertyId}/image/{imageId}', [PropertiesController::class, 'destroyImage'])->name('deletePropertyImage');
+
+    // Favoritos
+    Route::get('/favorites', [FavoriteController::class, 'index'])->name('favorites.index');
+    Route::post('/favorites/{property}', [FavoriteController::class, 'store'])->name('favorites.store');
+    Route::delete('/favorites/{property}', [FavoriteController::class, 'destroy'])->name('favorites.destroy');
 
     // Sectores CRUD (existente)
     Route::get('/sectors', [SectorController::class, 'indexAdmin'])->name('sectors');
@@ -231,6 +239,16 @@ Route::group(['middleware' => 'auth'], function () {
         Route::post('/{sale}/cancel', [SaleController::class, 'cancel'])->name('admin.sales.cancel');
     });
 
+    // --- CALIFICACIONES / REVIEWS ---
+    Route::group(['prefix' => 'calificaciones'], function () {
+        Route::get('/mis-calificaciones', [ReviewController::class, 'myReviews'])->name('reviews.my-reviews');
+        Route::get('/usuario/{user}', [ReviewController::class, 'index'])->name('reviews.user');
+        Route::get('/calificar/{user}', [ReviewController::class, 'create'])->name('reviews.create');
+        Route::post('/calificar/{user}', [ReviewController::class, 'store'])->name('reviews.store');
+        Route::put('/{review}', [ReviewController::class, 'update'])->name('reviews.update');
+        Route::delete('/{review}', [ReviewController::class, 'destroy'])->name('reviews.destroy');
+    });
+
     // --- USUARIOS (Admin de empresa: solo su empresa, Super admin: todos) ---
     Route::group(['prefix' => 'admin/users', 'middleware' => 'role:company_admin,super_admin'], function () {
         Route::get('/', [AdminUserController::class, 'index'])->name('admin.users.index');
@@ -265,9 +283,11 @@ Route::group(['middleware' => 'auth'], function () {
 // RUTAS PÚBLICAS
 // =====================================================
 Route::get('/', [SectorController::class, 'index'])->name('welcome');
+Route::get('/buscar', [SearchController::class, 'index'])->name('search');
 Route::get('/sector/{slug}', [SectorController::class, 'show'])->name('sector.show');
 Route::get('/category/{slug}', [CategoryController::class, 'show'])->name('category.show');
 Route::get('/category/{categorySlug}/subcategory/{subcategorySlug}', [CategoryController::class, 'showSubcategory'])->name('subcategory.show');
+Route::get('/propiedad/{id}', [PropertiesController::class, 'show'])->name('property.show');
 Route::get('virtual-tour/{id}', 'SceneController@pannellum')->name('virtual-tour');
 
 // Planes y registro de empresa

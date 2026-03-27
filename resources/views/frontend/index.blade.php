@@ -153,6 +153,150 @@
             </div>
         </div>
         {{-- /Banner --}}
+
+        {{-- SECCIÓN DE BÚSQUEDA RÁPIDA --}}
+        <section class="ftco-section bg-light py-5">
+            <div class="container">
+                <div class="row justify-content-center mb-4">
+                    <div class="col-md-10 text-center">
+                        <h3 class="mb-3">Encuentra tu Propiedad Ideal</h3>
+                        <p class="text-muted">Busca entre miles de propiedades disponibles</p>
+                    </div>
+                </div>
+                <div class="row justify-content-center">
+                    <div class="col-md-10">
+                        <form action="{{ route('search') }}" method="GET" class="card shadow-sm">
+                            <div class="card-body py-4">
+                                <div class="row align-items-end">
+                                    <div class="col-md-3 mb-3 mb-md-0">
+                                        <label class="small text-muted mb-1">Tipo de Propiedad</label>
+                                        <select name="property_type" class="form-control">
+                                            <option value="">Todos los tipos</option>
+                                            <option value="house">Casa</option>
+                                            <option value="apartment">Apartamento</option>
+                                            <option value="land">Lote/Terreno</option>
+                                            <option value="vehicle">Vehículo</option>
+                                            <option value="commercial">Comercial</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3 mb-3 mb-md-0">
+                                        <label class="small text-muted mb-1">Ubicación</label>
+                                        <input type="text" name="location" class="form-control" placeholder="Ciudad, provincia...">
+                                    </div>
+                                    <div class="col-md-3 mb-3 mb-md-0">
+                                        <label class="small text-muted mb-1">Precio Máximo</label>
+                                        <input type="number" name="max_price" class="form-control" placeholder="Ej: 50000000">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <button type="submit" class="btn btn-primary btn-block" style="background-color: #c2ac1f; border-color: #c2ac1f;">
+                                            <i class="fa fa-search"></i> Buscar
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="text-center mt-3">
+                                    <a href="{{ route('search') }}" class="text-muted small">
+                                        <i class="fa fa-sliders"></i> Búsqueda avanzada con más filtros
+                                    </a>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        {{-- SECCIÓN DE PROPIEDADES DESTACADAS --}}
+        @if(isset($featuredProperties) && $featuredProperties->count() > 0)
+        <section class="ftco-section pb-5">
+            <div class="container">
+                <div class="row justify-content-center mb-4">
+                    <div class="col-md-12 heading-section text-center ftco-animate">
+                        <span class="subheading">Propiedades Destacadas</span>
+                        <h2 class="mb-2">Las Mejores Opciones para Ti</h2>
+                    </div>
+                </div>
+                @include('frontend._spin-card-styles')
+                <div class="row">
+                    @foreach($featuredProperties as $property)
+                        @php
+                            $spin = $property->active_spin;
+                            $hasSpin = !empty($spin);
+                        @endphp
+                        <div class="col-md-4 col-lg-3 mb-4">
+                            <div class="card spin-card ftco-animate h-100">
+                                @if($hasSpin)
+                                    <div class="spin-viewer-wrap" id="spinViewer{{ $property->id }}"
+                                         data-frames-dir="{{ $spin->frames_dir }}"
+                                         data-frames-count="{{ $spin->frames_count }}"
+                                         data-auto-rotate="{{ $property->spin_auto_rotate ? '1' : '0' }}">
+                                        <canvas></canvas>
+                                        <div class="spin-overlay">
+                                            <span class="spin-arrows">&larr;</span>
+                                            <span>Spin 360</span>
+                                            <span class="spin-arrows">&rarr;</span>
+                                        </div>
+                                    </div>
+                                @else
+                                    <a href="{{ route('property.show', $property->id) }}">
+                                        <div class="spin-img-wrap"
+                                            style="background-image: url('{{ $property->image_url }}')">
+                                        </div>
+                                    </a>
+                                @endif
+                                <div class="card-info">
+                                    <div class="price-row">
+                                        <span class="price-main">{{ $property->formatted_price }}</span>
+                                        @if($property->maintenance && !$property->isVehicle())
+                                            <span class="price-sub">₡{{ number_format($property->maintenance) }}/mo</span>
+                                        @endif
+                                    </div>
+                                    @if(!$property->isVehicle())
+                                        <ul class="prop-features">
+                                            <li><span class="flaticon-bed"></span>{{ $property->rooms }}</li>
+                                            <li><span class="flaticon-bathtub"></span>{{ $property->bathrooms }}</li>
+                                            <li><span class="flaticon-floor-plan"></span>{{ $property->construction }} m²</li>
+                                        </ul>
+                                    @endif
+                                    <h5><a href="{{ route('property.show', $property->id) }}">{{ \Illuminate\Support\Str::limit($property->name, 30) }}</a></h5>
+                                    <span class="location-text">{{ $property->location ?? 'Ubicación no disponible' }}</span>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <a href="{{ route('property.show', $property->id) }}" class="btn-detail">
+                                                <i class="fa fa-info-circle mr-1"></i> Detalle
+                                            </a>
+                                            @if($property->has_virtual_tour)
+                                                <a href="{{ route('virtual-tour', $property->id) }}" class="btn-tour">
+                                                    <i class="fa fa-play-circle mr-1"></i> Tour 360°
+                                                </a>
+                                            @endif
+                                        </div>
+                                        @auth
+                                            @php
+                                                $isFav = \App\Favorite::isFavorite(auth()->id(), $property->id);
+                                            @endphp
+                                            <button onclick="toggleFavorite({{ $property->id }}, this)"
+                                                    class="btn btn-sm btn-link p-0 ml-2"
+                                                    style="font-size: 1.5rem; color: #dc3545; border: none; background: none;"
+                                                    title="{{ $isFav ? 'Quitar de favoritos' : 'Agregar a favoritos' }}">
+                                                <i class="fa fa-heart{{ $isFav ? '' : '-o' }}"></i>
+                                            </button>
+                                        @endauth
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+                <div class="text-center mt-4">
+                    <a href="{{ route('search', ['featured' => 1]) }}" class="btn btn-outline-primary btn-lg">
+                        Ver todas las destacadas <i class="fa fa-arrow-right ml-2"></i>
+                    </a>
+                </div>
+                @include('frontend._spin-viewer-script')
+            </div>
+        </section>
+        @endif
+
         {{-- SECCIÓN DE SECTORES --}}
         <section class="ftco-section goto-here">
             <div class="container">
@@ -305,6 +449,7 @@
         <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBVWaKrjvy3MaE7SQ74_uJiULgl1JY0H2s&sensor=false"></script>
         <script src="{{ asset('virtualtour/js/google-map.js') }}"></script>
         <script src="{{ asset('virtualtour/js/main.js') }}"></script>
+        <script src="{{ asset('js/favorites.js') }}"></script>
 
 
     </body>

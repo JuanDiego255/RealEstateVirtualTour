@@ -195,6 +195,52 @@ class User extends Authenticatable
     }
 
     /**
+     * Favoritos del usuario
+     */
+    public function favorites()
+    {
+        return $this->hasMany(Favorite::class);
+    }
+
+    /**
+     * Propiedades favoritas del usuario
+     */
+    public function favoriteProperties()
+    {
+        return $this->belongsToMany(Properties::class, 'favorites', 'user_id', 'property_id')
+            ->withTimestamps();
+    }
+
+    /**
+     * Calificaciones dadas por este usuario
+     */
+    public function reviewsGiven()
+    {
+        return $this->hasMany(Review::class, 'reviewer_id');
+    }
+
+    /**
+     * Calificaciones recibidas por este usuario
+     */
+    public function reviewsReceived()
+    {
+        return $this->hasMany(Review::class, 'reviewee_id');
+    }
+
+    /**
+     * Actualizar el promedio de calificaciones del usuario
+     */
+    public function updateAverageRating()
+    {
+        $avg = $this->reviewsReceived()->avg('rating');
+        $count = $this->reviewsReceived()->count();
+
+        $this->average_rating = $avg ? round($avg, 2) : null;
+        $this->reviews_count = $count;
+        $this->save();
+    }
+
+    /**
      * Obtener nombre completo para mostrar
      */
     public function getDisplayNameAttribute(): string

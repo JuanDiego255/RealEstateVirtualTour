@@ -122,6 +122,62 @@
                         </div>
                     </div>
                 @endif
+
+                {{-- Calificar al vendedor --}}
+                @if($sale->status === 'confirmed' && $sale->seller && Auth::id() !== $sale->seller_id)
+                    <div class="card mt-3">
+                        <div class="card-header bg-warning text-white">
+                            <strong><i class="fa fa-star"></i> Calificación del Vendedor</strong>
+                        </div>
+                        <div class="card-body text-center">
+                            @php
+                                $hasReviewed = \App\Review::where('reviewer_id', Auth::id())
+                                    ->where('reviewee_id', $sale->seller_id)
+                                    ->where('sale_id', $sale->id)
+                                    ->exists();
+                            @endphp
+
+                            @if($hasReviewed)
+                                <p class="text-success mb-2">
+                                    <i class="fa fa-check-circle"></i> Ya has calificado a este vendedor
+                                </p>
+                                <a href="{{ route('reviews.user', $sale->seller_id) }}" class="btn btn-sm btn-outline-primary">
+                                    <i class="fa fa-star"></i> Ver calificaciones
+                                </a>
+                            @else
+                                <p class="mb-3">¿Cómo fue tu experiencia con este vendedor?</p>
+                                <a href="{{ route('reviews.create', ['user' => $sale->seller_id, 'sale_id' => $sale->id]) }}"
+                                   class="btn btn-warning btn-block">
+                                    <i class="fa fa-star"></i> Calificar Vendedor
+                                </a>
+                            @endif
+                        </div>
+                    </div>
+                @endif
+
+                {{-- Info del vendedor --}}
+                @if($sale->seller)
+                    <div class="card mt-3">
+                        <div class="card-header"><strong>Vendedor</strong></div>
+                        <div class="card-body text-center">
+                            <img src="{{ $sale->seller->avatar_url }}" alt="{{ $sale->seller->name }}"
+                                 class="rounded-circle mb-2" style="width: 60px; height: 60px; object-fit: cover;">
+                            <h6 class="mb-1">{{ $sale->seller->name }}</h6>
+                            @if($sale->seller->average_rating)
+                                <div class="mb-2">
+                                    @for($i = 1; $i <= 5; $i++)
+                                        <i class="fa fa-star{{ $i <= round($sale->seller->average_rating) ? '' : '-o' }} text-warning"></i>
+                                    @endfor
+                                    <br>
+                                    <small class="text-muted">{{ number_format($sale->seller->average_rating, 2) }} ({{ $sale->seller->reviews_count }})</small>
+                                </div>
+                            @endif
+                            <a href="{{ route('reviews.user', $sale->seller_id) }}" class="btn btn-sm btn-outline-info">
+                                <i class="fa fa-eye"></i> Ver perfil
+                            </a>
+                        </div>
+                    </div>
+                @endif
             </div>
         </div>
     </div>

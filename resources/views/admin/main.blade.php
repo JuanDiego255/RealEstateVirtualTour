@@ -60,6 +60,22 @@
                                 <a id="navbarDropdown" class="nav-link dropdown-toggle" href="#" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" v-pre>{{Auth::user()->username}} <i class="ti-angle-down"></i> </a>
 
                                 <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdown">
+                                    {{-- Mostrar rating del usuario --}}
+                                    @if(Auth::user()->average_rating)
+                                        <div class="px-3 py-2 border-bottom bg-light">
+                                            <div class="text-center">
+                                                <small class="text-muted d-block mb-1">Mi Calificación</small>
+                                                @for($i = 1; $i <= 5; $i++)
+                                                    <i class="fa fa-star{{ $i <= round(Auth::user()->average_rating) ? '' : '-o' }} text-warning"></i>
+                                                @endfor
+                                                <div class="mt-1">
+                                                    <strong>{{ number_format(Auth::user()->average_rating, 2) }}</strong>
+                                                    <small class="text-muted">({{ Auth::user()->reviews_count }} {{ Auth::user()->reviews_count == 1 ? 'calificación' : 'calificaciones' }})</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endif
+
                                     <a class="dropdown-item" href="{{ route('profil') }}">
                                         Cambiar el perfil</a>
                                     <a class="dropdown-item" href="{{ route('ubahPassword') }}">

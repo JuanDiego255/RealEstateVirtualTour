@@ -7,6 +7,7 @@ use App\PropertyImage;
 use App\Category;
 use App\Subcategory;
 use App\Sector;
+use App\Favorite;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -317,5 +318,40 @@ class PropertiesController extends Controller
         $image->delete();
 
         return redirect('/property')->with('success', 'Imagen eliminada con éxito!');
+    }
+
+    /**
+     * Mostrar vista de detalle de una propiedad (pública)
+     */
+    public function show($id)
+    {
+        $property = Properties::with(['category.sector', 'subcategory', 'user', 'images', 'sale'])
+            ->findOrFail($id);
+
+        // Incrementar contador de vistas
+        $property->incrementViews();
+
+        // Propiedades similares (mismo tipo y sector si existe)
+        $similarPropertiesQuery = Properties::published()
+            ->available()
+            ->where('id', '!=', $property->id)
+            ->where('property_type', $property->property_type);
+
+        // Filtrar por sector solo si la propiedad tiene categoría y sector
+        if ($property->category && $property->category->sector_id) {
+            $similarPropertiesQuery->inSector($property->category->sector_id);
+        }
+
+        $similarProperties = $similarPropertiesQuery
+            ->with(['category', 'subcategory'])
+            ->limit(6)
+            ->get();
+
+        // Verificar si es favorito del usuario actual
+        $isFavorite = auth()->check()
+            ? Favorite::isFavorite(auth()->id(), $property->id)
+            : false;
+
+        return view('properties.show', compact('property', 'similarProperties', 'isFavorite'));
     }
 }

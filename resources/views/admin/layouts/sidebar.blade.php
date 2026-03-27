@@ -29,6 +29,16 @@
                             <a href="{{ route('property') }}"><i class="fa fa-th-list"></i><span>Publicaciones</span></a>
                         </li>
 
+                        {{-- Favoritos --}}
+                        <li class="{{ Request::routeIs('favorites.*') ? 'active' : '' }}">
+                            <a href="{{ route('favorites.index') }}"><i class="fa fa-heart"></i><span>Mis Favoritos</span></a>
+                        </li>
+
+                        {{-- Mis Calificaciones --}}
+                        <li class="{{ Request::routeIs('reviews.my-reviews') ? 'active' : '' }}">
+                            <a href="{{ route('reviews.my-reviews') }}"><i class="fa fa-star"></i><span>Mis Calificaciones</span></a>
+                        </li>
+
                         {{-- Bolsa Inmobiliaria (solo si el paquete lo permite) --}}
                         <li class="{{ Request::routeIs('admin.bolsa.*') ? 'active' : '' }}">
                             <a class="has-arrow" href="javascript:void(0)" aria-expanded="false">

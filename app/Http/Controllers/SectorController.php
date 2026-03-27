@@ -24,7 +24,15 @@ class SectorController extends Controller
         // Fallback: load properties for backward compatibility when no sectors exist
         $properties = \App\Properties::all();
 
-        return view('frontend.index', compact('sectors', 'properties'));
+        // Propiedades destacadas para la landing page
+        $featuredProperties = \App\Properties::published()
+            ->available()
+            ->featured()
+            ->with(['category.sector', 'subcategory'])
+            ->limit(8)
+            ->get();
+
+        return view('frontend.index', compact('sectors', 'properties', 'featuredProperties'));
     }
 
     /**
