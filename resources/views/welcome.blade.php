@@ -795,12 +795,30 @@
                 font-size: 12px;
             }
 
+            /* Carrusel de escenas primero (más abajo en z-index) */
+            .matterport-scenes-carousel {
+                padding: 12px 10px 16px;
+                z-index: 998;
+            }
+
+            .matterport-scene-item {
+                width: 90px;
+                height: 55px;
+            }
+
+            .matterport-scene-item .scene-title {
+                font-size: 9px;
+                padding: 12px 4px 4px;
+            }
+
+            /* Toolbar centrada ENCIMA del carrusel */
             .matterport-toolbar {
-                bottom: 20px;
+                bottom: 95px;
                 left: 50%;
                 transform: translateX(-50%);
                 padding: 6px 10px;
                 border-radius: 10px;
+                z-index: 1000;
             }
 
             .matterport-toolbar-btn {
@@ -815,9 +833,11 @@
                 background: rgba(255, 255, 255, 0.12);
             }
 
+            /* Botones de acciones ENCIMA del carrusel */
             .matterport-actions {
-                bottom: 20px;
+                bottom: 95px;
                 right: 10px;
+                z-index: 1000;
             }
 
             .matterport-action-btn {
@@ -826,22 +846,13 @@
                 font-size: 15px;
             }
 
-            .matterport-scene-item {
-                width: 90px;
-                height: 55px;
-            }
-
-            .matterport-scenes-carousel {
-                padding: 12px 10px 16px;
-            }
-
-            .matterport-scene-item .scene-title {
-                font-size: 9px;
-                padding: 12px 4px 4px;
-            }
-
             .current-scene-name {
                 top: 65px;
+            }
+
+            /* Ocultar toggle separado en móvil - usar el de la toolbar */
+            .matterport-carousel-toggle {
+                display: none;
             }
         }
 
@@ -854,13 +865,26 @@
                 font-size: 11px;
             }
 
+            /* Carrusel más compacto en móviles pequeños */
+            .matterport-scenes-carousel {
+                padding: 10px 8px 14px;
+                z-index: 998;
+            }
+
+            .matterport-scene-item {
+                width: 75px;
+                height: 48px;
+            }
+
+            /* Toolbar ENCIMA del carrusel - ajustado para altura del carrusel */
             .matterport-toolbar {
                 left: 50%;
                 transform: translateX(-50%);
                 gap: 3px;
                 padding: 6px 10px;
-                bottom: 16px;
+                bottom: 85px;
                 border-radius: 12px;
+                z-index: 1000;
             }
 
             .matterport-toolbar-btn {
@@ -887,15 +911,11 @@
                 margin: 0 2px;
             }
 
-            .matterport-scene-item {
-                width: 75px;
-                height: 48px;
-            }
-
-            /* Ajustar posición de acciones en móvil */
+            /* Botones de acciones ENCIMA del carrusel */
             .matterport-actions {
-                bottom: 16px;
+                bottom: 85px;
                 right: 10px;
+                z-index: 1000;
             }
 
             .matterport-action-btn {
