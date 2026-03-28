@@ -5,6 +5,7 @@ namespace App;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 use App\Vehicle;
+use App\Properties;
 
 class Subcategory extends Model
 {
@@ -53,6 +54,15 @@ class Subcategory extends Model
     public function vehicles()
     {
         return $this->hasMany(Vehicle::class, 'subcategory_id');
+    }
+
+    /**
+     * Vehículos desde properties (property_type = 'vehicle')
+     */
+    public function vehicleProperties()
+    {
+        return $this->hasMany(Properties::class, 'subcategory_id')
+            ->where('property_type', 'vehicle');
     }
 
     public function getImageUrlAttribute(): ?string

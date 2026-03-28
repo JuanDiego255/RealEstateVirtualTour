@@ -122,11 +122,20 @@ class Category extends Model
     }
 
     /**
-     * Vehículos a través de subcategorías
+     * Vehículos a través de subcategorías (tabla vehicles - legacy)
      */
     public function vehicles()
     {
         return $this->hasManyThrough(Vehicle::class, Subcategory::class, 'category_id', 'subcategory_id');
+    }
+
+    /**
+     * Vehículos desde properties (property_type = 'vehicle')
+     */
+    public function vehicleProperties()
+    {
+        return $this->hasManyThrough(Properties::class, Subcategory::class, 'category_id', 'subcategory_id')
+            ->where('properties.property_type', Properties::TYPE_VEHICLE);
     }
 
     /**

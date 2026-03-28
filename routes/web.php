@@ -295,7 +295,7 @@ Route::get('virtual-tour/{id}', 'SceneController@pannellum')->name('virtual-tour
 Route::get('/comparar-vehiculos', [VehicleCompareController::class, 'index'])->name('vehicle-compare');
 Route::get('/api/vehicle-compare/subcategories/{category}', [VehicleCompareController::class, 'getSubcategories']);
 Route::get('/api/vehicle-compare/vehicles', [VehicleCompareController::class, 'getVehicles']);
-Route::get('/api/vehicle-compare/vehicle/{vehicle}', [VehicleCompareController::class, 'getVehicleDetail']);
+Route::get('/api/vehicle-compare/vehicle/{vehicleId}', [VehicleCompareController::class, 'getVehicleDetail']);
 Route::post('/api/vehicle-compare/compare', [VehicleCompareController::class, 'compare']);
 Route::get('/api/vehicle-compare/export-pdf', [VehicleCompareController::class, 'exportPdf']);
 

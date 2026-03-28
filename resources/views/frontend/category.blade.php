@@ -101,13 +101,30 @@
                     </div>
                 </div>
 
+                @php
+                    // Detectar si es sector automotriz
+                    $isAutomotriz = isset($sector) && (
+                        $sector->slug === 'sector-automotriz' ||
+                        stripos($sector->name, 'automotriz') !== false ||
+                        stripos($sector->name, 'vehículo') !== false
+                    );
+                @endphp
+
                 @if ($category->subcategories->count() > 0)
                     <div class="row">
                         @foreach ($category->subcategories as $subcategory)
                             @php
-                                $subPropCount = $subcategory->properties->count();
-                                $subVehCount = $subcategory->vehicles->count();
-                                $subTotal = $subPropCount + $subVehCount;
+                                if ($isAutomotriz) {
+                                    // En sector automotriz, contar vehículos desde properties
+                                    $subVehCount = $subcategory->properties()->where('property_type', 'vehicle')->count();
+                                    $subPropCount = 0;
+                                    $subTotal = $subVehCount;
+                                } else {
+                                    // En otros sectores, contar propiedades (excluyendo vehículos)
+                                    $subPropCount = $subcategory->properties()->where('property_type', '!=', 'vehicle')->count();
+                                    $subVehCount = 0;
+                                    $subTotal = $subPropCount;
+                                }
                             @endphp
                             <div class="col-md-{{ $category->subcategories->count() <= 2 ? '6' : '4' }} mb-4">
                                 <div class="card ftco-animate h-100"
@@ -136,24 +153,28 @@
 
                                         <div class="mt-auto">
                                             <div class="d-flex flex-wrap mb-2">
-                                                @if (isset($subPropCount) && $subPropCount > 0)
-                                                    <span class="badge badge-primary mr-2 mt-1" style="font-size: 0.8rem;">
-                                                        <i class="fa fa-building mr-1"></i>{{ $subPropCount }}
-                                                        {{ $subPropCount == 1 ? 'propiedad' : 'propiedades' }}
-                                                    </span>
-                                                @endif
-                                                @if (isset($subVehCount) && $subVehCount > 0)
-                                                    <span class="badge badge-info mr-2 mt-1" style="font-size: 0.8rem;">
-                                                        <i class="fa fa-car mr-1"></i>{{ $subVehCount }}
-                                                        {{ $subVehCount == 1 ? 'vehículo' : 'vehículos' }}
-                                                    </span>
-                                                @endif
-                                                @if ($subTotal == 0)
-                                                    <span class="badge badge-secondary mt-1">Sin inmuebles aún</span>
+                                                @if ($isAutomotriz)
+                                                    @if ($subVehCount > 0)
+                                                        <span class="badge badge-info mr-2 mt-1" style="font-size: 0.8rem;">
+                                                            <i class="fa fa-car mr-1"></i>{{ $subVehCount }}
+                                                            {{ $subVehCount == 1 ? 'vehículo' : 'vehículos' }}
+                                                        </span>
+                                                    @else
+                                                        <span class="badge badge-secondary mt-1">Sin vehículos aún</span>
+                                                    @endif
+                                                @else
+                                                    @if ($subPropCount > 0)
+                                                        <span class="badge badge-primary mr-2 mt-1" style="font-size: 0.8rem;">
+                                                            <i class="fa fa-building mr-1"></i>{{ $subPropCount }}
+                                                            {{ $subPropCount == 1 ? 'propiedad' : 'propiedades' }}
+                                                        </span>
+                                                    @else
+                                                        <span class="badge badge-secondary mt-1">Sin inmuebles aún</span>
+                                                    @endif
                                                 @endif
                                             </div>
                                             <a href="{{ route('subcategory.show', [$category->slug, $subcategory->slug]) }}" class="btn btn-sm btn-block" style="background-color: #c2ac1f; color: #fff; border-radius: 8px;">
-                                                Ver inmuebles <i class="fa fa-arrow-right ml-1"></i>
+                                                {{ $isAutomotriz ? 'Ver vehículos' : 'Ver inmuebles' }} <i class="fa fa-arrow-right ml-1"></i>
                                             </a>
                                         </div>
                                     </div>
