@@ -13,6 +13,9 @@ use App\Http\Controllers\Admin\SaleController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\CompanyController;
 use App\Http\Controllers\Admin\SubcategoryController;
+use App\Http\Controllers\Admin\LeadController;
+use App\Http\Controllers\Admin\AppointmentController;
+use App\Http\Controllers\Admin\ReminderController;
 use App\Http\Controllers\CloudConvertWebhookController;
 use App\Http\Controllers\RegisterCompanyController;
 use App\Http\Controllers\SpinController;
@@ -277,6 +280,61 @@ Route::group(['middleware' => 'auth'], function () {
         Route::put('/{company}', [CompanyController::class, 'update'])->name('admin.companies.update');
         Route::post('/{company}/toggle-status', [CompanyController::class, 'toggleStatus'])->name('admin.companies.toggle-status');
         Route::delete('/{company}', [CompanyController::class, 'destroy'])->name('admin.companies.destroy');
+    });
+
+    // =====================================================
+    // CRM + AGENDA
+    // =====================================================
+
+    // --- LEADS (CRM) ---
+    Route::group(['prefix' => 'admin/crm/leads', 'middleware' => ['subscription']], function () {
+        Route::get('/', [LeadController::class, 'index'])->name('admin.crm.leads.index');
+        Route::get('/pipeline', [LeadController::class, 'pipeline'])->name('admin.crm.leads.pipeline');
+        Route::get('/follow-ups', [LeadController::class, 'followUps'])->name('admin.crm.leads.follow-ups');
+        Route::get('/create', [LeadController::class, 'create'])->name('admin.crm.leads.create');
+        Route::post('/', [LeadController::class, 'store'])->name('admin.crm.leads.store');
+        Route::get('/{lead}', [LeadController::class, 'show'])->name('admin.crm.leads.show');
+        Route::get('/{lead}/edit', [LeadController::class, 'edit'])->name('admin.crm.leads.edit');
+        Route::put('/{lead}', [LeadController::class, 'update'])->name('admin.crm.leads.update');
+        Route::patch('/{lead}/status', [LeadController::class, 'updateStatus'])->name('admin.crm.leads.update-status');
+        Route::post('/{lead}/activity', [LeadController::class, 'addActivity'])->name('admin.crm.leads.add-activity');
+        Route::delete('/{lead}', [LeadController::class, 'destroy'])->name('admin.crm.leads.destroy');
+        // API para Kanban
+        Route::patch('/{lead}/status-api', [LeadController::class, 'updateStatusApi'])->name('admin.crm.leads.update-status-api');
+    });
+
+    // --- AGENDA (Citas) ---
+    Route::group(['prefix' => 'admin/crm/appointments', 'middleware' => ['subscription']], function () {
+        Route::get('/', [AppointmentController::class, 'index'])->name('admin.crm.appointments.index');
+        Route::get('/calendar-events', [AppointmentController::class, 'calendarEvents'])->name('admin.crm.appointments.calendar-events');
+        Route::get('/today', [AppointmentController::class, 'today'])->name('admin.crm.appointments.today');
+        Route::get('/upcoming', [AppointmentController::class, 'upcoming'])->name('admin.crm.appointments.upcoming');
+        Route::get('/create', [AppointmentController::class, 'create'])->name('admin.crm.appointments.create');
+        Route::post('/', [AppointmentController::class, 'store'])->name('admin.crm.appointments.store');
+        Route::get('/{appointment}', [AppointmentController::class, 'show'])->name('admin.crm.appointments.show');
+        Route::get('/{appointment}/edit', [AppointmentController::class, 'edit'])->name('admin.crm.appointments.edit');
+        Route::put('/{appointment}', [AppointmentController::class, 'update'])->name('admin.crm.appointments.update');
+        Route::patch('/{appointment}/update-dates', [AppointmentController::class, 'updateDates'])->name('admin.crm.appointments.update-dates');
+        Route::post('/{appointment}/cancel', [AppointmentController::class, 'cancel'])->name('admin.crm.appointments.cancel');
+        Route::post('/{appointment}/complete', [AppointmentController::class, 'complete'])->name('admin.crm.appointments.complete');
+        Route::delete('/{appointment}', [AppointmentController::class, 'destroy'])->name('admin.crm.appointments.destroy');
+    });
+
+    // --- RECORDATORIOS ---
+    Route::group(['prefix' => 'admin/crm/reminders', 'middleware' => ['subscription']], function () {
+        Route::get('/', [ReminderController::class, 'index'])->name('admin.crm.reminders.index');
+        Route::get('/pending-count', [ReminderController::class, 'pendingCount'])->name('admin.crm.reminders.pending-count');
+        Route::get('/due', [ReminderController::class, 'dueReminders'])->name('admin.crm.reminders.due');
+        Route::get('/create', [ReminderController::class, 'create'])->name('admin.crm.reminders.create');
+        Route::post('/', [ReminderController::class, 'store'])->name('admin.crm.reminders.store');
+        Route::post('/quick', [ReminderController::class, 'quickStore'])->name('admin.crm.reminders.quick-store');
+        Route::get('/{reminder}', [ReminderController::class, 'show'])->name('admin.crm.reminders.show');
+        Route::get('/{reminder}/edit', [ReminderController::class, 'edit'])->name('admin.crm.reminders.edit');
+        Route::put('/{reminder}', [ReminderController::class, 'update'])->name('admin.crm.reminders.update');
+        Route::post('/{reminder}/complete', [ReminderController::class, 'complete'])->name('admin.crm.reminders.complete');
+        Route::post('/{reminder}/dismiss', [ReminderController::class, 'dismiss'])->name('admin.crm.reminders.dismiss');
+        Route::post('/{reminder}/snooze', [ReminderController::class, 'snooze'])->name('admin.crm.reminders.snooze');
+        Route::delete('/{reminder}', [ReminderController::class, 'destroy'])->name('admin.crm.reminders.destroy');
     });
 });
 

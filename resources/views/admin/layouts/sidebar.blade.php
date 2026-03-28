@@ -62,6 +62,48 @@
                             </li>
                         @endif
 
+                        {{-- CRM + Agenda --}}
+                        @if (method_exists(Auth::user(), 'hasActiveSubscription') &&
+                                (Auth::user()->hasActiveSubscription() ||
+                                    (method_exists(Auth::user(), 'isSuperAdmin') && Auth::user()->isSuperAdmin())))
+                            <li class="{{ Request::routeIs('admin.crm.*') ? 'active' : '' }}">
+                                <a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
+                                    <i class="fa fa-address-book"></i><span>CRM + Agenda</span>
+                                    @php
+                                        $dueReminders = \App\Reminder::byUser(Auth::id())->due()->count();
+                                    @endphp
+                                    @if ($dueReminders > 0)
+                                        <span class="badge badge-warning float-right">{{ $dueReminders }}</span>
+                                    @endif
+                                </a>
+                                <ul>
+                                    <li class="{{ Request::routeIs('admin.crm.leads.*') ? 'active' : '' }}">
+                                        <a href="{{ route('admin.crm.leads.index') }}"><i class="fa fa-users"></i> Leads</a>
+                                    </li>
+                                    <li class="{{ Request::routeIs('admin.crm.leads.pipeline') ? 'active' : '' }}">
+                                        <a href="{{ route('admin.crm.leads.pipeline') }}"><i class="fa fa-columns"></i> Pipeline</a>
+                                    </li>
+                                    <li class="{{ Request::routeIs('admin.crm.appointments.*') ? 'active' : '' }}">
+                                        <a href="{{ route('admin.crm.appointments.index') }}"><i class="fa fa-calendar"></i> Agenda</a>
+                                    </li>
+                                    <li class="{{ Request::routeIs('admin.crm.appointments.today') ? 'active' : '' }}">
+                                        <a href="{{ route('admin.crm.appointments.today') }}"><i class="fa fa-sun-o"></i> Hoy</a>
+                                    </li>
+                                    <li class="{{ Request::routeIs('admin.crm.reminders.*') ? 'active' : '' }}">
+                                        <a href="{{ route('admin.crm.reminders.index') }}">
+                                            <i class="fa fa-bell"></i> Recordatorios
+                                            @if ($dueReminders > 0)
+                                                <span class="badge badge-warning">{{ $dueReminders }}</span>
+                                            @endif
+                                        </a>
+                                    </li>
+                                    <li class="{{ Request::routeIs('admin.crm.leads.follow-ups') ? 'active' : '' }}">
+                                        <a href="{{ route('admin.crm.leads.follow-ups') }}"><i class="fa fa-clock-o"></i> Seguimientos</a>
+                                    </li>
+                                </ul>
+                            </li>
+                        @endif
+
                         {{-- Gestión de Usuarios (para company_admin) --}}
                         @if (Auth::user()->role === 'company_admin')
                             <li class="{{ Request::routeIs('admin.users.*') ? 'active' : '' }}">
