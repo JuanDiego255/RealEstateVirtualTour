@@ -10,7 +10,7 @@
         var canvas = el.querySelector('canvas');
         var ctx = canvas.getContext('2d', { alpha: false });
 
-        var baseUrl = '/storage/' + framesDir + '/';
+        var baseUrl = '/storage/app/public/' + framesDir + '/';
         var images = new Array(totalFrames + 1);
         var loaded = 0;
         var ready = false;

@@ -358,7 +358,7 @@
         // ==========================
         const totalFrames = Number({{ $spin->frames_count }}) || 1;
         const framesDir = "{{ $spin->frames_dir }}";
-        const baseUrl = "/storage/" + framesDir + "/";
+        const baseUrl = "/storage/app/public/" + framesDir + "/";
 
         // Si cambias a .webp, solo cambia aquí:
         const ext = "webp"; // "webp" o "jpg"

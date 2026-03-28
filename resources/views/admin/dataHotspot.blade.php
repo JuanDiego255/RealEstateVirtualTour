@@ -578,7 +578,7 @@
 
             document.getElementById('spin-total-frames').textContent = totalFrames;
 
-            var baseUrl = '{{ url("storage") }}/' + framesDir + '/';
+            var baseUrl = '{{ url("storage/app/public") }}/' + framesDir + '/';
             var extension = '.webp';
 
             // Cargar todos los frames
