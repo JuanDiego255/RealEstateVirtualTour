@@ -3,9 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Category;
+use App\Properties;
 use App\Sector;
 use App\Subcategory;
-use App\Vehicle;
 use Illuminate\Http\Request;
 
 class VehicleCompareController extends Controller
@@ -25,10 +25,11 @@ class VehicleCompareController extends Controller
         }
 
         // Obtener las sucursales (categorías) del sector automotriz con vehículos activos
+        // Ahora los vehículos están en la tabla properties con property_type = 'vehicle'
         $categories = Category::where('sector_id', $sector->id)
             ->where('status', true)
-            ->whereHas('vehicles', function ($q) {
-                $q->where('status', true);
+            ->whereHas('vehicleProperties', function ($q) {
+                $q->whereIn('status', ['available', 'reserved', 'negotiating']);
             })
             ->with(['subcategories' => function ($q) {
                 $q->where('is_active', true);
@@ -49,7 +50,10 @@ class VehicleCompareController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'slug'])
             ->map(function ($sub) {
-                $sub->vehicle_count = $sub->vehicles()->where('status', true)->count();
+                // Contar vehículos desde properties (property_type = 'vehicle')
+                $sub->vehicle_count = $sub->vehicleProperties()
+                    ->whereIn('status', ['available', 'reserved', 'negotiating'])
+                    ->count();
                 return $sub;
             });
 
@@ -58,6 +62,7 @@ class VehicleCompareController extends Controller
 
     /**
      * API: Obtener vehículos de una categoría (y opcionalmente subcategoría)
+     * Ahora usa la tabla properties con property_type = 'vehicle'
      */
     public function getVehicles(Request $request)
     {
@@ -68,8 +73,12 @@ class VehicleCompareController extends Controller
             'search' => 'nullable|string|max:100',
         ]);
 
-        $query = Vehicle::where('category_id', $request->category_id)
-            ->where('status', true);
+        // Obtener vehículos desde properties
+        $query = Properties::vehicles()
+            ->whereHas('subcategory', function ($q) use ($request) {
+                $q->where('category_id', $request->category_id);
+            })
+            ->whereIn('status', ['available', 'reserved', 'negotiating']);
 
         if ($request->filled('subcategory_id')) {
             $query->where('subcategory_id', $request->subcategory_id);
@@ -96,6 +105,7 @@ class VehicleCompareController extends Controller
             ->limit(50)
             ->get()
             ->map(function ($v) {
+                $symbol = $v->currency === 'USD' ? '$' : '₡';
                 return [
                     'id' => $v->id,
                     'name' => $this->buildVehicleName($v->brand, $v->model, $v->year),
@@ -103,7 +113,7 @@ class VehicleCompareController extends Controller
                     'model' => $v->model,
                     'year' => $v->year,
                     'price' => $v->price,
-                    'price_formatted' => '₡' . number_format($v->price, 0, ',', '.'),
+                    'price_formatted' => $symbol . number_format($v->price, 0, ',', '.'),
                     'image' => $v->image ? route('file', $v->image) : url('images/producto-sin-imagen.PNG'),
                     'subcategory' => $v->subcategory ? $v->subcategory->name : null,
                     'condition' => $v->condition,
@@ -116,12 +126,17 @@ class VehicleCompareController extends Controller
 
     /**
      * API: Obtener detalle completo de un vehículo para comparación
+     * Ahora usa Properties en lugar de Vehicle
      */
-    public function getVehicleDetail(Vehicle $vehicle)
+    public function getVehicleDetail($vehicleId)
     {
-        $vehicle->load(['category:id,name,slug', 'subcategory:id,name', 'scenes']);
+        $vehicle = Properties::vehicles()->findOrFail($vehicleId);
+        $vehicle->load(['subcategory:id,name', 'scenes']);
 
+        // Obtener categoría a través de subcategory
+        $category = $vehicle->subcategory ? $vehicle->subcategory->category : null;
         $hasVirtualTour = $vehicle->scenes->count() > 0;
+        $symbol = $vehicle->currency === 'USD' ? '$' : '₡';
 
         return response()->json([
             'id' => $vehicle->id,
@@ -131,9 +146,9 @@ class VehicleCompareController extends Controller
             'year' => (int) $vehicle->year,
             'color' => $vehicle->color,
             'price' => (float) $vehicle->price,
-            'price_formatted' => '₡' . number_format($vehicle->price, 0, ',', '.'),
+            'price_formatted' => $symbol . number_format($vehicle->price, 0, ',', '.'),
             'image' => $vehicle->image ? route('file', $vehicle->image) : url('images/producto-sin-imagen.PNG'),
-            'category' => $vehicle->category ? $vehicle->category->name : null,
+            'category' => $category ? $category->name : null,
             'subcategory' => $vehicle->subcategory ? $vehicle->subcategory->name : null,
 
             // Especificaciones técnicas
@@ -226,19 +241,20 @@ class VehicleCompareController extends Controller
 
     /**
      * API: Comparar múltiples vehículos
+     * Ahora usa Properties en lugar de Vehicle
      */
     public function compare(Request $request)
     {
         $request->validate([
             'vehicle_ids' => 'required|array|min:2|max:4',
-            'vehicle_ids.*' => 'exists:vehicles,id',
+            'vehicle_ids.*' => 'exists:properties,id',
         ]);
 
         $vehicles = collect();
         foreach ($request->vehicle_ids as $id) {
-            $vehicle = Vehicle::find($id);
+            $vehicle = Properties::vehicles()->find($id);
             if ($vehicle) {
-                $vehicles->push($this->getVehicleDetail($vehicle)->getData());
+                $vehicles->push($this->getVehicleDetail($id)->getData());
             }
         }
 
@@ -328,16 +344,18 @@ class VehicleCompareController extends Controller
 
     /**
      * Generar PDF de comparación
+     * Ahora usa Properties en lugar de Vehicle
      */
     public function exportPdf(Request $request)
     {
         $request->validate([
             'vehicle_ids' => 'required|array|min:2|max:4',
-            'vehicle_ids.*' => 'exists:vehicles,id',
+            'vehicle_ids.*' => 'exists:properties,id',
         ]);
 
-        $vehicles = Vehicle::whereIn('id', $request->vehicle_ids)
-            ->with(['category', 'subcategory'])
+        $vehicles = Properties::vehicles()
+            ->whereIn('id', $request->vehicle_ids)
+            ->with(['subcategory.category'])
             ->get();
 
         // Devolver vista para impresión
