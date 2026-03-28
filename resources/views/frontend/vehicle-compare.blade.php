@@ -798,7 +798,7 @@
 
             <!-- Mensaje inicial -->
             <div v-else class="vc-empty" style="margin-top: 60px;">
-                <i class="fa fa-hand-o-up"></i>
+                <i class="fas fa-hand-point-up"></i>
                 <h4>Selecciona una sucursal para comenzar</h4>
                 <p class="text-muted">Elige una sucursal del sector automotriz para ver sus vehículos disponibles y comenzar a comparar.</p>
             </div>
@@ -806,7 +806,7 @@
             <!-- Tabla Comparativa -->
             <div class="vc-comparison-section" v-if="selectedVehicles.length >= 2">
                 <div class="vc-comparison-header">
-                    <h2><i class="fa fa-bar-chart"></i> Tabla Comparativa</h2>
+                    <h2><i class="fas fa-chart-bar"></i> Tabla Comparativa</h2>
                 </div>
 
                 <div class="vc-comparison-table-wrapper vc-fade-in">
@@ -888,7 +888,7 @@
                     </div>
 
                     <div v-else-if="filteredVehicles.length === 0" class="vc-empty">
-                        <i class="fa fa-car-crash"></i>
+                        <i class="fas fa-exclamation-triangle"></i>
                         <p>No se encontraron vehículos disponibles</p>
                     </div>
 
