@@ -78,4 +78,83 @@ class Vehicle extends Model
         $symbol = ($this->currency ?? 'CRC') === 'USD' ? '$' : '₡';
         return $symbol . number_format((float)$this->price, 0, ',', '.');
     }
+
+    // =====================================================
+    // RELACIONES PARA FUNCIONALIDADES DE EVENTO
+    // =====================================================
+
+    /**
+     * Colores alternativos del vehículo (AR Lite)
+     */
+    public function colors()
+    {
+        return $this->hasMany(\App\Models\VehicleColor::class);
+    }
+
+    /**
+     * Videos de test drive
+     */
+    public function testDriveVideos()
+    {
+        return $this->hasMany(\App\Models\TestDriveVideo::class);
+    }
+
+    /**
+     * Cotizaciones generadas
+     */
+    public function quotes()
+    {
+        return $this->hasMany(\App\Models\VehicleQuote::class);
+    }
+
+    /**
+     * Vistas en eventos
+     */
+    public function eventViews()
+    {
+        return $this->hasMany(\App\Models\VehicleEventView::class);
+    }
+
+    /**
+     * Escaneos de QR
+     */
+    public function qrScans()
+    {
+        return $this->hasMany(\App\Models\QrScan::class);
+    }
+
+    /**
+     * Leads generados
+     */
+    public function eventLeads()
+    {
+        return $this->hasMany(\App\Models\EventLead::class);
+    }
+
+    /**
+     * Obtener color por defecto
+     */
+    public function getDefaultColorAttribute()
+    {
+        return $this->colors()->where('is_default', true)->first();
+    }
+
+    /**
+     * Verificar si tiene spin activo
+     */
+    public function getHasSpinAttribute()
+    {
+        return $this->activeSpin !== null;
+    }
+
+    /**
+     * Obtener hotspots del spin
+     */
+    public function getSpinHotspotsAttribute()
+    {
+        if (!$this->activeSpin) {
+            return collect();
+        }
+        return \App\Models\SpinHotspot::getForSpin($this->activeSpin->id);
+    }
 }

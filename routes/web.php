@@ -23,6 +23,7 @@ use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\VehicleCompareController;
+use App\Http\Controllers\KioskController;
 use App\Models\Spin;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
@@ -427,3 +428,47 @@ Route::get('/file/{filename}', function ($filename) {
     }
     return response()->file($path);
 })->where('filename', '.*')->name('file');
+
+// =====================================================
+// MODO KIOSKO / EVENTO (Públicas - para tablets en eventos)
+// =====================================================
+Route::prefix('kiosk')->group(function () {
+    // Vista principal del kiosko
+    Route::get('/', [KioskController::class, 'index'])->name('kiosk.index');
+
+    // Vista de vehículo individual
+    Route::get('/vehicle/{id}', [KioskController::class, 'vehicle'])->name('kiosk.vehicle');
+
+    // API: Datos del vehículo (AJAX)
+    Route::get('/api/vehicle/{id}', [KioskController::class, 'vehicleData'])->name('kiosk.vehicle.data');
+
+    // Generador de QR
+    Route::get('/qr/{vehicleId}', [KioskController::class, 'generateQr'])->name('kiosk.qr');
+
+    // Cotizador
+    Route::post('/quote/calculate', [KioskController::class, 'calculateQuote'])->name('kiosk.quote.calculate');
+    Route::post('/quote/save', [KioskController::class, 'saveQuote'])->name('kiosk.quote.save');
+    Route::get('/quote/{quoteId}/pdf', [KioskController::class, 'quotePdf'])->name('kiosk.quote.pdf');
+    Route::post('/quote/{quoteId}/email', [KioskController::class, 'sendQuoteEmail'])->name('kiosk.quote.email');
+
+    // Captura de leads
+    Route::post('/lead', [KioskController::class, 'captureLead'])->name('kiosk.lead.capture');
+
+    // Tracking de vistas
+    Route::post('/track/view', [KioskController::class, 'updateViewDuration'])->name('kiosk.track.view');
+
+    // Wishlist
+    Route::post('/wishlist', [KioskController::class, 'updateWishlist'])->name('kiosk.wishlist.update');
+
+    // Comparador side-by-side
+    Route::get('/compare', [KioskController::class, 'compare'])->name('kiosk.compare');
+});
+
+// Wishlist pública (acceso por token)
+Route::get('/wishlist/{token}', [KioskController::class, 'viewWishlist'])->name('wishlist.view');
+
+// Dashboard de estadísticas del evento (requiere autenticación)
+Route::middleware('auth')->group(function () {
+    Route::get('/admin/event-dashboard', [KioskController::class, 'dashboard'])->name('kiosk.dashboard');
+    Route::get('/admin/event-dashboard/stats', [KioskController::class, 'statsRealtime'])->name('kiosk.stats.realtime');
+});
