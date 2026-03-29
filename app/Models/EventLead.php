@@ -3,13 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Vehicle;
+use App\Properties;
 use App\Company;
 
 class EventLead extends Model
 {
     protected $fillable = [
-        'vehicle_id', 'company_id', 'name', 'email', 'phone', 'notes',
+        'property_id', 'vehicle_id', 'company_id', 'name', 'email', 'phone', 'notes',
         'source', 'event_name', 'interest_level', 'contacted', 'contacted_at',
         'contacted_by', 'vehicles_viewed', 'vehicles_compared', 'quotes_requested',
         'follow_up_status', 'follow_up_date'
@@ -24,9 +24,20 @@ class EventLead extends Model
         'quotes_requested' => 'array',
     ];
 
+    /**
+     * Relacion con property (vehiculo)
+     */
+    public function property()
+    {
+        return $this->belongsTo(Properties::class, 'property_id');
+    }
+
+    /**
+     * Alias para compatibilidad
+     */
     public function vehicle()
     {
-        return $this->belongsTo(Vehicle::class);
+        return $this->property();
     }
 
     public function company()
@@ -35,7 +46,7 @@ class EventLead extends Model
     }
 
     /**
-     * Niveles de interés
+     * Niveles de interes
      */
     public static function interestLevels()
     {
@@ -54,10 +65,10 @@ class EventLead extends Model
     {
         return [
             'event' => 'Evento presencial',
-            'qr' => 'Código QR',
+            'qr' => 'Codigo QR',
             'kiosk' => 'Kiosko',
             'compare' => 'Comparador',
-            'quote' => 'Cotización',
+            'quote' => 'Cotizacion',
         ];
     }
 
@@ -71,7 +82,7 @@ class EventLead extends Model
     }
 
     /**
-     * Scope para leads del día
+     * Scope para leads del dia
      */
     public function scopeToday($query)
     {
@@ -94,7 +105,7 @@ class EventLead extends Model
     }
 
     /**
-     * Agregar vehículo visto
+     * Agregar vehiculo visto
      */
     public function addViewedVehicle($vehicleId)
     {
@@ -107,7 +118,7 @@ class EventLead extends Model
     }
 
     /**
-     * Estadísticas rápidas
+     * Estadisticas rapidas
      */
     public static function eventStats($eventName)
     {

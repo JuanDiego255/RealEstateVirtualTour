@@ -5,7 +5,6 @@ namespace App;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
-use App\Vehicle;
 use App\Properties;
 use App\Subcategory;
 
@@ -114,28 +113,20 @@ class Category extends Model
     }
 
     /**
-     * Vehículos directos (legacy, por category_id)
-     */
-    public function directVehicles()
-    {
-        return $this->hasMany('App\Vehicle', 'category_id');
-    }
-
-    /**
-     * Vehículos a través de subcategorías (tabla vehicles - legacy)
+     * Vehiculos (desde properties con property_type = 'vehicle')
      */
     public function vehicles()
     {
-        return $this->hasManyThrough(Vehicle::class, Subcategory::class, 'category_id', 'subcategory_id');
+        return $this->hasManyThrough(Properties::class, Subcategory::class, 'category_id', 'subcategory_id')
+            ->where('properties.property_type', Properties::TYPE_VEHICLE);
     }
 
     /**
-     * Vehículos desde properties (property_type = 'vehicle')
+     * Alias de vehicles() para compatibilidad
      */
     public function vehicleProperties()
     {
-        return $this->hasManyThrough(Properties::class, Subcategory::class, 'category_id', 'subcategory_id')
-            ->where('properties.property_type', Properties::TYPE_VEHICLE);
+        return $this->vehicles();
     }
 
     /**

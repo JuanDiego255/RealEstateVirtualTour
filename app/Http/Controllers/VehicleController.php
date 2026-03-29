@@ -2,28 +2,34 @@
 
 namespace App\Http\Controllers;
 
-use App\Vehicle;
-use App\Category;
+use App\Properties;
 use App\Subcategory;
 use App\Sector;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Auth;
 
 class VehicleController extends Controller
 {
     /**
      * Admin listing of all vehicles
+     * Solo accesible por admin con suscripcion activa
      */
     public function indexAdmin(Request $request)
     {
-        $query = Vehicle::with(['subcategory.category.sector', 'category']);
+        $user = Auth::user();
+
+        // Query base: properties con property_type = 'vehicle' del usuario actual
+        $query = Properties::where('property_type', 'vehicle')
+            ->where('user_id', $user->id)
+            ->with(['subcategory.category.sector', 'category']);
 
         if ($request->has('subcategory_id') && $request->subcategory_id != '') {
             $query->where('subcategory_id', $request->subcategory_id);
         }
 
-        $vehicles = $query->get();
+        $vehicles = $query->orderBy('created_at', 'desc')->get();
 
         // Get subcategories for the dropdown (preferably from automotive sector)
         $automotiveSector = Sector::where('slug', 'sector-automotriz')->first();
@@ -74,14 +80,23 @@ class VehicleController extends Controller
             $mensaje = ["required" => 'El :attribute es requerido'];
             $this->validate($request, $campos, $mensaje);
 
-            $vehicle = new Vehicle();
+            $vehicle = new Properties();
+
+            // Campos esenciales para identificar como vehiculo
+            $vehicle->property_type = 'vehicle';
+            $vehicle->user_id = Auth::id();
+            $vehicle->status = 'available';
+
             if ($request->hasFile('image')) {
                 $vehicle->image = $request->file('image')->store('uploads', 'public');
             }
+
             $vehicle->subcategory_id = $request->subcategory_id;
-            // Derivar category_id de la subcategoría
+
+            // Derivar category_id de la subcategoria
             $sub = Subcategory::find($request->subcategory_id);
             $vehicle->category_id = $sub ? $sub->category_id : null;
+
             $vehicle->name = $request->name;
             $vehicle->brand = $request->brand;
             $vehicle->model = $request->model;
@@ -99,14 +114,14 @@ class VehicleController extends Controller
             $vehicle->price = $request->price;
             $vehicle->condition = $request->condition;
             $vehicle->plate = $request->plate;
-            $vehicle->status = true;
+            $vehicle->currency = $request->currency ?? 'CRC';
             $vehicle->save();
 
             DB::commit();
-            return redirect('/vehicles')->with('success', '¡Vehículo creado con éxito!');
+            return redirect()->route('vehicles')->with('success', 'Vehiculo creado con exito!');
         } catch (\Exception $th) {
             DB::rollBack();
-            return redirect('/vehicles')->with('error', '¡No se pudo crear el vehículo! ' . $th->getMessage());
+            return redirect()->route('vehicles')->with('error', 'No se pudo crear el vehiculo! ' . $th->getMessage());
         }
     }
 
@@ -129,17 +144,25 @@ class VehicleController extends Controller
             $mensaje = ["required" => 'El :attribute es requerido'];
             $this->validate($request, $campos, $mensaje);
 
-            $vehicle = Vehicle::findOrFail($id);
+            // Buscar solo vehiculos del usuario actual
+            $vehicle = Properties::where('id', $id)
+                ->where('property_type', 'vehicle')
+                ->where('user_id', Auth::id())
+                ->firstOrFail();
+
             if ($request->hasFile('image')) {
                 if ($vehicle->image) {
                     Storage::delete('public/' . $vehicle->image);
                 }
                 $vehicle->image = $request->file('image')->store('uploads', 'public');
             }
+
             $vehicle->subcategory_id = $request->subcategory_id;
-            // Derivar category_id de la subcategoría
+
+            // Derivar category_id de la subcategoria
             $sub = Subcategory::find($request->subcategory_id);
             $vehicle->category_id = $sub ? $sub->category_id : null;
+
             $vehicle->name = $request->name;
             $vehicle->brand = $request->brand;
             $vehicle->model = $request->model;
@@ -157,13 +180,13 @@ class VehicleController extends Controller
             $vehicle->price = $request->price;
             $vehicle->condition = $request->condition;
             $vehicle->plate = $request->plate;
-            $vehicle->update();
+            $vehicle->save();
 
             DB::commit();
-            return redirect('/vehicles')->with('success', '¡Vehículo editado con éxito!');
+            return redirect()->route('vehicles')->with('success', 'Vehiculo editado con exito!');
         } catch (\Exception $th) {
             DB::rollBack();
-            return redirect('/vehicles')->with('error', '¡No se pudo editar el vehículo!');
+            return redirect()->route('vehicles')->with('error', 'No se pudo editar el vehiculo!');
         }
     }
 
@@ -174,16 +197,22 @@ class VehicleController extends Controller
     {
         DB::beginTransaction();
         try {
-            $vehicle = Vehicle::findOrFail($id);
+            // Buscar solo vehiculos del usuario actual
+            $vehicle = Properties::where('id', $id)
+                ->where('property_type', 'vehicle')
+                ->where('user_id', Auth::id())
+                ->firstOrFail();
+
             if ($vehicle->image) {
                 Storage::delete('public/' . $vehicle->image);
             }
             $vehicle->delete();
+
             DB::commit();
-            return redirect('/vehicles')->with('success', '¡Vehículo eliminado con éxito!');
+            return redirect()->route('vehicles')->with('success', 'Vehiculo eliminado con exito!');
         } catch (\Exception $th) {
             DB::rollBack();
-            return redirect('/vehicles')->with('error', '¡No se pudo eliminar el vehículo!');
+            return redirect()->route('vehicles')->with('error', 'No se pudo eliminar el vehiculo!');
         }
     }
 }

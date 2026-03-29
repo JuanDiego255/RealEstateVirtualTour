@@ -3,12 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Vehicle;
+use App\Properties;
 
 class VehicleQuote extends Model
 {
     protected $fillable = [
-        'vehicle_id', 'customer_name', 'customer_email', 'customer_phone',
+        'property_id', 'vehicle_id', 'customer_name', 'customer_email', 'customer_phone',
         'vehicle_price', 'down_payment', 'down_payment_percent', 'term_months',
         'interest_rate', 'monthly_payment', 'total_interest', 'total_amount',
         'currency', 'email_sent', 'pdf_generated', 'pdf_path', 'event_name'
@@ -26,13 +26,24 @@ class VehicleQuote extends Model
         'pdf_generated' => 'boolean',
     ];
 
-    public function vehicle()
+    /**
+     * Relacion con property (vehiculo)
+     */
+    public function property()
     {
-        return $this->belongsTo(Vehicle::class);
+        return $this->belongsTo(Properties::class, 'property_id');
     }
 
     /**
-     * Calcular cuota mensual usando fórmula de amortización francesa
+     * Alias para compatibilidad
+     */
+    public function vehicle()
+    {
+        return $this->property();
+    }
+
+    /**
+     * Calcular cuota mensual usando formula de amortizacion francesa
      */
     public static function calculateMonthlyPayment($principal, $annualRate, $months)
     {
@@ -56,7 +67,7 @@ class VehicleQuote extends Model
     }
 
     /**
-     * Generar cotización completa
+     * Generar cotizacion completa
      */
     public static function generateQuote($vehiclePrice, $downPayment, $termMonths, $interestRate)
     {

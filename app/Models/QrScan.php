@@ -4,12 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
-use App\Vehicle;
+use App\Properties;
 
 class QrScan extends Model
 {
     protected $fillable = [
-        'vehicle_id', 'qr_code', 'scan_count', 'last_scanned_at',
+        'property_id', 'vehicle_id', 'qr_code', 'scan_count', 'last_scanned_at',
         'event_name', 'scan_history'
     ];
 
@@ -18,17 +18,28 @@ class QrScan extends Model
         'last_scanned_at' => 'datetime',
     ];
 
-    public function vehicle()
+    /**
+     * Relacion con property (vehiculo)
+     */
+    public function property()
     {
-        return $this->belongsTo(Vehicle::class);
+        return $this->belongsTo(Properties::class, 'property_id');
     }
 
     /**
-     * Generar código QR único para un vehículo
+     * Alias para compatibilidad
      */
-    public static function generateForVehicle($vehicleId, $eventName = null)
+    public function vehicle()
     {
-        $existing = self::where('vehicle_id', $vehicleId)
+        return $this->property();
+    }
+
+    /**
+     * Generar codigo QR unico para una propiedad (vehiculo)
+     */
+    public static function generateForProperty($propertyId, $eventName = null)
+    {
+        $existing = self::where('property_id', $propertyId)
             ->where('event_name', $eventName)
             ->first();
 
@@ -37,11 +48,19 @@ class QrScan extends Model
         }
 
         return self::create([
-            'vehicle_id' => $vehicleId,
+            'property_id' => $propertyId,
             'qr_code' => 'VH-' . strtoupper(Str::random(8)),
             'event_name' => $eventName,
             'scan_history' => [],
         ]);
+    }
+
+    /**
+     * Alias para compatibilidad
+     */
+    public static function generateForVehicle($vehicleId, $eventName = null)
+    {
+        return self::generateForProperty($vehicleId, $eventName);
     }
 
     /**
@@ -66,20 +85,22 @@ class QrScan extends Model
      */
     public function getTourUrlAttribute()
     {
-        return url("/kiosk/vehicle/{$this->vehicle_id}?qr={$this->qr_code}");
+        return url("/kiosk/vehicle/{$this->property_id}?qr={$this->qr_code}");
     }
 
     /**
-     * Top vehículos por escaneos QR
+     * Top vehiculos por escaneos QR
      */
     public static function topScanned($eventName = null, $limit = 5)
     {
-        $query = self::orderByDesc('scan_count')->limit($limit);
+        $query = self::whereNotNull('property_id')
+            ->orderByDesc('scan_count')
+            ->limit($limit);
 
         if ($eventName) {
             $query->where('event_name', $eventName);
         }
 
-        return $query->with('vehicle')->get();
+        return $query->with('property')->get();
     }
 }

@@ -3,12 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Vehicle;
+use App\Properties;
 
 class TestDriveVideo extends Model
 {
     protected $fillable = [
-        'vehicle_id', 'title', 'description', 'video_path', 'thumbnail',
+        'property_id', 'vehicle_id', 'title', 'description', 'video_path', 'thumbnail',
         'engine_audio', 'duration_seconds', 'video_type', 'autoplay',
         'loop', 'status', 'order', 'views_count'
     ];
@@ -19,9 +19,20 @@ class TestDriveVideo extends Model
         'status' => 'boolean',
     ];
 
+    /**
+     * Relacion con property (vehiculo)
+     */
+    public function property()
+    {
+        return $this->belongsTo(Properties::class, 'property_id');
+    }
+
+    /**
+     * Alias para compatibilidad
+     */
     public function vehicle()
     {
-        return $this->belongsTo(Vehicle::class);
+        return $this->property();
     }
 
     /**
@@ -33,21 +44,29 @@ class TestDriveVideo extends Model
             'exterior' => 'Exterior en movimiento',
             'interior' => 'Interior / Cabina',
             'engine' => 'Motor / Arranque',
-            'features' => 'Características especiales',
+            'features' => 'Caracteristicas especiales',
             'offroad' => 'Todo terreno',
-            'city' => 'Conducción urbana',
+            'city' => 'Conduccion urbana',
         ];
     }
 
     /**
-     * Obtener videos activos para un vehículo
+     * Obtener videos activos para una propiedad (vehiculo)
      */
-    public static function getForVehicle($vehicleId)
+    public static function getForProperty($propertyId)
     {
-        return self::where('vehicle_id', $vehicleId)
+        return self::where('property_id', $propertyId)
             ->where('status', true)
             ->orderBy('order')
             ->get();
+    }
+
+    /**
+     * Alias para compatibilidad
+     */
+    public static function getForVehicle($vehicleId)
+    {
+        return self::getForProperty($vehicleId);
     }
 
     /**
@@ -60,7 +79,7 @@ class TestDriveVideo extends Model
     }
 
     /**
-     * Duración formateada
+     * Duracion formateada
      */
     public function getFormattedDurationAttribute()
     {

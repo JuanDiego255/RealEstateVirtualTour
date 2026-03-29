@@ -73,7 +73,7 @@
                             </div>
                             <div class="card-body p-3">
                                 <h6 class="card-title mb-1 font-weight-bold">
-                                    <a href="{{ route('configTyped', ['type' => 'vehicle', 'id' => $vehicle->id]) }}">
+                                    <a href="{{ route('configTyped', ['type' => 'property', 'id' => $vehicle->id]) }}">
                                         {{ $vehicle->brand }} {{ $vehicle->model }}
                                     </a>
                                 </h6>
@@ -130,7 +130,7 @@
                                     <i class="fa fa-trash"></i>
                                 </a>
                                 <form id="deleteVehicle{{ $vehicle->id }}" method="post"
-                                    action="{{ url('/delete/vehicle/' . $vehicle->id) }}">
+                                    action="{{ route('deleteVehicle', $vehicle->id) }}">
                                     {{ csrf_field() }}
                                     {{ method_field('DELETE') }}
                                 </form>
