@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Lead;
 use App\LeadActivity;
 use App\Properties;
-use App\Vehicle;
 use App\User;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
@@ -84,13 +83,13 @@ class LeadController extends Controller
             ->orderBy('name')
             ->get();
 
-        $properties = Properties::whereHas('category', function ($q) use ($user) {
+        $properties = Properties::realEstate()->whereHas('category', function ($q) use ($user) {
             $q->where('company_id', $user->company_id);
         })->where('status', 'available')->get();
 
-        $vehicles = Vehicle::whereHas('category', function ($q) use ($user) {
+        $vehicles = Properties::vehicles()->whereHas('category', function ($q) use ($user) {
             $q->where('company_id', $user->company_id);
-        })->where('status', 'available')->get();
+        })->whereIn('status', ['available', 'reserved', 'negotiating'])->get();
 
         return view('admin.crm.leads.create', compact('agents', 'properties', 'vehicles'));
     }
@@ -110,7 +109,7 @@ class LeadController extends Controller
             'interest_type' => 'required|in:buy,rent,sell,other',
             'user_id' => 'nullable|exists:users,id',
             'property_id' => 'nullable|exists:properties,id',
-            'vehicle_id' => 'nullable|exists:vehicles,id',
+            'vehicle_id' => 'nullable|exists:properties,id',
             'budget_min' => 'nullable|numeric|min:0',
             'budget_max' => 'nullable|numeric|min:0',
             'budget_currency' => 'nullable|in:CRC,USD',
@@ -186,11 +185,11 @@ class LeadController extends Controller
             ->orderBy('name')
             ->get();
 
-        $properties = Properties::whereHas('category', function ($q) use ($user) {
+        $properties = Properties::realEstate()->whereHas('category', function ($q) use ($user) {
             $q->where('company_id', $user->company_id);
         })->get();
 
-        $vehicles = Vehicle::whereHas('category', function ($q) use ($user) {
+        $vehicles = Properties::vehicles()->whereHas('category', function ($q) use ($user) {
             $q->where('company_id', $user->company_id);
         })->get();
 
@@ -214,7 +213,7 @@ class LeadController extends Controller
             'interest_type' => 'required|in:buy,rent,sell,other',
             'user_id' => 'nullable|exists:users,id',
             'property_id' => 'nullable|exists:properties,id',
-            'vehicle_id' => 'nullable|exists:vehicles,id',
+            'vehicle_id' => 'nullable|exists:properties,id',
             'budget_min' => 'nullable|numeric|min:0',
             'budget_max' => 'nullable|numeric|min:0',
             'budget_currency' => 'nullable|in:CRC,USD',

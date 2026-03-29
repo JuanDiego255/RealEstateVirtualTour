@@ -3,12 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Vehicle;
+use App\Properties;
 
 class VehicleEventView extends Model
 {
     protected $fillable = [
-        'vehicle_id', 'session_id', 'source', 'view_duration_seconds',
+        'property_id', 'vehicle_id', 'session_id', 'source', 'view_duration_seconds',
         'spin_interacted', 'compared', 'quoted', 'lead_captured',
         'device_type', 'event_name'
     ];
@@ -20,9 +20,20 @@ class VehicleEventView extends Model
         'lead_captured' => 'boolean',
     ];
 
+    /**
+     * Relacion con property (vehiculo)
+     */
+    public function property()
+    {
+        return $this->belongsTo(Properties::class, 'property_id');
+    }
+
+    /**
+     * Alias para compatibilidad
+     */
     public function vehicle()
     {
-        return $this->belongsTo(Vehicle::class);
+        return $this->property();
     }
 
     // Scope para filtrar por evento
@@ -37,11 +48,12 @@ class VehicleEventView extends Model
         return $query->where('source', $source);
     }
 
-    // Top vehículos más vistos
+    // Top vehiculos mas vistos
     public static function topViewed($eventName = null, $limit = 5)
     {
-        $query = self::selectRaw('vehicle_id, COUNT(*) as views, SUM(view_duration_seconds) as total_duration')
-            ->groupBy('vehicle_id')
+        $query = self::selectRaw('property_id, COUNT(*) as views, SUM(view_duration_seconds) as total_duration')
+            ->whereNotNull('property_id')
+            ->groupBy('property_id')
             ->orderByDesc('views')
             ->limit($limit);
 
@@ -49,6 +61,6 @@ class VehicleEventView extends Model
             $query->where('event_name', $eventName);
         }
 
-        return $query->with('vehicle')->get();
+        return $query->with('property')->get();
     }
 }

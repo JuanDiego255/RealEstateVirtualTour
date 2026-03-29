@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Appointment;
 use App\Lead;
 use App\Properties;
-use App\Vehicle;
 use App\User;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
@@ -73,13 +72,13 @@ class AppointmentController extends Controller
             ->orderBy('name')
             ->get();
 
-        $properties = Properties::whereHas('category', function ($q) use ($user) {
+        $properties = Properties::realEstate()->whereHas('category', function ($q) use ($user) {
             $q->where('company_id', $user->company_id);
         })->where('status', 'available')->get();
 
-        $vehicles = Vehicle::whereHas('category', function ($q) use ($user) {
+        $vehicles = Properties::vehicles()->whereHas('category', function ($q) use ($user) {
             $q->where('company_id', $user->company_id);
-        })->where('status', 'available')->get();
+        })->whereIn('status', ['available', 'reserved', 'negotiating'])->get();
 
         $agents = User::where('company_id', $user->company_id)
             ->where('status', 'active')
@@ -114,7 +113,7 @@ class AppointmentController extends Controller
             'duration' => 'required|integer|min:15|max:480',
             'lead_id' => 'nullable|exists:leads,id',
             'property_id' => 'nullable|exists:properties,id',
-            'vehicle_id' => 'nullable|exists:vehicles,id',
+            'vehicle_id' => 'nullable|exists:properties,id',
             'user_id' => 'nullable|exists:users,id',
             'location' => 'nullable|string|max:255',
             'address' => 'nullable|string|max:500',
@@ -189,11 +188,11 @@ class AppointmentController extends Controller
             ->orderBy('name')
             ->get();
 
-        $properties = Properties::whereHas('category', function ($q) use ($user) {
+        $properties = Properties::realEstate()->whereHas('category', function ($q) use ($user) {
             $q->where('company_id', $user->company_id);
         })->get();
 
-        $vehicles = Vehicle::whereHas('category', function ($q) use ($user) {
+        $vehicles = Properties::vehicles()->whereHas('category', function ($q) use ($user) {
             $q->where('company_id', $user->company_id);
         })->get();
 
@@ -222,7 +221,7 @@ class AppointmentController extends Controller
             'duration' => 'required|integer|min:15|max:480',
             'lead_id' => 'nullable|exists:leads,id',
             'property_id' => 'nullable|exists:properties,id',
-            'vehicle_id' => 'nullable|exists:vehicles,id',
+            'vehicle_id' => 'nullable|exists:properties,id',
             'user_id' => 'nullable|exists:users,id',
             'location' => 'nullable|string|max:255',
             'address' => 'nullable|string|max:500',

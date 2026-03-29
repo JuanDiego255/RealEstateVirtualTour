@@ -3,12 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Vehicle;
+use App\Properties;
 
 class VehicleColor extends Model
 {
     protected $fillable = [
-        'vehicle_id', 'color_name', 'color_code', 'preview_image',
+        'property_id', 'vehicle_id', 'color_name', 'color_code', 'preview_image',
         'spin_frames_dir', 'is_default', 'additional_price', 'available', 'order'
     ];
 
@@ -18,28 +18,47 @@ class VehicleColor extends Model
         'additional_price' => 'decimal:2',
     ];
 
-    public function vehicle()
+    /**
+     * Relacion con property (vehiculo)
+     */
+    public function property()
     {
-        return $this->belongsTo(Vehicle::class);
+        return $this->belongsTo(Properties::class, 'property_id');
     }
 
     /**
-     * Obtener colores disponibles para un vehículo
+     * Alias para compatibilidad
      */
-    public static function getForVehicle($vehicleId)
+    public function vehicle()
     {
-        return self::where('vehicle_id', $vehicleId)
+        return $this->property();
+    }
+
+    /**
+     * Obtener colores disponibles para una propiedad (vehiculo)
+     */
+    public static function getForProperty($propertyId)
+    {
+        return self::where('property_id', $propertyId)
             ->where('available', true)
             ->orderBy('order')
             ->get();
     }
 
     /**
+     * Alias para compatibilidad
+     */
+    public static function getForVehicle($vehicleId)
+    {
+        return self::getForProperty($vehicleId);
+    }
+
+    /**
      * Obtener color por defecto
      */
-    public static function getDefault($vehicleId)
+    public static function getDefault($propertyId)
     {
-        return self::where('vehicle_id', $vehicleId)
+        return self::where('property_id', $propertyId)
             ->where('is_default', true)
             ->first();
     }

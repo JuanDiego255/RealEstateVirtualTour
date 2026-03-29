@@ -13,7 +13,6 @@ use App\Services\CloudConvertSpinService;
 use CloudConvert\Models\Task;
 use Illuminate\Support\Facades\Log;
 use App\Sector;
-use App\Vehicle;
 use Datatables;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\File;
