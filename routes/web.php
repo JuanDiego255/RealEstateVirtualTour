@@ -23,6 +23,7 @@ use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\VehicleCompareController;
+use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\KioskController;
 use App\Models\Spin;
 use Illuminate\Support\Facades\Route;
@@ -209,6 +210,14 @@ Route::group(['middleware' => 'auth'], function () {
         Route::delete('/{subcategory}', [SubcategoryController::class, 'destroy'])->name('admin.subcategories.destroy');
         Route::post('/{subcategory}/toggle-status', [SubcategoryController::class, 'toggleStatus'])->name('admin.subcategories.toggle-status');
         Route::get('/{subcategory}/inmuebles', [SubcategoryController::class, 'inmuebles'])->name('admin.subcategories.inmuebles');
+    });
+
+    // --- VEHICULOS (Con suscripcion activa) ---
+    Route::group(['prefix' => 'vehicles', 'middleware' => ['subscription']], function () {
+        Route::get('/', [VehicleController::class, 'indexAdmin'])->name('vehicles');
+        Route::post('/store', [VehicleController::class, 'store'])->name('addVehicle');
+        Route::put('/update/{id}', [VehicleController::class, 'update'])->name('updateVehicle');
+        Route::delete('/delete/{id}', [VehicleController::class, 'destroy'])->name('deleteVehicle');
     });
 
     // --- BOLSA INMOBILIARIA (Con suscripción que permite comisiones) ---

@@ -6,7 +6,7 @@
                 <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
             </div>
             <div class="modal-body">
-                <form class="form-horizontal" action="{{ url('vehicle/update/' . $vehicle->id) }}" method="post"
+                <form class="form-horizontal" action="{{ route('updateVehicle', $vehicle->id) }}" method="post"
                     enctype="multipart/form-data">
                     {{ csrf_field() }}
                     {{ method_field('PUT') }}
