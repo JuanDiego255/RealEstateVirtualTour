@@ -623,6 +623,8 @@
         // SLIDER NAVIGATION
         // ============================================
         function goToSlide(index) {
+            if (vehicles.length === 0) return;
+
             if (index < 0) index = vehicles.length - 1;
             if (index >= vehicles.length) index = 0;
 
@@ -734,6 +736,8 @@
         // VEHICLE INFO PANEL
         // ============================================
         function updateVehicleInfo(vehicle) {
+            if (!vehicle) return;
+
             const panel = document.getElementById('vehicleInfoPanel');
             const priceFormatted = '₡' + Number(vehicle.price).toLocaleString('es-CR');
 
