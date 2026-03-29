@@ -797,7 +797,7 @@
             const ctx = canvas.getContext('2d', { alpha: false });
             const totalFrames = spin.frames_count || 72;
             const framesDir = spin.frames_dir;
-            const baseUrl = `/storage/app/public/${framesDir}/`;
+            const baseUrl = `/storage/${framesDir}/`;
 
             const images = new Array(totalFrames + 1);
             let loaded = 0;

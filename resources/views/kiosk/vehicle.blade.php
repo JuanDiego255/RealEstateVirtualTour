@@ -691,7 +691,7 @@
         let currentFrame = 1;
         let totalFrames = spin ? (spin.frames_count || 72) : 72;
         let framesDir = spin ? spin.frames_dir : '';
-        let baseUrl = `/storage/app/public/${framesDir}/`;
+        let baseUrl = `/storage/${framesDir}/`;
 
         const canvas = document.getElementById('spinCanvas');
         const ctx = canvas.getContext('2d', { alpha: false });
