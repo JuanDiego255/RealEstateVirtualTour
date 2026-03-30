@@ -178,21 +178,25 @@ class Properties extends Model
     }
 
     /**
-     * Obtener el spin activo a través de las escenas
+     * Obtener el spin activo (directamente asociado o a través de escenas)
      */
     public function getActiveSpinAttribute()
     {
         try {
-            // Buscar escena con spin_id asignado
-            $scene = $this->scenes()->whereNotNull('spin_id')->first();
-            if (!$scene) return null;
-
-            // Buscar el spin con estado 'ready'
-            $spin = \App\Models\Spin::where('id', $scene->spin_id)
+            // Primero buscar spin directamente asociado al vehículo
+            $spin = \App\Models\Spin::where('vehicle_id', $this->id)
                 ->where('status', 'ready')
                 ->first();
 
-            return $spin;
+            if ($spin) return $spin;
+
+            // Si no hay spin directo, buscar a través de escenas
+            $scene = $this->scenes()->whereNotNull('spin_id')->first();
+            if (!$scene) return null;
+
+            return \App\Models\Spin::where('id', $scene->spin_id)
+                ->where('status', 'ready')
+                ->first();
         } catch (\Throwable $e) {
             return null;
         }

@@ -562,7 +562,7 @@
     <script>
         const vehicleId = {{ $vehicle->id }};
         const eventName = '{{ $eventName ?? "" }}';
-        const vehiclePrice = {{ $vehicle->price }};
+        const vehiclePrice = {{ $vehicle->price ?? 0 }};
         const interestRate = {{ $settings->default_interest_rate ?? 12 }};
 
         // Modal functions
@@ -652,9 +652,9 @@
         @if($spin)
         // Spin 360 initialization
         const spinConfig = {
-            folder: '{{ $spin->folder_path }}',
-            frames: {{ $spin->frame_count }},
-            startFrame: {{ $spin->initial_frame ?? 1 }}
+            folder: '{{ $spin->frames_dir }}',
+            frames: {{ $spin->frames_count ?? 36 }},
+            startFrame: 1
         };
 
         let currentFrame = spinConfig.startFrame;
