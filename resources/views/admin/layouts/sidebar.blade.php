@@ -29,15 +29,6 @@
                             <a href="{{ route('property') }}"><i class="fa fa-th-list"></i><span>Publicaciones</span></a>
                         </li>
 
-                        {{-- Vehiculos (con suscripcion activa) --}}
-                        @if (method_exists(Auth::user(), 'hasActiveSubscription') &&
-                                (Auth::user()->hasActiveSubscription() ||
-                                    (method_exists(Auth::user(), 'isSuperAdmin') && Auth::user()->isSuperAdmin())))
-                            <li class="{{ Request::routeIs('vehicles') ? 'active' : '' }}">
-                                <a href="{{ route('vehicles') }}"><i class="fa fa-car"></i><span>Vehiculos</span></a>
-                            </li>
-                        @endif
-
                         {{-- Favoritos --}}
                         <li class="{{ Request::routeIs('favorites.*') ? 'active' : '' }}">
                             <a href="{{ route('favorites.index') }}"><i class="fa fa-heart"></i><span>Mis Favoritos</span></a>

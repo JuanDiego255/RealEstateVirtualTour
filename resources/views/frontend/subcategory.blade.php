@@ -58,8 +58,8 @@
                             @php
                                 $spin = $property->active_spin;
                                 $hasSpin = !empty($spin);
-                                $isVehicleModel = $property instanceof \App\Vehicle;
-                                $tourUrl = $isVehicleModel
+                                $isVehicle = ($property->property_type ?? '') === 'vehicle';
+                                $tourUrl = $isVehicle
                                     ? route('virtual-tour', ['id' => $property->id, 'type' => 'vehicle'])
                                     : route('virtual-tour', $property->id);
                             @endphp

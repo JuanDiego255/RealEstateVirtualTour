@@ -23,8 +23,6 @@ use App\Http\Controllers\SpinController;
 use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\ReviewController;
-use App\Http\Controllers\VehicleCompareController;
-use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\KioskController;
 use App\Models\Spin;
 use Illuminate\Support\Facades\Route;
@@ -213,14 +211,6 @@ Route::group(['middleware' => 'auth'], function () {
         Route::get('/{subcategory}/inmuebles', [SubcategoryController::class, 'inmuebles'])->name('admin.subcategories.inmuebles');
     });
 
-    // --- VEHICULOS (Con suscripcion activa) ---
-    Route::group(['prefix' => 'vehicles', 'middleware' => ['subscription']], function () {
-        Route::get('/', [VehicleController::class, 'indexAdmin'])->name('vehicles');
-        Route::post('/store', [VehicleController::class, 'store'])->name('addVehicle');
-        Route::put('/update/{id}', [VehicleController::class, 'update'])->name('updateVehicle');
-        Route::delete('/delete/{id}', [VehicleController::class, 'destroy'])->name('deleteVehicle');
-    });
-
     // --- BOLSA INMOBILIARIA (Con suscripción que permite comisiones) ---
     Route::group(['prefix' => 'admin/bolsa', 'middleware' => ['subscription:commission']], function () {
         Route::get('/', [BolsaController::class, 'index'])->name('admin.bolsa.index');
@@ -379,14 +369,6 @@ Route::get('/category/{categorySlug}/subcategory/{subcategorySlug}', [CategoryCo
 Route::get('/propiedad/{id}', [PropertiesController::class, 'show'])->name('property.show');
 Route::get('virtual-tour/{id}', 'SceneController@pannellum')->name('virtual-tour');
 
-// Comparador de vehículos
-Route::get('/comparar-vehiculos', [VehicleCompareController::class, 'index'])->name('vehicle-compare');
-Route::get('/api/vehicle-compare/subcategories/{category}', [VehicleCompareController::class, 'getSubcategories']);
-Route::get('/api/vehicle-compare/vehicles', [VehicleCompareController::class, 'getVehicles']);
-Route::get('/api/vehicle-compare/vehicle/{vehicleId}', [VehicleCompareController::class, 'getVehicleDetail']);
-Route::post('/api/vehicle-compare/compare', [VehicleCompareController::class, 'compare']);
-Route::get('/api/vehicle-compare/export-pdf', [VehicleCompareController::class, 'exportPdf']);
-
 // Planes y registro de empresa
 Route::get('/planes', [RegisterCompanyController::class, 'pricing'])->name('pricing');
 Route::get('/registro-empresa', [RegisterCompanyController::class, 'showForm'])->name('register.company');
@@ -464,15 +446,6 @@ Route::get('/file/{filename}', function ($filename) {
 Route::prefix('kiosk')->group(function () {
     // Vista principal del kiosko
     Route::get('/', [KioskController::class, 'index'])->name('kiosk.index');
-
-    // Vista de vehículo individual
-    Route::get('/vehicle/{id}', [KioskController::class, 'vehicle'])->name('kiosk.vehicle');
-
-    // API: Datos del vehículo (AJAX)
-    Route::get('/api/vehicle/{id}', [KioskController::class, 'vehicleData'])->name('kiosk.vehicle.data');
-
-    // Generador de QR
-    Route::get('/qr/{vehicleId}', [KioskController::class, 'generateQr'])->name('kiosk.qr');
 
     // Cotizador
     Route::post('/quote/calculate', [KioskController::class, 'calculateQuote'])->name('kiosk.quote.calculate');

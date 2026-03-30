@@ -145,6 +145,15 @@
                                         </button>
                                     </div>
                                 @endif
+
+                                @if(($property->property_type ?? '') === 'vehicle')
+                                    <div class="mt-2">
+                                        <a href="{{ route('admin.test-drive.index', $property->id) }}"
+                                           class="btn btn-sm btn-warning btn-block" title="Configurar Test Drive">
+                                            <i class="fa fa-car mr-1"></i> Test Drive Virtual
+                                        </a>
+                                    </div>
+                                @endif
                             </div>
                         </div>
                     </div>

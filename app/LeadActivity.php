@@ -79,7 +79,7 @@ class LeadActivity extends Model
 
     public function vehicle()
     {
-        return $this->belongsTo(Vehicle::class);
+        return $this->belongsTo(Properties::class, 'vehicle_id');
     }
 
     // Helpers

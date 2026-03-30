@@ -68,6 +68,12 @@
                                 <a href="{{ route('property') }}" class="btn btn-sm btn-outline-primary btn-block">
                                     <i class="fa fa-edit mr-1"></i> Administrar
                                 </a>
+                                @if(($property->property_type ?? '') === 'vehicle')
+                                    <a href="{{ route('admin.test-drive.index', $property->id) }}"
+                                       class="btn btn-sm btn-warning btn-block mt-1" title="Configurar Test Drive">
+                                        <i class="fa fa-car mr-1"></i> Test Drive
+                                    </a>
+                                @endif
                             </div>
                         </div>
                     </div>

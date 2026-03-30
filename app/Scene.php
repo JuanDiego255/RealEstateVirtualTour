@@ -42,11 +42,11 @@ class Scene extends Model
     }
 
     /**
-     * Get the vehicle this scene belongs to
+     * Get the vehicle (property with type vehicle) this scene belongs to
      */
     public function vehicle()
     {
-        return $this->belongsTo('App\Vehicle', 'vehicle_id');
+        return $this->belongsTo('App\Properties', 'vehicle_id');
     }
 
     public function spin()

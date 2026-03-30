@@ -132,7 +132,7 @@ class Appointment extends Model
 
     public function vehicle()
     {
-        return $this->belongsTo(Vehicle::class);
+        return $this->belongsTo(Properties::class, 'vehicle_id');
     }
 
     public function reminders()
