@@ -29,6 +29,8 @@ class Lead extends Model
         'first_contact_at',
         'last_contact_at',
         'converted_at',
+        'event_name',
+        'event_lead_id',
     ];
 
     protected $casts = [
@@ -56,6 +58,10 @@ class Lead extends Model
     const SOURCE_REFERRAL = 'referral';
     const SOURCE_SOCIAL_MEDIA = 'social_media';
     const SOURCE_WALK_IN = 'walk_in';
+    const SOURCE_EVENT = 'event';
+    const SOURCE_KIOSK = 'kiosk';
+    const SOURCE_QR = 'qr';
+    const SOURCE_QUOTE = 'quote';
     const SOURCE_OTHER = 'other';
 
     // Prioridades
@@ -86,8 +92,57 @@ class Lead extends Model
             self::SOURCE_REFERRAL => 'Referido',
             self::SOURCE_SOCIAL_MEDIA => 'Redes Sociales',
             self::SOURCE_WALK_IN => 'Visita Directa',
+            self::SOURCE_EVENT => 'Evento',
+            self::SOURCE_KIOSK => 'Kiosko',
+            self::SOURCE_QR => 'Código QR',
+            self::SOURCE_QUOTE => 'Cotización',
             self::SOURCE_OTHER => 'Otro',
         ];
+    }
+
+    /**
+     * Fuentes que provienen de eventos (para filtrado)
+     */
+    public static function getEventSources(): array
+    {
+        return [
+            self::SOURCE_EVENT,
+            self::SOURCE_KIOSK,
+            self::SOURCE_QR,
+            self::SOURCE_QUOTE,
+            self::SOURCE_WALK_IN,
+        ];
+    }
+
+    /**
+     * Fuentes del flujo normal de agencia
+     */
+    public static function getAgencySources(): array
+    {
+        return [
+            self::SOURCE_WEBSITE,
+            self::SOURCE_WHATSAPP,
+            self::SOURCE_PHONE,
+            self::SOURCE_REFERRAL,
+            self::SOURCE_SOCIAL_MEDIA,
+            self::SOURCE_OTHER,
+        ];
+    }
+
+    /**
+     * Scope para leads de eventos
+     */
+    public function scopeFromEvent($query)
+    {
+        return $query->whereIn('source', self::getEventSources());
+    }
+
+    /**
+     * Scope para leads de agencia (flujo normal)
+     */
+    public function scopeFromAgency($query)
+    {
+        return $query->whereIn('source', self::getAgencySources());
     }
 
     public static function getPriorities(): array

@@ -364,14 +364,28 @@
 
     <div class="compare-container" id="compareContainer">
         @foreach($vehicles as $index => $vehicle)
-        <div class="vehicle-column" data-vehicle-id="{{ $vehicle->id }}" data-index="{{ $index }}">
-            <!-- Spin Viewer -->
+        @php
+            $hasSpin = $vehicle->scenes->contains(fn($s) => $s->spin_id && $s->spin);
+        @endphp
+        <div class="vehicle-column" data-vehicle-id="{{ $vehicle->id }}" data-index="{{ $index }}" data-has-spin="{{ $hasSpin ? '1' : '0' }}">
+            <!-- Spin Viewer o Imagen Estática -->
             <div class="spin-wrapper" id="spinWrapper{{ $index }}">
+                @if($hasSpin)
                 <canvas id="spinCanvas{{ $index }}"></canvas>
                 <div class="sync-indicator">
                     <span class="sync-dot"></span>
                     <span>Sincronizado</span>
                 </div>
+                @else
+                <img class="static-vehicle-image"
+                     src="{{ $vehicle->image ? route('file', $vehicle->image) : url('images/producto-sin-imagen.PNG') }}"
+                     alt="{{ $vehicle->brand }} {{ $vehicle->model }}"
+                     style="width: 100%; height: 100%; object-fit: cover;">
+                <div class="static-indicator" style="position: absolute; top: 10px; left: 10px; padding: 6px 12px; background: rgba(0,0,0,0.7); border-radius: 20px; font-size: 11px; display: flex; align-items: center; gap: 6px;">
+                    <i class="fas fa-image"></i>
+                    <span>Imagen estática</span>
+                </div>
+                @endif
             </div>
 
             <!-- Vehicle Header -->
@@ -493,12 +507,29 @@
         let draggingIndex = -1;
 
         // ============================================
-        // SPIN VIEWER WITH SYNC
+        // SPIN VIEWER WITH SYNC (Solo para vehículos con spin)
         // ============================================
+        let vehiclesWithSpin = []; // Índices de vehículos que tienen spin
+
         function initSpins() {
             vehicles.forEach((vehicle, index) => {
+                const column = document.querySelector(`.vehicle-column[data-index="${index}"]`);
+                const hasSpin = column && column.dataset.hasSpin === '1';
+
+                if (!hasSpin) {
+                    // No tiene spin, dejarlo como imagen estática
+                    spinInstances[index] = null;
+                    return;
+                }
+
                 const scene = vehicle.scenes?.find(s => s.spin_id && s.spin);
-                if (!scene || !scene.spin) return;
+                if (!scene || !scene.spin) {
+                    spinInstances[index] = null;
+                    return;
+                }
+
+                // Registrar que este vehículo tiene spin
+                vehiclesWithSpin.push(index);
 
                 const spin = scene.spin;
                 const canvas = document.getElementById(`spinCanvas${index}`);
@@ -555,10 +586,11 @@
                 spinInstances[index] = {
                     draw: drawFrame,
                     totalFrames,
-                    ready: () => ready
+                    ready: () => ready,
+                    hasSpin: true
                 };
 
-                // Drag handling
+                // Drag handling (solo para spins)
                 const wrapper = document.getElementById(`spinWrapper${index}`);
                 let startX = 0;
                 let accX = 0;
@@ -581,16 +613,32 @@
             // Global mouse/touch move
             document.addEventListener('mousemove', e => {
                 if (draggingIndex < 0) return;
+                // Solo procesar si el vehículo arrastrando tiene spin
+                if (!spinInstances[draggingIndex] || !spinInstances[draggingIndex].hasSpin) return;
                 handleDrag(e.clientX);
             });
 
             document.addEventListener('touchmove', e => {
                 if (draggingIndex < 0 || !e.touches.length) return;
+                if (!spinInstances[draggingIndex] || !spinInstances[draggingIndex].hasSpin) return;
                 handleDrag(e.touches[0].clientX);
             }, { passive: true });
 
             document.addEventListener('mouseup', () => { draggingIndex = -1; });
             document.addEventListener('touchend', () => { draggingIndex = -1; });
+
+            // Actualizar indicador de sincronización
+            updateSyncIndicators();
+        }
+
+        function updateSyncIndicators() {
+            // Mostrar indicador solo en vehículos con spin
+            document.querySelectorAll('.sync-indicator').forEach((el, index) => {
+                const column = el.closest('.vehicle-column');
+                if (column && column.dataset.hasSpin !== '1') {
+                    el.style.display = 'none';
+                }
+            });
         }
 
         let lastDragX = 0;
@@ -603,23 +651,24 @@
                 globalOrbitIndex += step;
 
                 if (syncEnabled) {
-                    // Update all spins
-                    spinInstances.forEach((instance, i) => {
-                        if (instance && instance.ready()) {
+                    // Update SOLO los spins que tienen spin 360 (no las imágenes estáticas)
+                    vehiclesWithSpin.forEach(i => {
+                        const instance = spinInstances[i];
+                        if (instance && instance.ready && instance.ready()) {
                             instance.draw(globalOrbitIndex);
                         }
                     });
                 } else {
                     // Only update dragged spin
                     const instance = spinInstances[draggingIndex];
-                    if (instance && instance.ready()) {
+                    if (instance && instance.ready && instance.ready()) {
                         instance.draw(globalOrbitIndex);
                     }
                 }
             }
         }
 
-        // Animation loop for auto-rotate
+        // Animation loop for auto-rotate (solo para vehículos con spin)
         let autoRotate = true;
         let lastT = performance.now();
 
@@ -631,8 +680,10 @@
                 const framesPerSec = 72 / 8;
                 globalOrbitIndex += framesPerSec * dt;
 
-                spinInstances.forEach((instance, i) => {
-                    if (instance && instance.ready()) {
+                // Solo actualizar vehículos con spin
+                vehiclesWithSpin.forEach(i => {
+                    const instance = spinInstances[i];
+                    if (instance && instance.ready && instance.ready()) {
                         instance.draw(globalOrbitIndex);
                     }
                 });

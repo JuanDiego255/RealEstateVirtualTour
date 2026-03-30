@@ -58,6 +58,27 @@
             color: var(--kiosk-accent);
         }
 
+        .back-home-btn {
+            width: 45px;
+            height: 45px;
+            border-radius: 12px;
+            background: var(--kiosk-card);
+            border: 1px solid var(--kiosk-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--kiosk-text);
+            text-decoration: none;
+            font-size: 18px;
+            transition: all 0.2s ease;
+        }
+
+        .back-home-btn:hover {
+            background: var(--kiosk-accent);
+            color: #000;
+            border-color: var(--kiosk-accent);
+        }
+
         .kiosk-event-name {
             font-size: 14px;
             color: rgba(255,255,255,0.7);
@@ -559,7 +580,10 @@
 <body>
     <!-- Header -->
     <header class="kiosk-header">
-        <div>
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <a href="{{ url('/') }}" class="back-home-btn" title="Volver al inicio">
+                <i class="fas fa-arrow-left"></i>
+            </a>
             @if($settings->logo)
                 <img src="{{ route('file', $settings->logo) }}" alt="Logo" class="kiosk-logo">
             @else

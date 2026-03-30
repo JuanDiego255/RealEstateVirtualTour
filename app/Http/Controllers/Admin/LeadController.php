@@ -21,6 +21,15 @@ class LeadController extends Controller
         $query = Lead::with(['user', 'property', 'vehicle'])
             ->byCompany($user->company_id);
 
+        // Filtro por origen (evento vs agencia)
+        if ($request->filled('origin')) {
+            if ($request->origin === 'event') {
+                $query->fromEvent();
+            } elseif ($request->origin === 'agency') {
+                $query->fromAgency();
+            }
+        }
+
         // Filtros
         if ($request->filled('status')) {
             $query->byStatus($request->status);
@@ -55,12 +64,24 @@ class LeadController extends Controller
         $leads = $query->paginate(20)->withQueryString();
 
         // Estadísticas
+        $baseQuery = Lead::byCompany($user->company_id);
+
+        // Aplicar filtro de origen a las estadísticas también
+        if ($request->filled('origin')) {
+            if ($request->origin === 'event') {
+                $baseQuery = Lead::byCompany($user->company_id)->fromEvent();
+            } elseif ($request->origin === 'agency') {
+                $baseQuery = Lead::byCompany($user->company_id)->fromAgency();
+            }
+        }
+
         $stats = [
-            'total' => Lead::byCompany($user->company_id)->count(),
-            'new' => Lead::byCompany($user->company_id)->byStatus('new')->count(),
-            'active' => Lead::byCompany($user->company_id)->active()->count(),
-            'won' => Lead::byCompany($user->company_id)->byStatus('won')->count(),
-            'needs_follow_up' => Lead::byCompany($user->company_id)->needsFollowUp()->count(),
+            'total' => (clone $baseQuery)->count(),
+            'new' => (clone $baseQuery)->byStatus('new')->count(),
+            'active' => (clone $baseQuery)->active()->count(),
+            'won' => (clone $baseQuery)->byStatus('won')->count(),
+            'needs_follow_up' => (clone $baseQuery)->needsFollowUp()->count(),
+            'from_events' => Lead::byCompany($user->company_id)->fromEvent()->count(),
         ];
 
         $agents = User::where('company_id', $user->company_id)

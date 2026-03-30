@@ -447,17 +447,179 @@ class KioskController extends Controller
             ->orderBy('hour')
             ->get();
 
-        // Leads recientes
+        // Leads recientes con vehículo de interés
         $recentLeads = EventLead::with('property')
             ->when($eventName, fn($q) => $q->where('event_name', $eventName))
             ->latest()
             ->limit(20)
             ->get();
 
+        // Cotizaciones recientes con vehículo
+        $recentQuotes = VehicleQuote::with('property')
+            ->when($eventName, fn($q) => $q->where('event_name', $eventName))
+            ->latest()
+            ->limit(15)
+            ->get();
+
         return view('kiosk.dashboard', compact(
             'topViewed', 'topQrScans', 'leadStats', 'quotesToday',
-            'viewsByHour', 'recentLeads', 'eventName'
+            'viewsByHour', 'recentLeads', 'recentQuotes', 'eventName'
         ));
+    }
+
+    /**
+     * Marcar lead del evento como contactado
+     */
+    public function markLeadContacted(Request $request, $id)
+    {
+        $lead = EventLead::findOrFail($id);
+        $lead->markAsContacted(auth()->user()->name ?? 'Sistema');
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Agregar lead del evento al CRM principal
+     */
+    public function addEventLeadToCRM(Request $request, $id)
+    {
+        $eventLead = EventLead::with('property')->findOrFail($id);
+
+        // Verificar si ya existe un lead con el mismo teléfono
+        $existingLead = \App\Lead::where('phone', $eventLead->phone)
+            ->orWhere('email', $eventLead->email)
+            ->first();
+
+        if ($existingLead) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ya existe un lead con este teléfono o email en el CRM',
+                'lead_id' => $existingLead->id
+            ]);
+        }
+
+        // Mapear nivel de interés a prioridad
+        $priorityMap = [
+            'hot' => 'urgent',
+            'high' => 'high',
+            'medium' => 'medium',
+            'low' => 'low'
+        ];
+
+        // Mapear fuente del evento a fuente del CRM
+        $sourceMap = [
+            'event' => 'event',
+            'kiosk' => 'kiosk',
+            'qr' => 'qr',
+            'compare' => 'event',
+            'quote' => 'quote',
+        ];
+
+        // Crear lead en CRM
+        $lead = \App\Lead::create([
+            'company_id' => auth()->user()->company_id ?? $eventLead->company_id,
+            'user_id' => auth()->id(),
+            'property_id' => $eventLead->property_id,
+            'vehicle_id' => $eventLead->property_id,
+            'name' => $eventLead->name,
+            'email' => $eventLead->email,
+            'phone' => $eventLead->phone,
+            'status' => 'new',
+            'source' => $sourceMap[$eventLead->source] ?? 'event',
+            'priority' => $priorityMap[$eventLead->interest_level] ?? 'medium',
+            'interest_type' => 'buy',
+            'notes' => "Lead capturado en evento: {$eventLead->event_name}\n" .
+                       "Origen: {$eventLead->source}\n" .
+                       "Nivel de interés: {$eventLead->interest_level}\n" .
+                       ($eventLead->notes ? "Notas: {$eventLead->notes}" : ''),
+            'first_contact_at' => $eventLead->created_at,
+            'event_name' => $eventLead->event_name,
+            'event_lead_id' => $eventLead->id,
+        ]);
+
+        // Registrar actividad inicial
+        $lead->logActivity('note', [
+            'subject' => 'Lead importado desde evento',
+            'description' => "Importado automáticamente desde el evento '{$eventLead->event_name}'. " .
+                           ($eventLead->property ? "Interesado en: {$eventLead->property->brand} {$eventLead->property->model}" : ''),
+        ]);
+
+        // Marcar el event lead como migrado
+        $eventLead->update([
+            'follow_up_status' => 'completed',
+            'notes' => ($eventLead->notes ? $eventLead->notes . "\n" : '') . "Migrado a CRM Lead #{$lead->id}"
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'lead_id' => $lead->id,
+            'message' => 'Lead agregado al CRM exitosamente'
+        ]);
+    }
+
+    /**
+     * Crear lead en CRM desde una cotización
+     */
+    public function addQuoteToCRM(Request $request, $quoteId)
+    {
+        $quote = VehicleQuote::with('property')->findOrFail($quoteId);
+
+        if (!$quote->customer_name && !$quote->customer_phone) {
+            return response()->json([
+                'success' => false,
+                'message' => 'La cotización no tiene datos del cliente'
+            ]);
+        }
+
+        // Verificar si ya existe un lead con el mismo teléfono
+        if ($quote->customer_phone) {
+            $existingLead = \App\Lead::where('phone', $quote->customer_phone)->first();
+            if ($existingLead) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ya existe un lead con este teléfono en el CRM',
+                    'lead_id' => $existingLead->id
+                ]);
+            }
+        }
+
+        // Crear lead en CRM
+        $lead = \App\Lead::create([
+            'company_id' => auth()->user()->company_id,
+            'user_id' => auth()->id(),
+            'property_id' => $quote->property_id,
+            'vehicle_id' => $quote->property_id,
+            'name' => $quote->customer_name ?? 'Sin nombre',
+            'email' => $quote->customer_email,
+            'phone' => $quote->customer_phone,
+            'status' => 'new',
+            'source' => 'quote', // Fuente específica de cotización
+            'priority' => 'high', // Si cotizó, tiene alto interés
+            'interest_type' => 'buy',
+            'budget_min' => $quote->vehicle_price * 0.8,
+            'budget_max' => $quote->vehicle_price * 1.2,
+            'budget_currency' => $quote->currency,
+            'notes' => "Lead creado desde cotización del evento: {$quote->event_name}\n" .
+                       "Cotización: Cuota mensual ₡" . number_format($quote->monthly_payment) . "\n" .
+                       "Prima: " . $quote->down_payment_percent . "% - Plazo: {$quote->term_months} meses\n" .
+                       "Tasa: {$quote->interest_rate}%",
+            'first_contact_at' => $quote->created_at,
+            'event_name' => $quote->event_name,
+        ]);
+
+        // Registrar actividad
+        $lead->logActivity('note', [
+            'subject' => 'Lead creado desde cotización',
+            'description' => "Cliente solicitó cotización en evento. " .
+                           ($quote->property ? "Vehículo: {$quote->property->brand} {$quote->property->model}" : '') .
+                           " - Cuota estimada: ₡" . number_format($quote->monthly_payment),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'lead_id' => $lead->id,
+            'message' => 'Lead creado en el CRM exitosamente'
+        ]);
     }
 
     /**

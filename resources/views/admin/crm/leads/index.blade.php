@@ -9,7 +9,7 @@
     <div class="container-fluid">
         {{-- Stats Cards --}}
         <div class="row mb-4">
-            <div class="col-md-2 col-sm-6">
+            <div class="col-lg-2 col-md-4 col-sm-6 mb-2">
                 <div class="card bg-primary text-white">
                     <div class="card-body py-3 text-center">
                         <h3 class="mb-0">{{ $stats['total'] }}</h3>
@@ -17,7 +17,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-2 col-sm-6">
+            <div class="col-lg-2 col-md-4 col-sm-6 mb-2">
                 <div class="card bg-info text-white">
                     <div class="card-body py-3 text-center">
                         <h3 class="mb-0">{{ $stats['new'] }}</h3>
@@ -25,7 +25,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-2 col-sm-6">
+            <div class="col-lg-2 col-md-4 col-sm-6 mb-2">
                 <div class="card bg-warning text-white">
                     <div class="card-body py-3 text-center">
                         <h3 class="mb-0">{{ $stats['active'] }}</h3>
@@ -33,7 +33,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-2 col-sm-6">
+            <div class="col-lg-2 col-md-4 col-sm-6 mb-2">
                 <div class="card bg-success text-white">
                     <div class="card-body py-3 text-center">
                         <h3 class="mb-0">{{ $stats['won'] }}</h3>
@@ -41,7 +41,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-2 col-sm-6">
+            <div class="col-lg-2 col-md-4 col-sm-6 mb-2">
                 <div class="card bg-danger text-white">
                     <div class="card-body py-3 text-center">
                         <h3 class="mb-0">{{ $stats['needs_follow_up'] }}</h3>
@@ -49,11 +49,19 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-2 col-sm-6">
+            <div class="col-lg-1 col-md-2 col-sm-6 mb-2">
+                <a href="{{ route('admin.crm.leads.index', ['origin' => 'event']) }}" class="card bg-secondary text-white text-decoration-none" title="Leads de Eventos">
+                    <div class="card-body py-3 text-center">
+                        <h4 class="mb-0">{{ $stats['from_events'] ?? 0 }}</h4>
+                        <small><i class="fa fa-calendar"></i></small>
+                    </div>
+                </a>
+            </div>
+            <div class="col-lg-1 col-md-2 col-sm-6 mb-2">
                 <a href="{{ route('admin.crm.leads.pipeline') }}" class="card bg-dark text-white text-decoration-none">
                     <div class="card-body py-3 text-center">
                         <i class="fa fa-columns fa-2x"></i>
-                        <small class="d-block mt-1">Pipeline</small>
+                        <small class="d-block">Pipeline</small>
                     </div>
                 </a>
             </div>
@@ -71,11 +79,30 @@
             </div>
         </div>
 
+        {{-- Quick Filters: Origen --}}
+        <div class="mb-3">
+            <div class="btn-group" role="group">
+                <a href="{{ route('admin.crm.leads.index') }}"
+                   class="btn btn-{{ !request('origin') ? 'primary' : 'outline-primary' }}">
+                    <i class="fa fa-list"></i> Todos
+                </a>
+                <a href="{{ route('admin.crm.leads.index', ['origin' => 'event']) }}"
+                   class="btn btn-{{ request('origin') == 'event' ? 'warning' : 'outline-warning' }}">
+                    <i class="fa fa-calendar"></i> Eventos
+                </a>
+                <a href="{{ route('admin.crm.leads.index', ['origin' => 'agency']) }}"
+                   class="btn btn-{{ request('origin') == 'agency' ? 'info' : 'outline-info' }}">
+                    <i class="fa fa-building"></i> Agencia
+                </a>
+            </div>
+        </div>
+
         {{-- Filters --}}
         <div class="card mb-4">
             <div class="card-body">
                 <form method="GET" action="{{ route('admin.crm.leads.index') }}" class="row">
-                    <div class="col-md-3 mb-2">
+                    <input type="hidden" name="origin" value="{{ request('origin') }}">
+                    <div class="col-md-2 mb-2">
                         <input type="text" name="search" class="form-control" placeholder="Buscar nombre, email, teléfono..." value="{{ request('search') }}">
                     </div>
                     <div class="col-md-2 mb-2">
@@ -110,8 +137,11 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-1 mb-2">
-                        <button type="submit" class="btn btn-secondary btn-block"><i class="fa fa-search"></i></button>
+                    <div class="col-md-2 mb-2">
+                        <div class="input-group">
+                            <button type="submit" class="btn btn-secondary"><i class="fa fa-search"></i></button>
+                            <a href="{{ route('admin.crm.leads.index') }}" class="btn btn-outline-secondary" title="Limpiar filtros"><i class="fa fa-times"></i></a>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -158,7 +188,16 @@
                                     @endif
                                 </td>
                                 <td><span class="badge badge-{{ $lead->status_color }}">{{ $lead->status_label }}</span></td>
-                                <td><small>{{ $lead->source_label }}</small></td>
+                                <td>
+                                    @if(in_array($lead->source, ['event', 'kiosk', 'qr', 'quote', 'walk_in']))
+                                        <span class="badge badge-warning"><i class="fa fa-calendar"></i> {{ $lead->source_label }}</span>
+                                        @if($lead->event_name)
+                                        <br><small class="text-muted">{{ $lead->event_name }}</small>
+                                        @endif
+                                    @else
+                                        <span class="badge badge-info">{{ $lead->source_label }}</span>
+                                    @endif
+                                </td>
                                 <td><span class="badge badge-{{ $lead->priority_color }}">{{ $lead->priority_label }}</span></td>
                                 <td><small>{{ $lead->interest_type_label }}</small></td>
                                 <td><small>{{ $lead->user->name ?? '-' }}</small></td>

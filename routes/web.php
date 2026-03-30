@@ -480,4 +480,9 @@ Route::get('/wishlist/{token}', [KioskController::class, 'viewWishlist'])->name(
 Route::middleware('auth')->group(function () {
     Route::get('/admin/event-dashboard', [KioskController::class, 'dashboard'])->name('kiosk.dashboard');
     Route::get('/admin/event-dashboard/stats', [KioskController::class, 'statsRealtime'])->name('kiosk.stats.realtime');
+
+    // Acciones de leads del evento
+    Route::post('/admin/event-leads/{id}/contacted', [KioskController::class, 'markLeadContacted'])->name('event-leads.contacted');
+    Route::post('/admin/event-leads/{id}/add-to-crm', [KioskController::class, 'addEventLeadToCRM'])->name('event-leads.add-to-crm');
+    Route::post('/admin/quotes/{id}/add-to-crm', [KioskController::class, 'addQuoteToCRM'])->name('quotes.add-to-crm');
 });
