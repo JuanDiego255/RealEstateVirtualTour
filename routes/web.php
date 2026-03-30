@@ -452,6 +452,13 @@ Route::prefix('kiosk')->group(function () {
     // Vista principal del kiosko
     Route::get('/', [KioskController::class, 'index'])->name('kiosk.index');
 
+    // Vista de vehículo individual
+    Route::get('/vehicle/{id}', [KioskController::class, 'vehicle'])->name('kiosk.vehicle');
+    Route::get('/vehicle/{id}/data', [KioskController::class, 'vehicleData'])->name('kiosk.vehicle.data');
+
+    // Generador de QR
+    Route::get('/qr/{vehicleId}', [KioskController::class, 'generateQr'])->name('kiosk.qr');
+
     // Cotizador
     Route::post('/quote/calculate', [KioskController::class, 'calculateQuote'])->name('kiosk.quote.calculate');
     Route::post('/quote/save', [KioskController::class, 'saveQuote'])->name('kiosk.quote.save');
