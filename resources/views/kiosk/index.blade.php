@@ -315,9 +315,9 @@
             100% { opacity: 0; pointer-events: none; }
         }
 
-        /* QR flotante */
+        /* QR flotante - ahora posicionado absoluto dentro de cada slide */
         .qr-floating {
-            position: fixed;
+            position: absolute;
             top: 100px;
             right: 30px;
             background: #fff;
@@ -326,6 +326,14 @@
             text-align: center;
             z-index: 70;
             box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+
+        .kiosk-slide.active .qr-floating {
+            opacity: 1;
+            pointer-events: auto;
         }
 
         .qr-floating img {
@@ -338,6 +346,92 @@
             font-size: 11px;
             margin-top: 8px;
             font-weight: 600;
+        }
+
+        /* Comparador flotante */
+        .compare-floating {
+            position: fixed;
+            bottom: 220px;
+            right: 30px;
+            background: var(--kiosk-card);
+            border: 1px solid var(--kiosk-border);
+            border-radius: 15px;
+            padding: 15px;
+            z-index: 80;
+            min-width: 200px;
+            display: none;
+        }
+
+        .compare-floating.active {
+            display: block;
+        }
+
+        .compare-floating h4 {
+            font-size: 13px;
+            margin-bottom: 10px;
+            color: var(--kiosk-accent);
+        }
+
+        .compare-list {
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .compare-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            margin-bottom: 5px;
+            font-size: 12px;
+        }
+
+        .compare-item .remove-btn {
+            background: none;
+            border: none;
+            color: #ef4444;
+            cursor: pointer;
+            padding: 2px 6px;
+        }
+
+        .compare-actions {
+            margin-top: 10px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .compare-actions button,
+        .compare-actions a {
+            flex: 1;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            text-align: center;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+        }
+
+        .compare-actions .btn-compare-go {
+            background: var(--kiosk-accent);
+            color: #000;
+        }
+
+        .compare-actions .btn-compare-clear {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+        }
+
+        .btn-kiosk .compare-badge {
+            background: var(--kiosk-accent);
+            color: #000;
+            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            margin-left: 5px;
         }
 
         /* Modal */
@@ -497,7 +591,7 @@
         @php
             $hasSpin = $vehicle->scenes->contains(fn($s) => $s->spin_id && $s->spin);
         @endphp
-        <div class="kiosk-slide" data-vehicle-id="{{ $vehicle->id }}" data-index="{{ $index }}" data-has-spin="{{ $hasSpin ? '1' : '0' }}">
+        <div class="kiosk-slide {{ $index === 0 ? 'active' : '' }}" data-vehicle-id="{{ $vehicle->id }}" data-index="{{ $index }}" data-has-spin="{{ $hasSpin ? '1' : '0' }}">
             <div class="spin-container">
                 <div class="spin-viewer" id="spinViewer{{ $index }}">
                     @if($hasSpin)
@@ -542,6 +636,46 @@
     <div class="swipe-hint" id="swipeHint">
         <i class="fas fa-hand-point-left"></i>
         <p>Desliza para ver más vehículos</p>
+    </div>
+
+    <!-- Widget flotante de comparador -->
+    <div class="compare-floating" id="compareFloating">
+        <h4><i class="fas fa-balance-scale"></i> Comparador</h4>
+        <div class="compare-list" id="compareList">
+            <!-- Se llena dinámicamente -->
+        </div>
+        <div class="compare-actions">
+            <button class="btn-compare-clear" onclick="clearCompareList()">Limpiar</button>
+            <a href="#" class="btn-compare-go" id="compareGoBtn" onclick="goToCompare(event)">Comparar</a>
+        </div>
+    </div>
+
+    <!-- Modal de selección de vehículos para comparar -->
+    <div class="modal-kiosk" id="compareModal">
+        <div class="modal-content-kiosk" style="max-width: 700px;">
+            <div class="modal-header-kiosk">
+                <h3><i class="fas fa-balance-scale" style="color: var(--kiosk-accent);"></i> Seleccionar vehículos para comparar</h3>
+                <button class="modal-close" onclick="closeModal('compareModal')">&times;</button>
+            </div>
+            <p style="color: rgba(255,255,255,0.7); margin-bottom: 20px;">Selecciona 2 o más vehículos para compararlos lado a lado.</p>
+            <div id="compareVehicleGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; max-height: 400px; overflow-y: auto;">
+                @foreach($vehicles as $vehicle)
+                <div class="compare-vehicle-option" data-vehicle-id="{{ $vehicle->id }}" onclick="toggleCompareSelection({{ $vehicle->id }}, '{{ $vehicle->brand }} {{ $vehicle->model }}')" style="background: var(--kiosk-card); border-radius: 12px; overflow: hidden; cursor: pointer; border: 2px solid transparent; transition: all 0.2s;">
+                    <img src="{{ $vehicle->image ? route('file', $vehicle->image) : url('images/producto-sin-imagen.PNG') }}" alt="{{ $vehicle->brand }}" style="width: 100%; aspect-ratio: 16/10; object-fit: cover;">
+                    <div style="padding: 12px;">
+                        <p style="font-weight: 600; font-size: 13px;">{{ $vehicle->brand }} {{ $vehicle->model }}</p>
+                        <p style="color: var(--kiosk-accent); font-size: 12px;">₡{{ number_format($vehicle->price) }}</p>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+            <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+                <button class="btn-kiosk btn-kiosk-secondary" onclick="closeModal('compareModal')">Cancelar</button>
+                <button class="btn-kiosk btn-kiosk-primary" id="compareModalBtn" onclick="goToCompare(event)" disabled>
+                    <i class="fas fa-balance-scale"></i> Comparar (<span id="compareCount">0</span>)
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- Modal de Lead Capture -->
@@ -666,6 +800,11 @@
 
             // Actualizar indicadores
             document.querySelectorAll('.slide-indicator').forEach((el, i) => {
+                el.classList.toggle('active', i === index);
+            });
+
+            // Actualizar clase active en slides (para el QR)
+            document.querySelectorAll('.kiosk-slide').forEach((el, i) => {
                 el.classList.toggle('active', i === index);
             });
 
@@ -795,9 +934,11 @@
             buttonsHtml += `<button class="btn-kiosk btn-kiosk-secondary" onclick="addToWishlist(${vehicle.id})">
                 <i class="fas fa-bookmark"></i> Guardar
             </button>`;
-            buttonsHtml += `<a href="{{ url('/kiosk/compare') }}?vehicles[]=${vehicle.id}" class="btn-kiosk btn-kiosk-secondary">
-                <i class="fas fa-balance-scale"></i> Comparar
-            </a>`;
+            const isInCompare = compareList.includes(vehicle.id);
+            buttonsHtml += `<button class="btn-kiosk btn-kiosk-secondary" onclick="toggleCompareVehicle(${vehicle.id}, '${vehicle.brand} ${vehicle.model}')" id="compareBtn${vehicle.id}">
+                <i class="fas fa-balance-scale"></i> ${isInCompare ? 'Quitar' : 'Comparar'}
+                ${compareList.length > 0 ? '<span class="compare-badge">' + compareList.length + '</span>' : ''}
+            </button>`;
 
             panel.innerHTML = `
                 <div class="vehicle-main-info">
@@ -1146,6 +1287,111 @@
         }
 
         // ============================================
+        // COMPARADOR
+        // ============================================
+        let compareList = JSON.parse(localStorage.getItem('compareList') || '[]');
+        let compareNames = JSON.parse(localStorage.getItem('compareNames') || '{}');
+
+        function updateCompareUI() {
+            const floating = document.getElementById('compareFloating');
+            const list = document.getElementById('compareList');
+            const countEl = document.getElementById('compareCount');
+            const goBtn = document.getElementById('compareGoBtn');
+            const modalBtn = document.getElementById('compareModalBtn');
+
+            // Actualizar contador
+            if (countEl) countEl.textContent = compareList.length;
+
+            // Mostrar/ocultar widget flotante
+            if (compareList.length > 0) {
+                floating.classList.add('active');
+                list.innerHTML = compareList.map(id => `
+                    <div class="compare-item">
+                        <span>${compareNames[id] || 'Vehículo ' + id}</span>
+                        <button class="remove-btn" onclick="removeFromCompare(${id})"><i class="fas fa-times"></i></button>
+                    </div>
+                `).join('');
+            } else {
+                floating.classList.remove('active');
+            }
+
+            // Habilitar/deshabilitar botón de comparar
+            const canCompare = compareList.length >= 2;
+            if (goBtn) {
+                goBtn.style.opacity = canCompare ? '1' : '0.5';
+                goBtn.style.pointerEvents = canCompare ? 'auto' : 'none';
+            }
+            if (modalBtn) {
+                modalBtn.disabled = !canCompare;
+            }
+
+            // Actualizar selección visual en el modal
+            document.querySelectorAll('.compare-vehicle-option').forEach(el => {
+                const vid = parseInt(el.dataset.vehicleId);
+                el.style.borderColor = compareList.includes(vid) ? 'var(--kiosk-accent)' : 'transparent';
+            });
+
+            // Guardar en localStorage
+            localStorage.setItem('compareList', JSON.stringify(compareList));
+            localStorage.setItem('compareNames', JSON.stringify(compareNames));
+        }
+
+        function toggleCompareVehicle(vehicleId, vehicleName) {
+            const index = compareList.indexOf(vehicleId);
+            if (index > -1) {
+                compareList.splice(index, 1);
+                delete compareNames[vehicleId];
+            } else {
+                if (compareList.length >= 4) {
+                    alert('Máximo 4 vehículos para comparar');
+                    return;
+                }
+                compareList.push(vehicleId);
+                compareNames[vehicleId] = vehicleName;
+            }
+            updateCompareUI();
+            // Actualizar el panel de info para reflejar el cambio
+            updateVehicleInfo(vehicles[currentSlide]);
+        }
+
+        function toggleCompareSelection(vehicleId, vehicleName) {
+            toggleCompareVehicle(vehicleId, vehicleName);
+        }
+
+        function removeFromCompare(vehicleId) {
+            const index = compareList.indexOf(vehicleId);
+            if (index > -1) {
+                compareList.splice(index, 1);
+                delete compareNames[vehicleId];
+            }
+            updateCompareUI();
+            updateVehicleInfo(vehicles[currentSlide]);
+        }
+
+        function clearCompareList() {
+            compareList = [];
+            compareNames = {};
+            updateCompareUI();
+            updateVehicleInfo(vehicles[currentSlide]);
+        }
+
+        function goToCompare(event) {
+            event.preventDefault();
+            if (compareList.length < 2) {
+                alert('Selecciona al menos 2 vehículos para comparar');
+                return;
+            }
+            const params = compareList.map(id => `vehicles[]=${id}`).join('&');
+            window.location.href = `{{ url('/kiosk/compare') }}?${params}&event=${encodeURIComponent(eventName || '')}`;
+        }
+
+        function openCompareModal() {
+            document.getElementById('compareModal').classList.add('active');
+            updateCompareUI();
+            pauseAutoRotate();
+        }
+
+        // ============================================
         // TRACKING
         // ============================================
         async function trackViewDuration() {
@@ -1177,6 +1423,9 @@
         // INIT
         // ============================================
         document.addEventListener('DOMContentLoaded', () => {
+            // Inicializar UI del comparador
+            updateCompareUI();
+
             if (vehicles.length > 0) {
                 updateVehicleInfo(vehicles[0]);
                 initSpinForSlide(0);
@@ -1198,6 +1447,7 @@
             if (e.key === 'Escape') {
                 closeModal('leadModal');
                 closeModal('quoteModal');
+                closeModal('compareModal');
             }
         });
     </script>
