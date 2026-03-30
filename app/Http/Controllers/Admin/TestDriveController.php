@@ -35,7 +35,7 @@ class TestDriveController extends Controller
             'video_type' => 'required|string',
             'video' => 'required|file|mimetypes:video/mp4,video/webm,video/quicktime|max:512000',
             'thumbnail' => 'nullable|image|max:5120',
-            'engine_audio' => 'nullable|file|mimes:mp3,wav,ogg|max:20480',
+            'engine_audio' => 'nullable|file|mimes:mp3,wav,ogg,mp4,m4a|max:20480',
         ]);
 
         $vehicle = Properties::findOrFail($vehicleId);
@@ -100,7 +100,7 @@ class TestDriveController extends Controller
             'video_type' => 'required|string',
             'video' => 'nullable|file|mimetypes:video/mp4,video/webm,video/quicktime|max:512000',
             'thumbnail' => 'nullable|image|max:5120',
-            'engine_audio' => 'nullable|file|mimes:mp3,wav,ogg|max:20480',
+            'engine_audio' => 'nullable|file|mimes:mp3,wav,ogg,mp4,m4a|max:20480',
         ]);
 
         $video = TestDriveVideo::findOrFail($videoId);
@@ -199,9 +199,9 @@ class TestDriveController extends Controller
     public function updateEngineAudio(Request $request, $vehicleId)
     {
         $request->validate([
-            'engine_startup_audio' => 'nullable|file|mimes:mp3,wav,ogg|max:20480',
-            'engine_idle_audio' => 'nullable|file|mimes:mp3,wav,ogg|max:20480',
-            'engine_rev_audio' => 'nullable|file|mimes:mp3,wav,ogg|max:20480',
+            'engine_startup_audio' => 'nullable|file|mimes:mp3,wav,ogg,mp4,m4a|max:20480',
+            'engine_idle_audio' => 'nullable|file|mimes:mp3,wav,ogg,mp4,m4a|max:20480',
+            'engine_rev_audio' => 'nullable|file|mimes:mp3,wav,ogg,mp4,m4a|max:20480',
             'interior_pov_video' => 'nullable|file|mimetypes:video/mp4,video/webm|max:512000',
             'featured_image' => 'nullable|image|max:10240',
         ]);
