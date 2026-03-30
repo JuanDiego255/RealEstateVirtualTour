@@ -672,7 +672,7 @@
 
             for (let i = 1; i <= spinConfig.frames; i++) {
                 const img = new Image();
-                img.src = `/storage/${spinConfig.folder}/${String(i).padStart(3, '0')}.webp`;
+                img.src = `/storage/${spinConfig.folder}/frame-${String(i).padStart(3, '0')}.webp`;
                 images.push(img);
             }
 
