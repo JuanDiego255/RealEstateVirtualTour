@@ -352,6 +352,11 @@ Route::group(['middleware' => 'auth'], function () {
         Route::post('/{vehicleId}/video/{videoId}/toggle', [TestDriveController::class, 'toggleStatus'])->name('admin.test-drive.toggle-status');
         Route::post('/{vehicleId}/reorder', [TestDriveController::class, 'reorder'])->name('admin.test-drive.reorder');
 
+        // Subida de video por chunks
+        Route::post('/upload-video-chunk', [TestDriveController::class, 'uploadVideoChunk'])->name('admin.test-drive.upload-chunk');
+        Route::post('/complete-video-upload', [TestDriveController::class, 'completeVideoUpload'])->name('admin.test-drive.complete-upload');
+        Route::post('/cancel-video-upload', [TestDriveController::class, 'cancelVideoUpload'])->name('admin.test-drive.cancel-upload');
+
         // Audio del motor
         Route::post('/{vehicleId}/engine-audio', [TestDriveController::class, 'updateEngineAudio'])->name('admin.test-drive.engine-audio');
         Route::delete('/{vehicleId}/engine-audio/{field}', [TestDriveController::class, 'deleteEngineAudio'])->name('admin.test-drive.delete-engine-audio');

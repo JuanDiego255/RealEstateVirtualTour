@@ -408,20 +408,21 @@
                 <h5 class="modal-title"><i class="fa fa-plus mr-2"></i>Agregar Video de Test Drive</h5>
                 <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
             </div>
-            <form action="{{ route('admin.test-drive.store-video', $vehicle->id) }}" method="POST" enctype="multipart/form-data">
+            <form id="addVideoForm" action="{{ route('admin.test-drive.store-video', $vehicle->id) }}" method="POST" enctype="multipart/form-data">
                 @csrf
+                <input type="hidden" name="video_path" id="video_path_add" value="">
                 <div class="modal-body">
                     <div class="row">
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label>Titulo <span class="text-danger">*</span></label>
-                                <input type="text" name="title" class="form-control" required placeholder="Ej: Test Drive Exterior">
+                                <input type="text" name="title" id="add_title" class="form-control" required placeholder="Ej: Test Drive Exterior">
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label>Tipo de Video <span class="text-danger">*</span></label>
-                                <select name="video_type" class="form-control" required>
+                                <select name="video_type" id="add_video_type" class="form-control" required>
                                     @foreach($videoTypes as $key => $label)
                                     <option value="{{ $key }}">{{ $label }}</option>
                                     @endforeach
@@ -432,7 +433,7 @@
 
                     <div class="form-group">
                         <label>Descripcion</label>
-                        <textarea name="description" class="form-control" rows="2" placeholder="Descripcion breve del video..."></textarea>
+                        <textarea name="description" id="add_description" class="form-control" rows="2" placeholder="Descripcion breve del video..."></textarea>
                     </div>
 
                     <div class="row">
@@ -440,10 +441,31 @@
                             <div class="form-group">
                                 <label>Video <span class="text-danger">*</span></label>
                                 <div class="custom-file">
-                                    <input type="file" class="custom-file-input" name="video" accept="video/*" required>
-                                    <label class="custom-file-label">Seleccionar video...</label>
+                                    <input type="file" class="custom-file-input" id="video_file_add" accept="video/*">
+                                    <label class="custom-file-label" for="video_file_add">Seleccionar video...</label>
                                 </div>
-                                <small class="text-muted">Formatos: MP4, WebM. Max 500MB</small>
+                                <small class="text-muted">Formatos: MP4, WebM. Sin limite de tamano (subida por chunks)</small>
+
+                                <!-- Barra de progreso de subida -->
+                                <div id="video-upload-progress-add" class="mt-3" style="display: none;">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span id="video-upload-status-add" class="text-primary">
+                                            <i class="fa fa-spinner fa-spin mr-1"></i>Subiendo video...
+                                        </span>
+                                        <span id="video-upload-percent-add" class="font-weight-bold">0%</span>
+                                    </div>
+                                    <div class="progress" style="height: 20px;">
+                                        <div id="video-upload-bar-add" class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
+                                             role="progressbar" style="width: 0%"></div>
+                                    </div>
+                                    <small id="video-upload-details-add" class="text-muted mt-1 d-block"></small>
+                                </div>
+
+                                <!-- Estado de video subido -->
+                                <div id="video-upload-complete-add" class="alert alert-success mt-3" style="display: none;">
+                                    <i class="fa fa-check-circle mr-2"></i>
+                                    <span id="video-upload-complete-text-add">Video subido correctamente</span>
+                                </div>
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -483,8 +505,8 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal" id="cancelAddVideoBtn">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="submitAddVideoBtn" disabled>
                         <i class="fa fa-save mr-2"></i>Guardar Video
                     </button>
                 </div>
@@ -694,5 +716,210 @@
             }
         });
     }
+
+    // ============================================
+    // SUBIDA DE VIDEO POR CHUNKS
+    // ============================================
+
+    const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB por chunk
+    const THRESHOLD = 5 * 1024 * 1024;  // 5MB para activar subida en chunks
+
+    let currentUploadId = null;
+    let isUploading = false;
+
+    // Manejar seleccion de archivo de video
+    document.getElementById('video_file_add').addEventListener('change', async function(e) {
+        const file = this.files[0];
+        if (!file) return;
+
+        // Actualizar label
+        this.nextElementSibling.textContent = file.name;
+
+        // Validar tipo
+        const validTypes = ['video/mp4', 'video/webm', 'video/quicktime'];
+        if (!validTypes.includes(file.type)) {
+            alert('Formato no valido. Use MP4 o WebM.');
+            this.value = '';
+            this.nextElementSibling.textContent = 'Seleccionar video...';
+            return;
+        }
+
+        // Iniciar subida por chunks
+        await uploadVideoInChunks(file);
+    });
+
+    async function uploadVideoInChunks(file) {
+        const progressContainer = document.getElementById('video-upload-progress-add');
+        const progressBar = document.getElementById('video-upload-bar-add');
+        const progressPercent = document.getElementById('video-upload-percent-add');
+        const progressStatus = document.getElementById('video-upload-status-add');
+        const progressDetails = document.getElementById('video-upload-details-add');
+        const completeContainer = document.getElementById('video-upload-complete-add');
+        const completeText = document.getElementById('video-upload-complete-text-add');
+        const submitBtn = document.getElementById('submitAddVideoBtn');
+        const videoPathInput = document.getElementById('video_path_add');
+
+        // Resetear UI
+        progressContainer.style.display = 'block';
+        completeContainer.style.display = 'none';
+        progressBar.style.width = '0%';
+        progressPercent.textContent = '0%';
+        submitBtn.disabled = true;
+        isUploading = true;
+
+        // Generar ID unico para esta subida
+        currentUploadId = 'upload_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+
+        const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
+
+        progressStatus.innerHTML = '<i class="fa fa-spinner fa-spin mr-1"></i>Subiendo video...';
+        progressDetails.textContent = `Tamano: ${fileSizeMB} MB | Chunks: 0/${totalChunks}`;
+
+        try {
+            for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+                if (!isUploading) {
+                    // Subida cancelada
+                    await cancelUpload();
+                    return;
+                }
+
+                const start = chunkIndex * CHUNK_SIZE;
+                const end = Math.min(start + CHUNK_SIZE, file.size);
+                const chunk = file.slice(start, end);
+
+                const formData = new FormData();
+                formData.append('chunk', chunk, file.name);
+                formData.append('chunkIndex', chunkIndex);
+                formData.append('totalChunks', totalChunks);
+                formData.append('uploadId', currentUploadId);
+                formData.append('fileName', file.name);
+
+                const response = await fetch('/admin/test-drive/upload-video-chunk', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error('Error al subir chunk ' + chunkIndex);
+                }
+
+                const result = await response.json();
+                if (!result.success) {
+                    throw new Error(result.error || 'Error desconocido');
+                }
+
+                // Actualizar progreso
+                const progress = Math.round(((chunkIndex + 1) / totalChunks) * 100);
+                progressBar.style.width = progress + '%';
+                progressPercent.textContent = progress + '%';
+                progressDetails.textContent = `Tamano: ${fileSizeMB} MB | Chunks: ${chunkIndex + 1}/${totalChunks}`;
+            }
+
+            // Todos los chunks subidos, ensamblar video
+            progressStatus.innerHTML = '<i class="fa fa-cog fa-spin mr-1"></i>Ensamblando video...';
+
+            const assembleResponse = await fetch('/admin/test-drive/complete-video-upload', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify({
+                    uploadId: currentUploadId,
+                    fileName: file.name,
+                    totalChunks: totalChunks,
+                    vehicleId: vehicleId
+                })
+            });
+
+            if (!assembleResponse.ok) {
+                throw new Error('Error al ensamblar video');
+            }
+
+            const assembleResult = await assembleResponse.json();
+            if (!assembleResult.success) {
+                throw new Error(assembleResult.error || 'Error al ensamblar');
+            }
+
+            // Video subido exitosamente
+            videoPathInput.value = assembleResult.videoPath;
+
+            progressContainer.style.display = 'none';
+            completeContainer.style.display = 'block';
+            completeText.textContent = `Video "${file.name}" subido correctamente`;
+            submitBtn.disabled = false;
+            isUploading = false;
+
+        } catch (error) {
+            console.error('Error en subida:', error);
+            progressStatus.innerHTML = '<i class="fa fa-exclamation-triangle text-danger mr-1"></i>Error: ' + error.message;
+            progressBar.classList.remove('bg-primary');
+            progressBar.classList.add('bg-danger');
+            isUploading = false;
+
+            // Limpiar chunks en servidor
+            await cancelUpload();
+        }
+    }
+
+    async function cancelUpload() {
+        if (currentUploadId) {
+            try {
+                await fetch('/admin/test-drive/cancel-video-upload', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify({ uploadId: currentUploadId })
+                });
+            } catch (e) {
+                console.warn('Error al cancelar subida:', e);
+            }
+        }
+        currentUploadId = null;
+    }
+
+    // Cancelar subida al cerrar modal
+    document.getElementById('cancelAddVideoBtn').addEventListener('click', function() {
+        if (isUploading) {
+            isUploading = false;
+            cancelUpload();
+        }
+    });
+
+    // Resetear modal al cerrar
+    $('#addVideoModal').on('hidden.bs.modal', function() {
+        if (isUploading) {
+            isUploading = false;
+            cancelUpload();
+        }
+
+        // Resetear formulario
+        document.getElementById('addVideoForm').reset();
+        document.getElementById('video_path_add').value = '';
+        document.getElementById('video-upload-progress-add').style.display = 'none';
+        document.getElementById('video-upload-complete-add').style.display = 'none';
+        document.getElementById('submitAddVideoBtn').disabled = true;
+
+        // Resetear labels de archivo
+        document.querySelectorAll('#addVideoModal .custom-file-label').forEach(label => {
+            label.textContent = 'Seleccionar...';
+        });
+    });
+
+    // Validar formulario antes de enviar
+    document.getElementById('addVideoForm').addEventListener('submit', function(e) {
+        const videoPath = document.getElementById('video_path_add').value;
+        if (!videoPath) {
+            e.preventDefault();
+            alert('Debe subir un video primero');
+            return false;
+        }
+    });
 </script>
 @endsection

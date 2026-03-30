@@ -7,6 +7,7 @@ use App\Models\TestDriveVideo;
 use App\Properties;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\File;
 
 class TestDriveController extends Controller
 {
@@ -30,18 +31,31 @@ class TestDriveController extends Controller
      */
     public function storeVideo(Request $request, $vehicleId)
     {
-        $request->validate([
+        // Video puede venir como archivo o como path (subido por chunks)
+        $rules = [
             'title' => 'required|string|max:255',
             'video_type' => 'required|string',
-            'video' => 'required|file|mimetypes:video/mp4,video/webm,video/quicktime|max:512000',
             'thumbnail' => 'nullable|image|max:5120',
             'engine_audio' => 'nullable|file|mimes:mp3,wav,ogg,mp4,m4a|max:20480',
-        ]);
+        ];
+
+        // Si viene video_path, es subida por chunks
+        if ($request->filled('video_path')) {
+            $rules['video_path'] = 'required|string';
+        } else {
+            $rules['video'] = 'required|file|mimetypes:video/mp4,video/webm,video/quicktime|max:512000';
+        }
+
+        $request->validate($rules);
 
         $vehicle = Properties::findOrFail($vehicleId);
 
-        // Guardar video
-        $videoPath = $request->file('video')->store('test-drive/videos', 'public');
+        // Obtener path del video (ya subido por chunks o subida tradicional)
+        if ($request->filled('video_path')) {
+            $videoPath = $request->video_path;
+        } else {
+            $videoPath = $request->file('video')->store('test-drive/videos', 'public');
+        }
 
         // Guardar thumbnail si existe
         $thumbnailPath = null;
@@ -276,5 +290,126 @@ class TestDriveController extends Controller
         $videos = TestDriveVideo::getForProperty($vehicleId);
 
         return view('admin.test-drive.preview', compact('vehicle', 'videos'));
+    }
+
+    /**
+     * Upload a video chunk
+     */
+    public function uploadVideoChunk(Request $request)
+    {
+        $request->validate([
+            'chunk' => 'required|file',
+            'chunkIndex' => 'required|integer|min:0',
+            'totalChunks' => 'required|integer|min:1',
+            'uploadId' => 'required|string',
+            'fileName' => 'required|string'
+        ]);
+
+        $uploadId = $request->uploadId;
+        $chunkIndex = $request->chunkIndex;
+        $totalChunks = $request->totalChunks;
+
+        $tempDir = storage_path('app/chunks/' . $uploadId);
+        if (!File::exists($tempDir)) {
+            File::makeDirectory($tempDir, 0755, true);
+        }
+
+        $chunk = $request->file('chunk');
+        $chunk->move($tempDir, 'chunk_' . str_pad($chunkIndex, 5, '0', STR_PAD_LEFT));
+
+        $uploadedChunks = count(File::files($tempDir));
+        $progress = round(($uploadedChunks / $totalChunks) * 100);
+
+        return response()->json([
+            'success' => true,
+            'chunkIndex' => $chunkIndex,
+            'uploadedChunks' => $uploadedChunks,
+            'totalChunks' => $totalChunks,
+            'progress' => $progress
+        ]);
+    }
+
+    /**
+     * Complete video upload by assembling chunks
+     */
+    public function completeVideoUpload(Request $request)
+    {
+        $request->validate([
+            'uploadId' => 'required|string',
+            'fileName' => 'required|string',
+            'totalChunks' => 'required|integer|min:1'
+        ]);
+
+        $uploadId = $request->uploadId;
+        $fileName = $request->fileName;
+        $totalChunks = (int) $request->totalChunks;
+
+        $tempDir = storage_path('app/chunks/' . $uploadId);
+
+        if (!File::exists($tempDir)) {
+            return response()->json(['success' => false, 'error' => 'Upload no encontrado'], 404);
+        }
+
+        $chunks = File::files($tempDir);
+        if (count($chunks) !== $totalChunks) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Faltan chunks: ' . count($chunks) . ' de ' . $totalChunks
+            ], 400);
+        }
+
+        $chunkFiles = [];
+        foreach ($chunks as $chunk) {
+            $chunkFiles[] = $chunk->getPathname();
+        }
+        sort($chunkFiles);
+
+        $extension = pathinfo($fileName, PATHINFO_EXTENSION);
+        $finalFileName = 'test-drive/videos/' . uniqid('video_') . '.' . $extension;
+        $finalPath = storage_path('app/public/' . $finalFileName);
+
+        $finalDir = dirname($finalPath);
+        if (!File::exists($finalDir)) {
+            File::makeDirectory($finalDir, 0755, true);
+        }
+
+        $finalFile = fopen($finalPath, 'wb');
+        if (!$finalFile) {
+            return response()->json([
+                'success' => false,
+                'error' => 'No se pudo crear archivo final'
+            ], 500);
+        }
+
+        foreach ($chunkFiles as $chunkFile) {
+            $chunkContent = file_get_contents($chunkFile);
+            fwrite($finalFile, $chunkContent);
+        }
+        fclose($finalFile);
+
+        File::deleteDirectory($tempDir);
+
+        return response()->json([
+            'success' => true,
+            'videoPath' => $finalFileName,
+            'message' => 'Video ensamblado correctamente'
+        ]);
+    }
+
+    /**
+     * Cancel video upload and clean up chunks
+     */
+    public function cancelVideoUpload(Request $request)
+    {
+        $uploadId = $request->uploadId;
+
+        if ($uploadId) {
+            $tempDir = storage_path('app/chunks/' . $uploadId);
+            if (File::exists($tempDir)) {
+                File::deleteDirectory($tempDir);
+            }
+        }
+
+        return response()->json(['success' => true, 'message' => 'Upload cancelado']);
     }
 }

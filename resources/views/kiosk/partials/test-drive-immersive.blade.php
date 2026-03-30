@@ -749,6 +749,8 @@ class ImmersiveTestDrive {
         // Audio buffers
         this.audioBuffers = {};
         this.currentSource = null;
+        this.currentAudioName = null;
+        this.oscillators = null;
 
         this.init();
     }
@@ -779,19 +781,33 @@ class ImmersiveTestDrive {
 
         try {
             this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+            // Resumir contexto si esta suspendido (politicas de autoplay)
+            if (this.audioContext.state === 'suspended') {
+                await this.audioContext.resume();
+            }
+
             this.gainNode = this.audioContext.createGain();
             this.gainNode.connect(this.audioContext.destination);
             this.gainNode.gain.value = 0.7;
 
-            // Pre-cargar sonidos si estan disponibles
-            if (this.audioUrls.idle) {
-                await this.loadAudio('idle', this.audioUrls.idle);
+            // Pre-cargar todos los sonidos disponibles
+            const loadPromises = [];
+
+            if (this.audioUrls.startup && this.audioUrls.startup.length > 0) {
+                loadPromises.push(this.loadAudio('startup', this.audioUrls.startup));
             }
-            if (this.audioUrls.startup) {
-                await this.loadAudio('startup', this.audioUrls.startup);
+            if (this.audioUrls.idle && this.audioUrls.idle.length > 0) {
+                loadPromises.push(this.loadAudio('idle', this.audioUrls.idle));
+            }
+            if (this.audioUrls.rev && this.audioUrls.rev.length > 0) {
+                loadPromises.push(this.loadAudio('rev', this.audioUrls.rev));
             }
 
+            await Promise.all(loadPromises);
+
             this.isAudioInitialized = true;
+            console.log('Audio inicializado. Buffers cargados:', Object.keys(this.audioBuffers));
         } catch (e) {
             console.warn('Audio no disponible:', e);
         }
@@ -799,31 +815,88 @@ class ImmersiveTestDrive {
 
     async loadAudio(name, url) {
         try {
+            console.log(`Cargando audio ${name}: ${url}`);
             const response = await fetch(url);
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
             const arrayBuffer = await response.arrayBuffer();
+
+            if (arrayBuffer.byteLength === 0) {
+                throw new Error('Archivo de audio vacio');
+            }
+
             this.audioBuffers[name] = await this.audioContext.decodeAudioData(arrayBuffer);
+            console.log(`Audio ${name} cargado correctamente (${(arrayBuffer.byteLength / 1024).toFixed(1)} KB)`);
         } catch (e) {
-            console.warn(`No se pudo cargar audio ${name}:`, e);
+            console.warn(`No se pudo cargar audio ${name}:`, e.message);
         }
     }
 
     playEngineSound() {
-        if (!this.audioContext || !this.audioBuffers.idle) {
+        // Verificar si hay audios reales disponibles
+        const hasStartup = this.audioBuffers.startup;
+        const hasIdle = this.audioBuffers.idle;
+
+        if (!this.audioContext || (!hasStartup && !hasIdle)) {
             // Fallback: usar oscillator para simular motor
+            console.log('Usando osciladores (sin audios reales)');
             this.playOscillatorEngine();
             return;
         }
 
-        // Reproducir audio real del motor
-        if (this.currentSource) {
-            this.currentSource.stop();
+        // Detener cualquier audio previo
+        this.stopCurrentSource();
+
+        // Si hay audio de arranque, reproducirlo primero
+        if (hasStartup) {
+            console.log('Reproduciendo audio de arranque...');
+            this.playAudioBuffer('startup', false, () => {
+                // Cuando termine el startup, iniciar idle en loop
+                if (this.isRunning && hasIdle) {
+                    console.log('Transicionando a audio idle...');
+                    this.playAudioBuffer('idle', true);
+                } else if (this.isRunning) {
+                    // Sin idle, usar osciladores
+                    this.playOscillatorEngine();
+                }
+            });
+        } else if (hasIdle) {
+            // Sin startup, ir directo al idle
+            console.log('Reproduciendo audio idle (sin startup)...');
+            this.playAudioBuffer('idle', true);
         }
+    }
+
+    playAudioBuffer(name, loop = false, onEnded = null) {
+        if (!this.audioBuffers[name]) return;
+
+        this.stopCurrentSource();
 
         this.currentSource = this.audioContext.createBufferSource();
-        this.currentSource.buffer = this.audioBuffers.idle;
-        this.currentSource.loop = true;
+        this.currentSource.buffer = this.audioBuffers[name];
+        this.currentSource.loop = loop;
         this.currentSource.connect(this.gainNode);
+
+        if (onEnded && !loop) {
+            this.currentSource.onended = () => {
+                if (this.isRunning) onEnded();
+            };
+        }
+
         this.currentSource.start();
+        this.currentAudioName = name;
+    }
+
+    stopCurrentSource() {
+        if (this.currentSource) {
+            try {
+                this.currentSource.stop();
+            } catch(e) {}
+            this.currentSource = null;
+        }
     }
 
     playOscillatorEngine() {
@@ -859,23 +932,36 @@ class ImmersiveTestDrive {
 
         // Calcular factor de pitch basado en RPM
         const rpmFactor = this.rpm / this.config.idleRpm;
+        const rpmPercent = this.rpm / this.config.maxRpm;
 
-        // Actualizar oscilladores
+        // Actualizar oscilladores (si se usan)
         if (this.oscillators) {
             this.oscillators.forEach(({ osc, gain, baseFreq }) => {
                 osc.frequency.value = baseFreq * rpmFactor;
                 // Aumentar volumen con RPM
-                gain.gain.value = (0.1 + (this.rpm / this.config.maxRpm) * 0.2) / this.oscillators.length;
+                gain.gain.value = (0.1 + rpmPercent * 0.2) / this.oscillators.length;
             });
         }
 
-        // Actualizar playbackRate si usamos buffer
-        if (this.currentSource && this.currentSource.playbackRate) {
-            this.currentSource.playbackRate.value = 0.5 + (this.rpm / this.config.maxRpm) * 1.5;
+        // Actualizar playbackRate si usamos audio buffer (solo para idle/rev, no startup)
+        if (this.currentSource && this.currentAudioName !== 'startup') {
+            // Variar pitch entre 0.8x (idle bajo) y 2.0x (redline)
+            const minRate = 0.8;
+            const maxRate = 2.0;
+            const targetRate = minRate + (rpmPercent * (maxRate - minRate));
+            this.currentSource.playbackRate.value = targetRate;
+        }
+
+        // Ajustar volumen segun RPM
+        if (this.gainNode) {
+            const baseVolume = 0.5;
+            const volumeBoost = rpmPercent * 0.5;
+            this.gainNode.gain.value = Math.min(1.0, baseVolume + volumeBoost);
         }
     }
 
     stopEngineSound() {
+        // Detener osciladores
         if (this.oscillators) {
             this.oscillators.forEach(({ osc }) => {
                 try { osc.stop(); } catch(e) {}
@@ -883,10 +969,11 @@ class ImmersiveTestDrive {
             this.oscillators = null;
         }
 
-        if (this.currentSource) {
-            try { this.currentSource.stop(); } catch(e) {}
-            this.currentSource = null;
-        }
+        // Detener audio buffer
+        this.stopCurrentSource();
+        this.currentAudioName = null;
+
+        console.log('Motor apagado - audio detenido');
     }
 
     setupAccelerator() {
