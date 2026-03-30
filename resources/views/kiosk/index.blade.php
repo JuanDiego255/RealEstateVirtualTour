@@ -113,6 +113,26 @@
             display: block;
         }
 
+        /* Imagen estática para vehículos sin spin */
+        .spin-viewer .static-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .spin-viewer .no-spin-overlay {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 13px;
+            color: rgba(255,255,255,0.8);
+        }
+
         /* Info del vehículo */
         .vehicle-info-panel {
             position: fixed;
@@ -474,10 +494,22 @@
     <!-- Slider de vehículos -->
     <div class="kiosk-slider" id="kioskSlider">
         @foreach($vehicles as $index => $vehicle)
-        <div class="kiosk-slide" data-vehicle-id="{{ $vehicle->id }}" data-index="{{ $index }}">
+        @php
+            $hasSpin = $vehicle->scenes->contains(fn($s) => $s->spin_id && $s->spin);
+        @endphp
+        <div class="kiosk-slide" data-vehicle-id="{{ $vehicle->id }}" data-index="{{ $index }}" data-has-spin="{{ $hasSpin ? '1' : '0' }}">
             <div class="spin-container">
                 <div class="spin-viewer" id="spinViewer{{ $index }}">
-                    <canvas id="spinCanvas{{ $index }}"></canvas>
+                    @if($hasSpin)
+                        <canvas id="spinCanvas{{ $index }}"></canvas>
+                    @else
+                        <img class="static-image"
+                             src="{{ $vehicle->image ? route('file', $vehicle->image) : url('images/producto-sin-imagen.PNG') }}"
+                             alt="{{ $vehicle->brand }} {{ $vehicle->model }}">
+                        <div class="no-spin-overlay">
+                            <i class="fas fa-image"></i> Vista del vehículo
+                        </div>
+                    @endif
                 </div>
             </div>
 
@@ -785,7 +817,12 @@
         // ============================================
         function initSpinForSlide(index) {
             const vehicle = vehicles[index];
-            if (!vehicle.scenes || spinInstances[index]) return;
+            const slide = document.querySelector(`.kiosk-slide[data-index="${index}"]`);
+
+            // Si ya está inicializado o no tiene spin, no hacer nada
+            if (spinInstances[index]) return;
+            if (!slide || slide.dataset.hasSpin !== '1') return;
+            if (!vehicle.scenes) return;
 
             const scene = vehicle.scenes.find(s => s.spin_id && s.spin);
             if (!scene || !scene.spin) return;

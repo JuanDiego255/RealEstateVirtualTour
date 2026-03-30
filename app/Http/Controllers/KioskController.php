@@ -23,6 +23,7 @@ class KioskController extends Controller
     /**
      * Vista principal del modo kiosko
      * Ahora usa Properties con property_type = 'vehicle'
+     * Muestra todos los vehículos (con o sin spin 360)
      */
     public function index(Request $request)
     {
@@ -32,12 +33,9 @@ class KioskController extends Controller
         $settings = KioskSetting::getActiveForCompany($companyId)
             ?? new KioskSetting(KioskSetting::defaults());
 
-        // Obtener vehiculos para el kiosko desde Properties
+        // Obtener todos los vehiculos para el kiosko (con o sin spin)
         $query = Properties::vehicles()
-            ->whereIn('status', ['available', 'reserved', 'negotiating'])
-            ->whereHas('scenes', function($q) {
-                $q->whereNotNull('spin_id');
-            });
+            ->whereIn('status', ['available', 'reserved', 'negotiating']);
 
         // Filtrar por vehiculos destacados si estan configurados
         if (!empty($settings->featured_vehicle_ids)) {
@@ -50,7 +48,7 @@ class KioskController extends Controller
         }
 
         $vehicles = $query->with(['scenes' => function($q) {
-            $q->whereNotNull('spin_id')->with('spin');
+            $q->with('spin');
         }])->get();
 
         return view('kiosk.index', compact('vehicles', 'settings', 'eventName'));
@@ -58,12 +56,13 @@ class KioskController extends Controller
 
     /**
      * Vista de vehiculo individual en modo kiosko
+     * Soporta vehículos con o sin spin 360
      */
     public function vehicle(Request $request, $id)
     {
         $vehicle = Properties::vehicles()
             ->with(['scenes' => function($q) {
-                $q->whereNotNull('spin_id')->with('spin');
+                $q->with('spin');
             }])
             ->findOrFail($id);
 
@@ -106,12 +105,13 @@ class KioskController extends Controller
 
     /**
      * API: Obtener datos del vehiculo (para navegacion AJAX)
+     * Soporta vehículos con o sin spin
      */
     public function vehicleData(Request $request, $id)
     {
         $vehicle = Properties::vehicles()
             ->with(['scenes' => function($q) {
-                $q->whereNotNull('spin_id')->with('spin');
+                $q->with('spin');
             }])
             ->findOrFail($id);
 
@@ -128,6 +128,7 @@ class KioskController extends Controller
 
     /**
      * Generar codigo QR para un vehiculo
+     * Usa SVG por defecto para evitar dependencia de imagick
      */
     public function generateQr(Request $request, $vehicleId)
     {
@@ -136,21 +137,23 @@ class KioskController extends Controller
 
         $url = url("/kiosk/vehicle/{$vehicleId}?qr={$qrData->qr_code}");
 
-        if ($request->get('format') === 'svg') {
-            $qr = QrCode::format('svg')
+        // PNG solo si se solicita explícitamente (requiere imagick)
+        if ($request->get('format') === 'png') {
+            $qr = QrCode::format('png')
                 ->size(300)
                 ->margin(2)
                 ->generate($url);
 
-            return response($qr)->header('Content-Type', 'image/svg+xml');
+            return response($qr)->header('Content-Type', 'image/png');
         }
 
-        $qr = QrCode::format('png')
+        // SVG por defecto (no requiere imagick)
+        $qr = QrCode::format('svg')
             ->size(300)
             ->margin(2)
             ->generate($url);
 
-        return response($qr)->header('Content-Type', 'image/png');
+        return response($qr)->header('Content-Type', 'image/svg+xml');
     }
 
     /**
@@ -396,7 +399,7 @@ class KioskController extends Controller
 
         $vehicles = Properties::vehicles()
             ->with(['scenes' => function($q) {
-                $q->whereNotNull('spin_id')->with('spin');
+                $q->with('spin');
             }])
             ->whereIn('id', $vehicleIds)
             ->get();

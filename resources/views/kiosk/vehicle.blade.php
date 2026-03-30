@@ -107,6 +107,29 @@
             display: block;
         }
 
+        /* Imagen estática para vehículos sin spin */
+        .spin-viewer .static-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .spin-viewer .no-spin-badge {
+            position: absolute;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            color: rgba(255,255,255,0.8);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
         /* Hotspots en el spin */
         .spin-hotspot {
             position: absolute;
@@ -461,28 +484,41 @@
             </button>
         </header>
 
+        @php
+            $hasSpin = !empty($spin);
+        @endphp
+
         <!-- Main Content -->
         <div class="main-grid">
-            <!-- Spin Viewer -->
+            <!-- Spin Viewer o Imagen Estática -->
             <div class="spin-section">
-                <div class="spin-viewer" id="spinViewer">
-                    <canvas id="spinCanvas"></canvas>
+                <div class="spin-viewer" id="spinViewer" data-has-spin="{{ $hasSpin ? '1' : '0' }}">
+                    @if($hasSpin)
+                        <canvas id="spinCanvas"></canvas>
 
-                    <!-- Hotspots dinámicos -->
-                    @foreach($hotspots as $hotspot)
-                    <div class="spin-hotspot"
-                         data-frame="{{ $hotspot->frame_number }}"
-                         data-frame-start="{{ $hotspot->frame_range_start }}"
-                         data-frame-end="{{ $hotspot->frame_range_end }}"
-                         style="left: {{ $hotspot->position_x }}%; top: {{ $hotspot->position_y }}%; display: none;"
-                         onclick="showHotspot({{ $hotspot->id }})">
-                        <i class="fas fa-{{ $hotspot->icon === 'engine' ? 'car-battery' : ($hotspot->icon === 'sound' ? 'volume-up' : ($hotspot->icon === 'wheel' ? 'circle' : ($hotspot->icon === 'interior' ? 'couch' : 'info'))) }}"></i>
-                    </div>
-                    @endforeach
+                        <!-- Hotspots dinámicos -->
+                        @foreach($hotspots as $hotspot)
+                        <div class="spin-hotspot"
+                             data-frame="{{ $hotspot->frame_number }}"
+                             data-frame-start="{{ $hotspot->frame_range_start }}"
+                             data-frame-end="{{ $hotspot->frame_range_end }}"
+                             style="left: {{ $hotspot->position_x }}%; top: {{ $hotspot->position_y }}%; display: none;"
+                             onclick="showHotspot({{ $hotspot->id }})">
+                            <i class="fas fa-{{ $hotspot->icon === 'engine' ? 'car-battery' : ($hotspot->icon === 'sound' ? 'volume-up' : ($hotspot->icon === 'wheel' ? 'circle' : ($hotspot->icon === 'interior' ? 'couch' : 'info'))) }}"></i>
+                        </div>
+                        @endforeach
+                    @else
+                        <img class="static-image"
+                             src="{{ $vehicle->image ? route('file', $vehicle->image) : url('images/producto-sin-imagen.PNG') }}"
+                             alt="{{ $vehicle->brand }} {{ $vehicle->model }}">
+                        <div class="no-spin-badge">
+                            <i class="fas fa-image"></i> Imagen del vehículo
+                        </div>
+                    @endif
                 </div>
 
-                <!-- Color Selector (AR Lite) -->
-                @if($colors->count() > 0)
+                <!-- Color Selector (AR Lite) - Solo si hay spin y colores -->
+                @if($hasSpin && $colors->count() > 0)
                 <div class="color-selector">
                     <span style="color: var(--muted); font-size: 13px; margin-right: 10px;">Color:</span>
                     @foreach($colors as $color)
@@ -680,21 +716,25 @@
 
     <script>
         // ============================================
-        // SPIN VIEWER
+        // CONFIGURACIÓN
         // ============================================
         const spin = @json($spin);
         const hotspots = @json($hotspots);
         const eventName = @json($eventName);
         const vehicleId = {{ $vehicle->id }};
         const vehiclePrice = {{ $vehicle->price }};
+        const hasSpin = document.getElementById('spinViewer')?.dataset.hasSpin === '1';
 
+        // ============================================
+        // SPIN VIEWER (solo si tiene spin)
+        // ============================================
         let currentFrame = 1;
         let totalFrames = spin ? (spin.frames_count || 72) : 72;
         let framesDir = spin ? spin.frames_dir : '';
         let baseUrl = `/storage/${framesDir}/`;
 
         const canvas = document.getElementById('spinCanvas');
-        const ctx = canvas.getContext('2d', { alpha: false });
+        const ctx = canvas ? canvas.getContext('2d', { alpha: false }) : null;
         const images = new Array(totalFrames + 1);
         let loaded = 0;
         let ready = false;
@@ -706,140 +746,144 @@
         let lastT = performance.now();
         let autoAcc = 0;
 
-        function frameSrc(n) {
-            return baseUrl + 'frame-' + String(n).padStart(3, '0') + '.webp';
-        }
+        // Solo inicializar spin viewer si hay spin
+        if (hasSpin && canvas && ctx) {
+            function frameSrc(n) {
+                return baseUrl + 'frame-' + String(n).padStart(3, '0') + '.webp';
+            }
 
-        function resizeCanvas() {
-            const rect = canvas.getBoundingClientRect();
-            const dpr = window.devicePixelRatio || 1;
-            canvas.width = Math.round(rect.width * dpr);
-            canvas.height = Math.round(rect.height * dpr);
-        }
+            function resizeCanvas() {
+                const rect = canvas.getBoundingClientRect();
+                const dpr = window.devicePixelRatio || 1;
+                canvas.width = Math.round(rect.width * dpr);
+                canvas.height = Math.round(rect.height * dpr);
+            }
 
-        function wrapFrame(n) {
-            return ((n - 1) % totalFrames + totalFrames) % totalFrames + 1;
-        }
+            function wrapFrame(n) {
+                return ((n - 1) % totalFrames + totalFrames) % totalFrames + 1;
+            }
 
-        function drawFrame(idx) {
-            if (!ready) return;
-            resizeCanvas();
-            const wrapped = wrapFrame(Math.round(idx));
-            currentFrame = wrapped;
-            const img = images[wrapped] || images[1];
-            if (!img) return;
+            function drawFrame(idx) {
+                if (!ready) return;
+                resizeCanvas();
+                const wrapped = wrapFrame(Math.round(idx));
+                currentFrame = wrapped;
+                const img = images[wrapped] || images[1];
+                if (!img) return;
 
-            const scale = Math.min(canvas.width / img.naturalWidth, canvas.height / img.naturalHeight);
-            const dw = img.naturalWidth * scale;
-            const dh = img.naturalHeight * scale;
-            const dx = (canvas.width - dw) / 2;
-            const dy = (canvas.height - dh) / 2;
+                const scale = Math.min(canvas.width / img.naturalWidth, canvas.height / img.naturalHeight);
+                const dw = img.naturalWidth * scale;
+                const dh = img.naturalHeight * scale;
+                const dx = (canvas.width - dw) / 2;
+                const dy = (canvas.height - dh) / 2;
 
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(img, dx, dy, dw, dh);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, dx, dy, dw, dh);
 
-            // Update hotspot visibility
-            updateHotspotsVisibility(wrapped);
-        }
+                // Update hotspot visibility
+                updateHotspotsVisibility(wrapped);
+            }
 
-        function tick(t) {
-            const dt = Math.min(0.05, (t - lastT) / 1000);
-            lastT = t;
+            function tick(t) {
+                const dt = Math.min(0.05, (t - lastT) / 1000);
+                lastT = t;
 
-            if (ready && autoRotate && !dragging) {
-                const framesPerSec = totalFrames / 8;
-                autoAcc += framesPerSec * dt;
-                const step = Math.floor(autoAcc);
-                if (step >= 1) {
-                    autoAcc -= step;
-                    orbitIndex += step;
+                if (ready && autoRotate && !dragging) {
+                    const framesPerSec = totalFrames / 8;
+                    autoAcc += framesPerSec * dt;
+                    const step = Math.floor(autoAcc);
+                    if (step >= 1) {
+                        autoAcc -= step;
+                        orbitIndex += step;
+                    }
+                }
+
+                if (ready) drawFrame(orbitIndex);
+                requestAnimationFrame(tick);
+            }
+
+            // Load frames
+            if (spin && framesDir) {
+                const MIN_READY = Math.min(12, totalFrames);
+                for (let i = 1; i <= totalFrames; i++) {
+                    const img = new Image();
+                    img.src = frameSrc(i);
+                    img.onload = () => {
+                        images[i] = img;
+                        loaded++;
+                        if (!ready && loaded >= MIN_READY) {
+                            ready = true;
+                        }
+                    };
                 }
             }
 
-            if (ready) drawFrame(orbitIndex);
-            requestAnimationFrame(tick);
-        }
+            // Drag handling
+            const viewer = document.getElementById('spinViewer');
 
-        // Load frames
-        if (spin && framesDir) {
-            const MIN_READY = Math.min(12, totalFrames);
-            for (let i = 1; i <= totalFrames; i++) {
-                const img = new Image();
-                img.src = frameSrc(i);
-                img.onload = () => {
-                    images[i] = img;
-                    loaded++;
-                    if (!ready && loaded >= MIN_READY) {
-                        ready = true;
-                    }
-                };
-            }
-        }
-
-        // Drag handling
-        const viewer = document.getElementById('spinViewer');
-
-        viewer.addEventListener('mousedown', e => {
-            dragging = true;
-            startX = e.clientX;
-            accX = 0;
-            autoRotate = false;
-        });
-
-        document.addEventListener('mousemove', e => {
-            if (!dragging) return;
-            const dx = e.clientX - startX;
-            startX = e.clientX;
-            accX += dx;
-            const step = Math.trunc(accX / 12);
-            if (step !== 0) {
-                accX -= step * 12;
-                orbitIndex += step;
-            }
-        });
-
-        document.addEventListener('mouseup', () => {
-            if (dragging) {
-                dragging = false;
-                setTimeout(() => { autoRotate = true; }, 2000);
-            }
-        });
-
-        // Touch
-        viewer.addEventListener('touchstart', e => {
-            if (e.touches.length === 1) {
+            viewer.addEventListener('mousedown', e => {
                 dragging = true;
-                startX = e.touches[0].clientX;
+                startX = e.clientX;
                 accX = 0;
                 autoRotate = false;
-            }
-        }, { passive: true });
+            });
 
-        viewer.addEventListener('touchmove', e => {
-            if (!dragging || e.touches.length !== 1) return;
-            const dx = e.touches[0].clientX - startX;
-            startX = e.touches[0].clientX;
-            accX += dx;
-            const step = Math.trunc(accX / 12);
-            if (step !== 0) {
-                accX -= step * 12;
-                orbitIndex += step;
-            }
-        }, { passive: true });
+            document.addEventListener('mousemove', e => {
+                if (!dragging) return;
+                const dx = e.clientX - startX;
+                startX = e.clientX;
+                accX += dx;
+                const step = Math.trunc(accX / 12);
+                if (step !== 0) {
+                    accX -= step * 12;
+                    orbitIndex += step;
+                }
+            });
 
-        viewer.addEventListener('touchend', () => {
-            if (dragging) {
-                dragging = false;
-                setTimeout(() => { autoRotate = true; }, 2000);
-            }
-        }, { passive: true });
+            document.addEventListener('mouseup', () => {
+                if (dragging) {
+                    dragging = false;
+                    setTimeout(() => { autoRotate = true; }, 2000);
+                }
+            });
 
-        requestAnimationFrame(tick);
+            // Touch
+            viewer.addEventListener('touchstart', e => {
+                if (e.touches.length === 1) {
+                    dragging = true;
+                    startX = e.touches[0].clientX;
+                    accX = 0;
+                    autoRotate = false;
+                }
+            }, { passive: true });
+
+            viewer.addEventListener('touchmove', e => {
+                if (!dragging || e.touches.length !== 1) return;
+                const dx = e.touches[0].clientX - startX;
+                startX = e.touches[0].clientX;
+                accX += dx;
+                const step = Math.trunc(accX / 12);
+                if (step !== 0) {
+                    accX -= step * 12;
+                    orbitIndex += step;
+                }
+            }, { passive: true });
+
+            viewer.addEventListener('touchend', () => {
+                if (dragging) {
+                    dragging = false;
+                    setTimeout(() => { autoRotate = true; }, 2000);
+                }
+            }, { passive: true });
+
+            requestAnimationFrame(tick);
+        } // Fin de if (hasSpin && canvas && ctx)
 
         // ============================================
-        // HOTSPOTS
+        // HOTSPOTS (funcionan solo con spin)
         // ============================================
         function updateHotspotsVisibility(frame) {
+            if (!hasSpin) return;
             document.querySelectorAll('.spin-hotspot').forEach(el => {
                 const hotspotFrame = parseInt(el.dataset.frame);
                 const start = parseInt(el.dataset.frameStart) || hotspotFrame - 3;
@@ -851,6 +895,7 @@
         }
 
         function showHotspot(id) {
+            if (!hasSpin) return;
             const hotspot = hotspots.find(h => h.id === id);
             if (!hotspot) return;
 
@@ -874,10 +919,10 @@
         }
 
         // ============================================
-        // COLOR SELECTOR (AR LITE)
+        // COLOR SELECTOR (AR LITE) - Solo funciona con spin
         // ============================================
         function selectColor(colorId, newFramesDir) {
-            if (!newFramesDir) return;
+            if (!hasSpin || !newFramesDir) return;
 
             // Update active state
             document.querySelectorAll('.color-option').forEach(el => {
