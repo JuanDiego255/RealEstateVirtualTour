@@ -16,6 +16,7 @@ use App\Http\Controllers\Admin\SubcategoryController;
 use App\Http\Controllers\Admin\LeadController;
 use App\Http\Controllers\Admin\AppointmentController;
 use App\Http\Controllers\Admin\ReminderController;
+use App\Http\Controllers\Admin\TestDriveController;
 use App\Http\Controllers\CloudConvertWebhookController;
 use App\Http\Controllers\RegisterCompanyController;
 use App\Http\Controllers\SpinController;
@@ -345,6 +346,25 @@ Route::group(['middleware' => 'auth'], function () {
         Route::post('/{reminder}/dismiss', [ReminderController::class, 'dismiss'])->name('admin.crm.reminders.dismiss');
         Route::post('/{reminder}/snooze', [ReminderController::class, 'snooze'])->name('admin.crm.reminders.snooze');
         Route::delete('/{reminder}', [ReminderController::class, 'destroy'])->name('admin.crm.reminders.destroy');
+    });
+
+    // =====================================================
+    // TEST DRIVE VIRTUAL - ADMIN
+    // =====================================================
+    Route::group(['prefix' => 'admin/test-drive', 'middleware' => ['subscription']], function () {
+        Route::get('/{vehicleId}', [TestDriveController::class, 'index'])->name('admin.test-drive.index');
+        Route::get('/{vehicleId}/preview', [TestDriveController::class, 'preview'])->name('admin.test-drive.preview');
+
+        // Videos
+        Route::post('/{vehicleId}/video', [TestDriveController::class, 'storeVideo'])->name('admin.test-drive.store-video');
+        Route::post('/{vehicleId}/video/{videoId}', [TestDriveController::class, 'updateVideo'])->name('admin.test-drive.update-video');
+        Route::delete('/{vehicleId}/video/{videoId}', [TestDriveController::class, 'destroyVideo'])->name('admin.test-drive.destroy-video');
+        Route::post('/{vehicleId}/video/{videoId}/toggle', [TestDriveController::class, 'toggleStatus'])->name('admin.test-drive.toggle-status');
+        Route::post('/{vehicleId}/reorder', [TestDriveController::class, 'reorder'])->name('admin.test-drive.reorder');
+
+        // Audio del motor
+        Route::post('/{vehicleId}/engine-audio', [TestDriveController::class, 'updateEngineAudio'])->name('admin.test-drive.engine-audio');
+        Route::delete('/{vehicleId}/engine-audio/{field}', [TestDriveController::class, 'deleteEngineAudio'])->name('admin.test-drive.delete-engine-audio');
     });
 });
 

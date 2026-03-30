@@ -192,26 +192,32 @@
                                     @endif
                                 </div>
                             </div>
-                            <div class="card-footer bg-white d-flex justify-content-between p-2">
-                                <a href="{{ route('configTyped', ['type' => 'vehicle', 'id' => $vehicle->id]) }}"
-                                    class="btn btn-sm btn-outline-info" title="Configurar Tour">
-                                    <i class="fa fa-cog"></i>
+                            <div class="card-footer bg-white p-2">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <a href="{{ route('configTyped', ['type' => 'vehicle', 'id' => $vehicle->id]) }}"
+                                        class="btn btn-sm btn-outline-info" title="Configurar Tour">
+                                        <i class="fa fa-cog"></i>
+                                    </a>
+                                    <button class="btn btn-sm btn-outline-primary" data-toggle="modal"
+                                        data-target="#editVehicle{{ $vehicle->id }}" title="Editar">
+                                        <i class="fa fa-edit"></i>
+                                    </button>
+                                    <a onclick="if (confirm('Deseas borrar este vehiculo?')) {
+                                        document.getElementById('deleteVehicle{{ $vehicle->id }}').submit();
+                                    }"
+                                        href="#" class="btn btn-sm btn-outline-danger" title="Eliminar">
+                                        <i class="fa fa-trash"></i>
+                                    </a>
+                                    <form id="deleteVehicle{{ $vehicle->id }}" method="post"
+                                        action="{{ route('deleteVehicle', $vehicle->id) }}">
+                                        {{ csrf_field() }}
+                                        {{ method_field('DELETE') }}
+                                    </form>
+                                </div>
+                                <a href="{{ route('admin.test-drive.index', $vehicle->id) }}"
+                                   class="btn btn-sm btn-warning btn-block" title="Configurar Test Drive">
+                                    <i class="fa fa-car mr-1"></i> Test Drive Virtual
                                 </a>
-                                <button class="btn btn-sm btn-outline-primary" data-toggle="modal"
-                                    data-target="#editVehicle{{ $vehicle->id }}" title="Editar">
-                                    <i class="fa fa-edit"></i>
-                                </button>
-                                <a onclick="if (confirm('¿Deseas borrar este vehículo?')) {
-                                    document.getElementById('deleteVehicle{{ $vehicle->id }}').submit();
-                                }"
-                                    href="#" class="btn btn-sm btn-outline-danger" title="Eliminar">
-                                    <i class="fa fa-trash"></i>
-                                </a>
-                                <form id="deleteVehicle{{ $vehicle->id }}" method="post"
-                                    action="{{ route('deleteVehicle', $vehicle->id) }}">
-                                    {{ csrf_field() }}
-                                    {{ method_field('DELETE') }}
-                                </form>
                             </div>
                         </div>
                     </div>

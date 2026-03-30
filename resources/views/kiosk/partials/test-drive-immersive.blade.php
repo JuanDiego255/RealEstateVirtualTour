@@ -604,8 +604,18 @@
 {{-- Modal Inmersivo --}}
 <div class="immersive-modal" id="immersiveTestDrive">
     <div class="immersive-video-container">
-        @if(isset($testDriveVideos) && $testDriveVideos->count() > 0)
-            @php $mainVideo = $testDriveVideos->first(); @endphp
+        @php
+            // Prioridad: 1) Video POV del vehiculo, 2) Primer video de test drive, 3) Imagen
+            $povVideo = $vehicle->interior_pov_video;
+            $mainVideo = isset($testDriveVideos) && $testDriveVideos->count() > 0 ? $testDriveVideos->first() : null;
+            $hasVideo = $povVideo || $mainVideo;
+        @endphp
+
+        @if($povVideo)
+            <video class="immersive-video" id="immersiveVideo" loop muted playsinline>
+                <source src="{{ route('file', $povVideo) }}" type="video/mp4">
+            </video>
+        @elseif($mainVideo)
             <video class="immersive-video" id="immersiveVideo" loop muted playsinline>
                 <source src="{{ route('file', $mainVideo->video_path) }}" type="video/mp4">
             </video>
@@ -613,8 +623,14 @@
             {{-- Imagen de fondo si no hay video --}}
             @if($vehicle->featured_image)
                 <img src="{{ route('file', $vehicle->featured_image) }}" class="immersive-static-bg" alt="Interior">
+            @elseif($vehicle->image)
+                <img src="{{ route('file', $vehicle->image) }}" class="immersive-static-bg" alt="Interior">
             @else
-                <div style="width:100%;height:100%;background:linear-gradient(135deg,#1a1a2e,#16213e);"></div>
+                <div class="immersive-static-bg" style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f0f23 100%);display:flex;align-items:center;justify-content:center;">
+                    <div style="text-align:center;opacity:0.3;">
+                        <i class="fas fa-car" style="font-size:120px;color:#fff;"></i>
+                    </div>
+                </div>
             @endif
         @endif
     </div>
@@ -725,9 +741,9 @@ class ImmersiveTestDrive {
 
         // URLs de audio (se pueden personalizar por vehiculo)
         this.audioUrls = {
-            startup: '{{ isset($vehicle->engine_startup_audio) ? route("file", $vehicle->engine_startup_audio) : "" }}',
-            idle: '{{ isset($vehicle->engine_idle_audio) ? route("file", $vehicle->engine_idle_audio) : "" }}',
-            rev: '{{ isset($vehicle->engine_rev_audio) ? route("file", $vehicle->engine_rev_audio) : "" }}',
+            startup: '{{ $vehicle->engine_startup_audio ? route("file", $vehicle->engine_startup_audio) : "" }}',
+            idle: '{{ $vehicle->engine_idle_audio ? route("file", $vehicle->engine_idle_audio) : "" }}',
+            rev: '{{ $vehicle->engine_rev_audio ? route("file", $vehicle->engine_rev_audio) : "" }}',
         };
 
         // Audio buffers

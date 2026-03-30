@@ -13,8 +13,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('properties', function (Blueprint $table) {
+            // Imagen destacada del interior para Test Drive
+            if (!Schema::hasColumn('properties', 'featured_image')) {
+                $table->string('featured_image')->nullable()->after('image');
+            }
+
             // Audio de arranque del motor (sonido al encender)
-            $table->string('engine_startup_audio')->nullable()->after('featured_image');
+            $table->string('engine_startup_audio')->nullable()->after('image');
 
             // Audio del motor en idle (ralenti)
             $table->string('engine_idle_audio')->nullable()->after('engine_startup_audio');
@@ -33,12 +38,21 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('properties', function (Blueprint $table) {
-            $table->dropColumn([
+            $columns = [
                 'engine_startup_audio',
                 'engine_idle_audio',
                 'engine_rev_audio',
                 'interior_pov_video',
-            ]);
+            ];
+
+            // Solo eliminar columnas que existen
+            foreach ($columns as $column) {
+                if (Schema::hasColumn('properties', $column)) {
+                    $table->dropColumn($column);
+                }
+            }
+
+            // featured_image se mantiene ya que puede ser usada en otros contextos
         });
     }
 };
