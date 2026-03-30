@@ -60,6 +60,12 @@ class Properties extends Model
         'transmission',
         'condition',
         'plate',
+        // Campos de audio para Test Drive Inmersivo
+        'engine_startup_audio',
+        'engine_idle_audio',
+        'engine_rev_audio',
+        'interior_pov_video',
+        'featured_image',
     ];
 
     protected $casts = [

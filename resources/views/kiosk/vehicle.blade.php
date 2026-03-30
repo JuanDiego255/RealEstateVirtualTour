@@ -366,6 +366,30 @@
             color: #fff;
         }
 
+        .video-thumb .video-label {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 8px;
+            background: linear-gradient(transparent, rgba(0,0,0,0.8));
+            font-size: 11px;
+            color: #fff;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .video-thumb:hover .play-icon {
+            background: rgba(0,0,0,0.6);
+        }
+
+        .video-thumb:hover .play-icon i {
+            transform: scale(1.1);
+            transition: transform 0.2s;
+        }
+
         /* Hotspot Modal */
         .hotspot-modal {
             position: fixed;
@@ -658,22 +682,30 @@
                     </a>
                 </div>
 
-                <!-- Test Drive Videos -->
-                @if($testDriveVideos->count() > 0)
+                <!-- Test Drive Inmersivo -->
+                @include('kiosk.partials.test-drive-immersive')
+
+                <!-- Videos Adicionales del Vehiculo -->
+                @if($testDriveVideos->count() > 1)
                 <div class="info-card">
                     <h4 class="video-section">
-                        <i class="fas fa-video" style="color: var(--accent);"></i>
-                        Test Drive Virtual
+                        <i class="fas fa-film" style="color: var(--accent);"></i>
+                        Videos del Vehiculo
                     </h4>
                     <div class="video-grid">
-                        @foreach($testDriveVideos as $video)
-                        <div class="video-thumb" onclick="playVideo('{{ route('file', $video->video_path) }}', '{{ $video->engine_audio ? route('file', $video->engine_audio) : '' }}')">
+                        @foreach($testDriveVideos->skip(1) as $video)
+                        <div class="video-thumb" onclick="playVideo('{{ route('file', $video->video_path) }}', '{{ $video->engine_audio ? route('file', $video->engine_audio) : '' }}')" title="{{ $video->title }}">
                             @if($video->thumbnail)
                             <img src="{{ route('file', $video->thumbnail) }}" alt="{{ $video->title }}">
+                            @else
+                            <div style="width:100%;height:100%;background:#333;display:flex;align-items:center;justify-content:center;">
+                                <i class="fas fa-video" style="font-size:24px;color:#666;"></i>
+                            </div>
                             @endif
                             <div class="play-icon">
                                 <i class="fas fa-play-circle"></i>
                             </div>
+                            <div class="video-label">{{ $video->title }}</div>
                         </div>
                         @endforeach
                     </div>
