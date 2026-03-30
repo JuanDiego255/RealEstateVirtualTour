@@ -10,7 +10,7 @@
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb bg-light p-3 rounded">
                     <li class="breadcrumb-item"><a href="{{ route('home') }}">Inicio</a></li>
-                    <li class="breadcrumb-item"><a href="{{ route('vehicles') }}">Vehiculos</a></li>
+                    <li class="breadcrumb-item"><a href="{{ route('property') }}">Publicaciones</a></li>
                     <li class="breadcrumb-item active">Test Drive Virtual</li>
                 </ol>
             </nav>
