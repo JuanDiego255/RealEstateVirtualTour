@@ -287,8 +287,30 @@
                             @endif
 
                             <div class="custom-file">
-                                <input type="file" class="custom-file-input" id="interior_pov_video" name="interior_pov_video" accept="video/*">
+                                <input type="file" class="custom-file-input" id="interior_pov_video" accept="video/*">
                                 <label class="custom-file-label" for="interior_pov_video">Seleccionar video...</label>
+                            </div>
+                            <input type="hidden" name="interior_pov_video" id="interior_pov_video_path" value="">
+
+                            <!-- Barra de progreso POV -->
+                            <div id="pov-upload-progress" class="mt-3" style="display: none;">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span id="pov-upload-status" class="text-primary">
+                                        <i class="fa fa-spinner fa-spin mr-1"></i>Subiendo video...
+                                    </span>
+                                    <span id="pov-upload-percent" class="font-weight-bold">0%</span>
+                                </div>
+                                <div class="progress" style="height: 20px;">
+                                    <div id="pov-upload-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
+                                         role="progressbar" style="width: 0%"></div>
+                                </div>
+                                <small id="pov-upload-details" class="text-muted mt-1 d-block"></small>
+                            </div>
+
+                            <!-- Estado de video POV subido -->
+                            <div id="pov-upload-complete" class="alert alert-success mt-3" style="display: none;">
+                                <i class="fa fa-check-circle mr-2"></i>
+                                <span id="pov-upload-complete-text">Video POV subido correctamente</span>
                             </div>
                         </div>
 
@@ -921,5 +943,148 @@
             return false;
         }
     });
+
+    // ============================================
+    // SUBIDA DE VIDEO POV POR CHUNKS
+    // ============================================
+
+    let povUploadId = null;
+    let povIsUploading = false;
+
+    const povVideoInput = document.getElementById('interior_pov_video');
+    if (povVideoInput) {
+        povVideoInput.addEventListener('change', async function(e) {
+            const file = this.files[0];
+            if (!file) return;
+
+            // Actualizar label
+            this.nextElementSibling.textContent = file.name;
+
+            // Validar tipo
+            const validTypes = ['video/mp4', 'video/webm', 'video/quicktime'];
+            if (!validTypes.includes(file.type)) {
+                alert('Formato no valido. Use MP4 o WebM.');
+                this.value = '';
+                this.nextElementSibling.textContent = 'Seleccionar video...';
+                return;
+            }
+
+            // Iniciar subida por chunks
+            await uploadPovVideoInChunks(file);
+        });
+    }
+
+    async function uploadPovVideoInChunks(file) {
+        const progressContainer = document.getElementById('pov-upload-progress');
+        const progressBar = document.getElementById('pov-upload-bar');
+        const progressPercent = document.getElementById('pov-upload-percent');
+        const progressStatus = document.getElementById('pov-upload-status');
+        const progressDetails = document.getElementById('pov-upload-details');
+        const completeContainer = document.getElementById('pov-upload-complete');
+        const completeText = document.getElementById('pov-upload-complete-text');
+        const videoPathInput = document.getElementById('interior_pov_video_path');
+
+        // Resetear UI
+        progressContainer.style.display = 'block';
+        completeContainer.style.display = 'none';
+        progressBar.style.width = '0%';
+        progressBar.classList.remove('bg-danger');
+        progressBar.classList.add('bg-primary');
+        progressPercent.textContent = '0%';
+        povIsUploading = true;
+
+        // Generar ID unico para esta subida
+        povUploadId = 'pov_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+
+        const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
+
+        progressStatus.innerHTML = '<i class="fa fa-spinner fa-spin mr-1"></i>Subiendo video POV...';
+        progressDetails.textContent = `Tamano: ${fileSizeMB} MB | Chunks: 0/${totalChunks}`;
+
+        try {
+            for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+                if (!povIsUploading) {
+                    return;
+                }
+
+                const start = chunkIndex * CHUNK_SIZE;
+                const end = Math.min(start + CHUNK_SIZE, file.size);
+                const chunk = file.slice(start, end);
+
+                const formData = new FormData();
+                formData.append('chunk', chunk, file.name);
+                formData.append('chunkIndex', chunkIndex);
+                formData.append('totalChunks', totalChunks);
+                formData.append('uploadId', povUploadId);
+                formData.append('fileName', file.name);
+
+                const response = await fetch('/admin/test-drive/upload-video-chunk', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error('Error al subir chunk ' + chunkIndex);
+                }
+
+                const result = await response.json();
+                if (!result.success) {
+                    throw new Error(result.error || 'Error desconocido');
+                }
+
+                // Actualizar progreso
+                const progress = Math.round(((chunkIndex + 1) / totalChunks) * 100);
+                progressBar.style.width = progress + '%';
+                progressPercent.textContent = progress + '%';
+                progressDetails.textContent = `Tamano: ${fileSizeMB} MB | Chunks: ${chunkIndex + 1}/${totalChunks}`;
+            }
+
+            // Todos los chunks subidos, ensamblar video
+            progressStatus.innerHTML = '<i class="fa fa-cog fa-spin mr-1"></i>Ensamblando video...';
+
+            const assembleResponse = await fetch('/admin/test-drive/complete-video-upload', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify({
+                    uploadId: povUploadId,
+                    fileName: file.name,
+                    totalChunks: totalChunks,
+                    vehicleId: vehicleId,
+                    isPov: true
+                })
+            });
+
+            if (!assembleResponse.ok) {
+                throw new Error('Error al ensamblar video');
+            }
+
+            const assembleResult = await assembleResponse.json();
+            if (!assembleResult.success) {
+                throw new Error(assembleResult.error || 'Error al ensamblar');
+            }
+
+            // Video subido exitosamente
+            videoPathInput.value = assembleResult.videoPath;
+
+            progressContainer.style.display = 'none';
+            completeContainer.style.display = 'block';
+            completeText.textContent = `Video POV "${file.name}" subido correctamente`;
+            povIsUploading = false;
+
+        } catch (error) {
+            console.error('Error en subida POV:', error);
+            progressStatus.innerHTML = '<i class="fa fa-exclamation-triangle text-danger mr-1"></i>Error: ' + error.message;
+            progressBar.classList.remove('bg-primary');
+            progressBar.classList.add('bg-danger');
+            povIsUploading = false;
+        }
+    }
 </script>
 @endsection

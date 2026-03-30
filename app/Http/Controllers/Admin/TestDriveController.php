@@ -216,7 +216,7 @@ class TestDriveController extends Controller
             'engine_startup_audio' => 'nullable|file|mimes:mp3,wav,ogg,mp4,m4a|max:20480',
             'engine_idle_audio' => 'nullable|file|mimes:mp3,wav,ogg,mp4,m4a|max:20480',
             'engine_rev_audio' => 'nullable|file|mimes:mp3,wav,ogg,mp4,m4a|max:20480',
-            'interior_pov_video' => 'nullable|file|mimetypes:video/mp4,video/webm|max:512000',
+            'interior_pov_video' => 'nullable',
             'featured_image' => 'nullable|image|max:10240',
         ]);
 
@@ -235,13 +235,22 @@ class TestDriveController extends Controller
             }
         }
 
-        // Video POV
+        // Video POV (puede venir como archivo o como ruta de archivo ya subido por chunks)
         if ($request->hasFile('interior_pov_video')) {
             if ($vehicle->interior_pov_video) {
                 Storage::disk('public')->delete($vehicle->interior_pov_video);
             }
             $vehicle->interior_pov_video = $request->file('interior_pov_video')
                 ->store('test-drive/pov-videos', 'public');
+        } elseif ($request->filled('interior_pov_video') && is_string($request->interior_pov_video)) {
+            // Video subido por chunks - la ruta ya viene del frontend
+            $videoPath = $request->interior_pov_video;
+            if (Storage::disk('public')->exists($videoPath)) {
+                if ($vehicle->interior_pov_video) {
+                    Storage::disk('public')->delete($vehicle->interior_pov_video);
+                }
+                $vehicle->interior_pov_video = $videoPath;
+            }
         }
 
         // Imagen destacada
