@@ -101,6 +101,7 @@
     width: 100%;
     height: 100%;
     overflow: hidden;
+    z-index: 1;
 }
 
 .immersive-video {
@@ -122,6 +123,7 @@
     justify-content: space-between;
     padding: 30px;
     background: linear-gradient(180deg, rgba(0,0,0,0.3) 0%, transparent 30%, transparent 70%, rgba(0,0,0,0.5) 100%);
+    z-index: 2;
 }
 
 /* Header del modal */
@@ -612,12 +614,30 @@
         @endphp
 
         @if($povVideo)
-            <video class="immersive-video" id="immersiveVideo" loop muted playsinline>
-                <source src="{{ route('file', $povVideo) }}" type="video/mp4">
+            @php
+                $povExt = strtolower(pathinfo($povVideo, PATHINFO_EXTENSION));
+                $povMime = match($povExt) {
+                    'mov' => 'video/quicktime',
+                    'webm' => 'video/webm',
+                    'ogg', 'ogv' => 'video/ogg',
+                    default => 'video/mp4'
+                };
+            @endphp
+            <video class="immersive-video" id="immersiveVideo" loop muted playsinline autoplay>
+                <source src="{{ route('file', $povVideo) }}" type="{{ $povMime }}">
             </video>
         @elseif($mainVideo)
-            <video class="immersive-video" id="immersiveVideo" loop muted playsinline>
-                <source src="{{ route('file', $mainVideo->video_path) }}" type="video/mp4">
+            @php
+                $videoExt = strtolower(pathinfo($mainVideo->video_path, PATHINFO_EXTENSION));
+                $videoMime = match($videoExt) {
+                    'mov' => 'video/quicktime',
+                    'webm' => 'video/webm',
+                    'ogg', 'ogv' => 'video/ogg',
+                    default => 'video/mp4'
+                };
+            @endphp
+            <video class="immersive-video" id="immersiveVideo" loop muted playsinline autoplay>
+                <source src="{{ route('file', $mainVideo->video_path) }}" type="{{ $videoMime }}">
             </video>
         @else
             {{-- Imagen de fondo si no hay video --}}
