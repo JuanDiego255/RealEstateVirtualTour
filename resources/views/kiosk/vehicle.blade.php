@@ -11,6 +11,7 @@
         :root {
             --kiosk-bg: {{ $settings->background_color ?? '#0b0f14' }};
             --kiosk-accent: {{ $settings->accent_color ?? '#c2ac1f' }};
+            --accent: {{ $settings->accent_color ?? '#c2ac1f' }};
             --kiosk-text: #ffffff;
             --kiosk-card: rgba(255, 255, 255, 0.08);
             --kiosk-border: rgba(255, 255, 255, 0.12);
@@ -473,91 +474,11 @@
         </div>
     </div>
 
-    <!-- Modal de Lead -->
-    <div class="modal-kiosk" id="leadModal">
-        <div class="modal-content-kiosk">
-            <div class="modal-header-kiosk">
-                <h3><i class="fas fa-user-plus" style="color: var(--kiosk-accent);"></i> Me Interesa</h3>
-                <button class="modal-close" onclick="closeModal('leadModal')">&times;</button>
-            </div>
-            <form id="leadForm">
-                <input type="hidden" name="vehicle_id" value="{{ $vehicle->id }}">
-                <div class="form-group-kiosk">
-                    <label>Nombre completo *</label>
-                    <input type="text" name="name" class="form-control-kiosk" required placeholder="Tu nombre">
-                </div>
-                <div class="form-group-kiosk">
-                    <label>Telefono *</label>
-                    <input type="tel" name="phone" class="form-control-kiosk" required placeholder="8888-8888">
-                </div>
-                <div class="form-group-kiosk">
-                    <label>Email (opcional)</label>
-                    <input type="email" name="email" class="form-control-kiosk" placeholder="correo@ejemplo.com">
-                </div>
-                <button type="submit" class="btn-kiosk btn-kiosk-primary" style="width: 100%; justify-content: center;">
-                    <i class="fas fa-paper-plane"></i> Enviar
-                </button>
-            </form>
-        </div>
-    </div>
+    {{-- Modal de Lead (Me Interesa) --}}
+    @include('kiosk.partials.lead-modal')
 
-    <!-- Modal de Cotizador -->
-    <div class="modal-kiosk" id="quoteModal">
-        <div class="modal-content-kiosk">
-            <div class="modal-header-kiosk">
-                <h3><i class="fas fa-calculator" style="color: var(--kiosk-accent);"></i> Cotizador</h3>
-                <button class="modal-close" onclick="closeModal('quoteModal')">&times;</button>
-            </div>
-            <form id="quoteForm">
-                <input type="hidden" name="vehicle_id" value="{{ $vehicle->id }}">
-                <input type="hidden" name="vehicle_price" value="{{ $vehicle->price }}">
-
-                <div class="form-group-kiosk">
-                    <label>Prima ({{ $settings->min_down_payment ?? 10 }}% - 50%)</label>
-                    <input type="range" name="down_payment_percent" id="downPaymentRange"
-                           min="{{ $settings->min_down_payment ?? 10 }}" max="50" value="20"
-                           class="form-control-kiosk" style="padding: 5px;"
-                           onchange="calculateQuote()">
-                    <div style="display: flex; justify-content: space-between; font-size: 13px; margin-top: 5px;">
-                        <span id="downPaymentPercent">20%</span>
-                        <span id="downPaymentAmount">CRC {{ number_format($vehicle->price * 0.2) }}</span>
-                    </div>
-                </div>
-
-                <div class="form-group-kiosk">
-                    <label>Plazo (meses)</label>
-                    <select name="term_months" class="form-control-kiosk" onchange="calculateQuote()">
-                        <option value="24">24 meses</option>
-                        <option value="36">36 meses</option>
-                        <option value="48" selected>48 meses</option>
-                        <option value="60">60 meses</option>
-                        <option value="72">72 meses</option>
-                        <option value="84">84 meses</option>
-                    </select>
-                </div>
-
-                <div style="background: var(--kiosk-card); padding: 20px; border-radius: 12px; margin: 20px 0; text-align: center;">
-                    <p style="font-size: 13px; color: rgba(255,255,255,0.6); margin-bottom: 5px;">Cuota mensual estimada</p>
-                    <p id="monthlyPayment" style="font-size: 32px; font-weight: 700; color: var(--kiosk-accent);">
-                        Calculando...
-                    </p>
-                </div>
-
-                <div class="form-group-kiosk">
-                    <label>Tu nombre *</label>
-                    <input type="text" name="customer_name" class="form-control-kiosk" required>
-                </div>
-                <div class="form-group-kiosk">
-                    <label>Tu telefono *</label>
-                    <input type="tel" name="customer_phone" class="form-control-kiosk" required>
-                </div>
-
-                <button type="submit" class="btn-kiosk btn-kiosk-primary" style="width: 100%; justify-content: center;">
-                    <i class="fas fa-file-pdf"></i> Guardar Cotizacion
-                </button>
-            </form>
-        </div>
-    </div>
+    {{-- Modal de Cotizador --}}
+    @include('kiosk.partials.quote-modal')
 
     <script>
         const vehicleId = {{ $vehicle->id }};
@@ -573,81 +494,6 @@
         function closeModal(id) {
             document.getElementById(id).classList.remove('active');
         }
-
-        // Quote calculator
-        function calculateQuote() {
-            const form = document.getElementById('quoteForm');
-            const downPaymentPercent = parseInt(form.down_payment_percent.value);
-            const termMonths = parseInt(form.term_months.value);
-
-            const downPayment = vehiclePrice * (downPaymentPercent / 100);
-            const loanAmount = vehiclePrice - downPayment;
-            const monthlyRate = (interestRate / 100) / 12;
-            const monthlyPayment = loanAmount * (monthlyRate * Math.pow(1 + monthlyRate, termMonths)) / (Math.pow(1 + monthlyRate, termMonths) - 1);
-
-            document.getElementById('downPaymentPercent').textContent = downPaymentPercent + '%';
-            document.getElementById('downPaymentAmount').textContent = 'CRC ' + Math.round(downPayment).toLocaleString();
-            document.getElementById('monthlyPayment').textContent = 'CRC ' + Math.round(monthlyPayment).toLocaleString();
-        }
-
-        // Lead form
-        document.getElementById('leadForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const formData = new FormData(e.target);
-            formData.append('event_name', eventName);
-            formData.append('source', 'kiosk');
-
-            try {
-                const response = await fetch('{{ route("kiosk.lead.capture") }}', {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                        'Accept': 'application/json',
-                    },
-                    body: formData
-                });
-
-                if (response.ok) {
-                    alert('Gracias por tu interes. Te contactaremos pronto.');
-                    closeModal('leadModal');
-                    e.target.reset();
-                }
-            } catch (error) {
-                console.error('Error:', error);
-            }
-        });
-
-        // Quote form
-        document.getElementById('quoteForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const formData = new FormData(e.target);
-            const downPaymentPercent = parseInt(formData.get('down_payment_percent'));
-            formData.set('down_payment', vehiclePrice * (downPaymentPercent / 100));
-            formData.append('interest_rate', interestRate);
-            formData.append('event_name', eventName);
-
-            try {
-                const response = await fetch('{{ route("kiosk.quote.save") }}', {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                        'Accept': 'application/json',
-                    },
-                    body: formData
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    window.open('{{ url("kiosk/quote") }}/' + data.quote_id + '/pdf', '_blank');
-                    closeModal('quoteModal');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-            }
-        });
-
-        // Initialize
-        calculateQuote();
 
         @if($spin)
         // Spin 360 initialization
