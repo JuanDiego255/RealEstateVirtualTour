@@ -740,198 +740,197 @@
     }
 
     // ============================================
-    // SUBIDA DE VIDEO POR CHUNKS
+    // SUBIDA DE VIDEO POR CHUNKS (usando jQuery AJAX)
     // ============================================
 
     const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB por chunk
-    const THRESHOLD = 5 * 1024 * 1024;  // 5MB para activar subida en chunks
 
-    let currentUploadId = null;
-    let isUploading = false;
+    var videoUploadState = {
+        uploadId: null,
+        aborted: false,
+        uploading: false
+    };
+
+    function formatBytes(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        var k = 1024;
+        var sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        var i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    function updateUploadProgress(percent, detail) {
+        $('#video-upload-bar-add').css('width', percent + '%');
+        $('#video-upload-percent-add').text(percent + '%');
+        if (detail) {
+            $('#video-upload-details-add').text(detail);
+        }
+    }
 
     // Manejar seleccion de archivo de video
-    document.getElementById('video_file_add').addEventListener('change', async function(e) {
-        const file = this.files[0];
+    $('#video_file_add').on('change', function(e) {
+        var file = e.target.files[0];
         if (!file) return;
 
         // Actualizar label
-        this.nextElementSibling.textContent = file.name;
+        $(this).next('.custom-file-label').text(file.name);
 
         // Validar tipo
-        const validTypes = ['video/mp4', 'video/webm', 'video/quicktime'];
+        var validTypes = ['video/mp4', 'video/webm', 'video/quicktime'];
         if (!validTypes.includes(file.type)) {
             alert('Formato no valido. Use MP4 o WebM.');
             this.value = '';
-            this.nextElementSibling.textContent = 'Seleccionar video...';
+            $(this).next('.custom-file-label').text('Seleccionar video...');
             return;
         }
 
         // Iniciar subida por chunks
-        await uploadVideoInChunks(file);
+        uploadVideoInChunks(file);
     });
 
     async function uploadVideoInChunks(file) {
-        const progressContainer = document.getElementById('video-upload-progress-add');
-        const progressBar = document.getElementById('video-upload-bar-add');
-        const progressPercent = document.getElementById('video-upload-percent-add');
-        const progressStatus = document.getElementById('video-upload-status-add');
-        const progressDetails = document.getElementById('video-upload-details-add');
-        const completeContainer = document.getElementById('video-upload-complete-add');
-        const completeText = document.getElementById('video-upload-complete-text-add');
-        const submitBtn = document.getElementById('submitAddVideoBtn');
-        const videoPathInput = document.getElementById('video_path_add');
+        var totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+        var uploadId = 'upload_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        videoUploadState.uploadId = uploadId;
+        videoUploadState.aborted = false;
+        videoUploadState.uploading = true;
 
-        // Resetear UI
-        progressContainer.style.display = 'block';
-        completeContainer.style.display = 'none';
-        progressBar.style.width = '0%';
-        progressPercent.textContent = '0%';
-        submitBtn.disabled = true;
-        isUploading = true;
+        // Mostrar UI de progreso
+        $('#video-upload-progress-add').show();
+        $('#video-upload-complete-add').hide();
+        $('#video-upload-bar-add').removeClass('bg-danger').addClass('bg-primary');
+        $('#video-upload-status-add').html('<i class="fa fa-spinner fa-spin mr-1"></i>Subiendo video...');
+        updateUploadProgress(0, 'Iniciando subida de ' + formatBytes(file.size) + ' en ' + totalChunks + ' partes...');
+        $('#submitAddVideoBtn').prop('disabled', true);
 
-        // Generar ID unico para esta subida
-        currentUploadId = 'upload_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        var csrfToken = $('meta[name="csrf-token"]').attr('content');
 
-        const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
+        // Subir cada chunk
+        for (var i = 0; i < totalChunks; i++) {
+            if (videoUploadState.aborted) {
+                console.log('Upload abortado por usuario');
+                return;
+            }
 
-        progressStatus.innerHTML = '<i class="fa fa-spinner fa-spin mr-1"></i>Subiendo video...';
-        progressDetails.textContent = `Tamano: ${fileSizeMB} MB | Chunks: 0/${totalChunks}`;
+            var start = i * CHUNK_SIZE;
+            var end = Math.min(start + CHUNK_SIZE, file.size);
+            var chunk = file.slice(start, end);
 
-        try {
-            for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
-                if (!isUploading) {
-                    // Subida cancelada
-                    await cancelUpload();
-                    return;
-                }
+            var formData = new FormData();
+            formData.append('chunk', chunk);
+            formData.append('chunkIndex', i);
+            formData.append('totalChunks', totalChunks);
+            formData.append('uploadId', uploadId);
+            formData.append('fileName', file.name);
+            formData.append('_token', csrfToken);
 
-                const start = chunkIndex * CHUNK_SIZE;
-                const end = Math.min(start + CHUNK_SIZE, file.size);
-                const chunk = file.slice(start, end);
-
-                const formData = new FormData();
-                formData.append('chunk', chunk, file.name);
-                formData.append('chunkIndex', chunkIndex);
-                formData.append('totalChunks', totalChunks);
-                formData.append('uploadId', currentUploadId);
-                formData.append('fileName', file.name);
-
-                const response = await fetch('/admin/test-drive/upload-video-chunk', {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    },
-                    body: formData
+            try {
+                var response = await $.ajax({
+                    url: '{{ route("admin.test-drive.upload-chunk") }}',
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    timeout: 120000 // 2 minutos por chunk
                 });
 
-                if (!response.ok) {
-                    throw new Error('Error al subir chunk ' + chunkIndex);
+                if (response.success) {
+                    var percent = Math.round(((i + 1) / totalChunks) * 100);
+                    updateUploadProgress(percent, 'Parte ' + (i + 1) + ' de ' + totalChunks + ' completada');
+                } else {
+                    throw new Error(response.error || 'Error desconocido');
                 }
-
-                const result = await response.json();
-                if (!result.success) {
-                    throw new Error(result.error || 'Error desconocido');
-                }
-
-                // Actualizar progreso
-                const progress = Math.round(((chunkIndex + 1) / totalChunks) * 100);
-                progressBar.style.width = progress + '%';
-                progressPercent.textContent = progress + '%';
-                progressDetails.textContent = `Tamano: ${fileSizeMB} MB | Chunks: ${chunkIndex + 1}/${totalChunks}`;
+            } catch (error) {
+                console.error('Error subiendo chunk ' + i, error);
+                $('#video-upload-status-add').html('<i class="fa fa-exclamation-triangle text-danger mr-1"></i>Error al subir');
+                $('#video-upload-bar-add').removeClass('bg-primary').addClass('bg-danger');
+                updateUploadProgress(0, 'Error: ' + (error.responseJSON?.message || error.message || 'Fallo en la subida'));
+                videoUploadState.uploading = false;
+                return;
             }
+        }
 
-            // Todos los chunks subidos, ensamblar video
-            progressStatus.innerHTML = '<i class="fa fa-cog fa-spin mr-1"></i>Ensamblando video...';
+        // Todos los chunks subidos, ahora ensamblar
+        $('#video-upload-status-add').html('<i class="fa fa-spinner fa-spin mr-1"></i>Ensamblando video...');
+        updateUploadProgress(100, 'Ensamblando archivo final...');
 
-            const assembleResponse = await fetch('/admin/test-drive/complete-video-upload', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                },
-                body: JSON.stringify({
-                    uploadId: currentUploadId,
+        try {
+            var completeResponse = await $.ajax({
+                url: '{{ route("admin.test-drive.complete-upload") }}',
+                type: 'POST',
+                data: {
+                    uploadId: uploadId,
                     fileName: file.name,
                     totalChunks: totalChunks,
-                    vehicleId: vehicleId
-                })
+                    vehicleId: vehicleId,
+                    _token: csrfToken
+                },
+                timeout: 300000 // 5 minutos para ensamblar
             });
 
-            if (!assembleResponse.ok) {
-                throw new Error('Error al ensamblar video');
+            if (completeResponse.success) {
+                // Exito: guardar el path del video
+                $('#video_path_add').val(completeResponse.videoPath);
+
+                // Actualizar UI
+                $('#video-upload-progress-add').hide();
+                $('#video-upload-complete-add').show();
+                $('#video-upload-complete-text-add').text('Video "' + file.name + '" subido correctamente');
+                $('#submitAddVideoBtn').prop('disabled', false);
+                videoUploadState.uploading = false;
+            } else {
+                throw new Error(completeResponse.error || 'Error al ensamblar');
             }
-
-            const assembleResult = await assembleResponse.json();
-            if (!assembleResult.success) {
-                throw new Error(assembleResult.error || 'Error al ensamblar');
-            }
-
-            // Video subido exitosamente
-            videoPathInput.value = assembleResult.videoPath;
-
-            progressContainer.style.display = 'none';
-            completeContainer.style.display = 'block';
-            completeText.textContent = `Video "${file.name}" subido correctamente`;
-            submitBtn.disabled = false;
-            isUploading = false;
-
         } catch (error) {
-            console.error('Error en subida:', error);
-            progressStatus.innerHTML = '<i class="fa fa-exclamation-triangle text-danger mr-1"></i>Error: ' + error.message;
-            progressBar.classList.remove('bg-primary');
-            progressBar.classList.add('bg-danger');
-            isUploading = false;
-
-            // Limpiar chunks en servidor
-            await cancelUpload();
+            console.error('Error ensamblando video', error);
+            $('#video-upload-status-add').html('<i class="fa fa-exclamation-triangle text-danger mr-1"></i>Error al ensamblar');
+            $('#video-upload-bar-add').removeClass('bg-primary').addClass('bg-danger');
+            updateUploadProgress(0, 'Error: ' + (error.responseJSON?.error || error.message || 'Fallo al ensamblar'));
+            videoUploadState.uploading = false;
         }
     }
 
-    async function cancelUpload() {
-        if (currentUploadId) {
-            try {
-                await fetch('/admin/test-drive/cancel-video-upload', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    },
-                    body: JSON.stringify({ uploadId: currentUploadId })
-                });
-            } catch (e) {
+    function cancelUpload() {
+        if (videoUploadState.uploadId) {
+            var csrfToken = $('meta[name="csrf-token"]').attr('content');
+            $.post('{{ route("admin.test-drive.cancel-upload") }}', {
+                uploadId: videoUploadState.uploadId,
+                _token: csrfToken
+            }).fail(function(e) {
                 console.warn('Error al cancelar subida:', e);
-            }
+            });
         }
-        currentUploadId = null;
+        videoUploadState.uploadId = null;
+        videoUploadState.aborted = true;
     }
 
     // Cancelar subida al cerrar modal
-    document.getElementById('cancelAddVideoBtn').addEventListener('click', function() {
-        if (isUploading) {
-            isUploading = false;
+    $('#cancelAddVideoBtn').on('click', function() {
+        if (videoUploadState.uploading) {
+            videoUploadState.aborted = true;
             cancelUpload();
         }
     });
 
     // Resetear modal al cerrar
     $('#addVideoModal').on('hidden.bs.modal', function() {
-        if (isUploading) {
-            isUploading = false;
+        if (videoUploadState.uploading) {
+            videoUploadState.aborted = true;
             cancelUpload();
         }
 
+        // Resetear estado
+        videoUploadState = { uploadId: null, aborted: false, uploading: false };
+
         // Resetear formulario
-        document.getElementById('addVideoForm').reset();
-        document.getElementById('video_path_add').value = '';
-        document.getElementById('video-upload-progress-add').style.display = 'none';
-        document.getElementById('video-upload-complete-add').style.display = 'none';
-        document.getElementById('submitAddVideoBtn').disabled = true;
+        $('#addVideoForm')[0].reset();
+        $('#video_path_add').val('');
+        $('#video-upload-progress-add').hide();
+        $('#video-upload-complete-add').hide();
+        $('#submitAddVideoBtn').prop('disabled', true);
 
         // Resetear labels de archivo
-        document.querySelectorAll('#addVideoModal .custom-file-label').forEach(label => {
-            label.textContent = 'Seleccionar...';
-        });
+        $('#addVideoModal .custom-file-label').text('Seleccionar...');
     });
 
     // Validar formulario antes de enviar
@@ -945,145 +944,141 @@
     });
 
     // ============================================
-    // SUBIDA DE VIDEO POV POR CHUNKS
+    // SUBIDA DE VIDEO POV POR CHUNKS (usando jQuery AJAX)
     // ============================================
 
-    let povUploadId = null;
-    let povIsUploading = false;
+    var povUploadState = {
+        uploadId: null,
+        aborted: false,
+        uploading: false
+    };
 
-    const povVideoInput = document.getElementById('interior_pov_video');
-    if (povVideoInput) {
-        povVideoInput.addEventListener('change', async function(e) {
-            const file = this.files[0];
-            if (!file) return;
+    function updatePovUploadProgress(percent, detail) {
+        $('#pov-upload-bar').css('width', percent + '%');
+        $('#pov-upload-percent').text(percent + '%');
+        if (detail) {
+            $('#pov-upload-details').text(detail);
+        }
+    }
 
-            // Actualizar label
-            this.nextElementSibling.textContent = file.name;
+    $('#interior_pov_video').on('change', function(e) {
+        var file = e.target.files[0];
+        if (!file) return;
 
-            // Validar tipo
-            const validTypes = ['video/mp4', 'video/webm', 'video/quicktime'];
-            if (!validTypes.includes(file.type)) {
-                alert('Formato no valido. Use MP4 o WebM.');
-                this.value = '';
-                this.nextElementSibling.textContent = 'Seleccionar video...';
+        // Actualizar label
+        $(this).next('.custom-file-label').text(file.name);
+
+        // Validar tipo
+        var validTypes = ['video/mp4', 'video/webm', 'video/quicktime'];
+        if (!validTypes.includes(file.type)) {
+            alert('Formato no valido. Use MP4 o WebM.');
+            this.value = '';
+            $(this).next('.custom-file-label').text('Seleccionar video...');
+            return;
+        }
+
+        // Iniciar subida por chunks
+        uploadPovVideoInChunks(file);
+    });
+
+    async function uploadPovVideoInChunks(file) {
+        var totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+        var uploadId = 'pov_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        povUploadState.uploadId = uploadId;
+        povUploadState.aborted = false;
+        povUploadState.uploading = true;
+
+        // Mostrar UI de progreso
+        $('#pov-upload-progress').show();
+        $('#pov-upload-complete').hide();
+        $('#pov-upload-bar').removeClass('bg-danger').addClass('bg-primary');
+        $('#pov-upload-status').html('<i class="fa fa-spinner fa-spin mr-1"></i>Subiendo video POV...');
+        updatePovUploadProgress(0, 'Iniciando subida de ' + formatBytes(file.size) + ' en ' + totalChunks + ' partes...');
+
+        var csrfToken = $('meta[name="csrf-token"]').attr('content');
+
+        // Subir cada chunk
+        for (var i = 0; i < totalChunks; i++) {
+            if (povUploadState.aborted) {
+                console.log('Upload POV abortado por usuario');
                 return;
             }
 
-            // Iniciar subida por chunks
-            await uploadPovVideoInChunks(file);
-        });
-    }
+            var start = i * CHUNK_SIZE;
+            var end = Math.min(start + CHUNK_SIZE, file.size);
+            var chunk = file.slice(start, end);
 
-    async function uploadPovVideoInChunks(file) {
-        const progressContainer = document.getElementById('pov-upload-progress');
-        const progressBar = document.getElementById('pov-upload-bar');
-        const progressPercent = document.getElementById('pov-upload-percent');
-        const progressStatus = document.getElementById('pov-upload-status');
-        const progressDetails = document.getElementById('pov-upload-details');
-        const completeContainer = document.getElementById('pov-upload-complete');
-        const completeText = document.getElementById('pov-upload-complete-text');
-        const videoPathInput = document.getElementById('interior_pov_video_path');
+            var formData = new FormData();
+            formData.append('chunk', chunk);
+            formData.append('chunkIndex', i);
+            formData.append('totalChunks', totalChunks);
+            formData.append('uploadId', uploadId);
+            formData.append('fileName', file.name);
+            formData.append('_token', csrfToken);
 
-        // Resetear UI
-        progressContainer.style.display = 'block';
-        completeContainer.style.display = 'none';
-        progressBar.style.width = '0%';
-        progressBar.classList.remove('bg-danger');
-        progressBar.classList.add('bg-primary');
-        progressPercent.textContent = '0%';
-        povIsUploading = true;
-
-        // Generar ID unico para esta subida
-        povUploadId = 'pov_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-
-        const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
-
-        progressStatus.innerHTML = '<i class="fa fa-spinner fa-spin mr-1"></i>Subiendo video POV...';
-        progressDetails.textContent = `Tamano: ${fileSizeMB} MB | Chunks: 0/${totalChunks}`;
-
-        try {
-            for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
-                if (!povIsUploading) {
-                    return;
-                }
-
-                const start = chunkIndex * CHUNK_SIZE;
-                const end = Math.min(start + CHUNK_SIZE, file.size);
-                const chunk = file.slice(start, end);
-
-                const formData = new FormData();
-                formData.append('chunk', chunk, file.name);
-                formData.append('chunkIndex', chunkIndex);
-                formData.append('totalChunks', totalChunks);
-                formData.append('uploadId', povUploadId);
-                formData.append('fileName', file.name);
-
-                const response = await fetch('/admin/test-drive/upload-video-chunk', {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    },
-                    body: formData
+            try {
+                var response = await $.ajax({
+                    url: '{{ route("admin.test-drive.upload-chunk") }}',
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    timeout: 120000 // 2 minutos por chunk
                 });
 
-                if (!response.ok) {
-                    throw new Error('Error al subir chunk ' + chunkIndex);
+                if (response.success) {
+                    var percent = Math.round(((i + 1) / totalChunks) * 100);
+                    updatePovUploadProgress(percent, 'Parte ' + (i + 1) + ' de ' + totalChunks + ' completada');
+                } else {
+                    throw new Error(response.error || 'Error desconocido');
                 }
-
-                const result = await response.json();
-                if (!result.success) {
-                    throw new Error(result.error || 'Error desconocido');
-                }
-
-                // Actualizar progreso
-                const progress = Math.round(((chunkIndex + 1) / totalChunks) * 100);
-                progressBar.style.width = progress + '%';
-                progressPercent.textContent = progress + '%';
-                progressDetails.textContent = `Tamano: ${fileSizeMB} MB | Chunks: ${chunkIndex + 1}/${totalChunks}`;
+            } catch (error) {
+                console.error('Error subiendo chunk POV ' + i, error);
+                $('#pov-upload-status').html('<i class="fa fa-exclamation-triangle text-danger mr-1"></i>Error al subir');
+                $('#pov-upload-bar').removeClass('bg-primary').addClass('bg-danger');
+                updatePovUploadProgress(0, 'Error: ' + (error.responseJSON?.message || error.message || 'Fallo en la subida'));
+                povUploadState.uploading = false;
+                return;
             }
+        }
 
-            // Todos los chunks subidos, ensamblar video
-            progressStatus.innerHTML = '<i class="fa fa-cog fa-spin mr-1"></i>Ensamblando video...';
+        // Todos los chunks subidos, ahora ensamblar
+        $('#pov-upload-status').html('<i class="fa fa-spinner fa-spin mr-1"></i>Ensamblando video...');
+        updatePovUploadProgress(100, 'Ensamblando archivo final...');
 
-            const assembleResponse = await fetch('/admin/test-drive/complete-video-upload', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                },
-                body: JSON.stringify({
-                    uploadId: povUploadId,
+        try {
+            var completeResponse = await $.ajax({
+                url: '{{ route("admin.test-drive.complete-upload") }}',
+                type: 'POST',
+                data: {
+                    uploadId: uploadId,
                     fileName: file.name,
                     totalChunks: totalChunks,
                     vehicleId: vehicleId,
-                    isPov: true
-                })
+                    isPov: true,
+                    _token: csrfToken
+                },
+                timeout: 300000 // 5 minutos para ensamblar
             });
 
-            if (!assembleResponse.ok) {
-                throw new Error('Error al ensamblar video');
+            if (completeResponse.success) {
+                // Exito: guardar el path del video
+                $('#interior_pov_video_path').val(completeResponse.videoPath);
+
+                // Actualizar UI
+                $('#pov-upload-progress').hide();
+                $('#pov-upload-complete').show();
+                $('#pov-upload-complete-text').text('Video POV "' + file.name + '" subido correctamente');
+                povUploadState.uploading = false;
+            } else {
+                throw new Error(completeResponse.error || 'Error al ensamblar');
             }
-
-            const assembleResult = await assembleResponse.json();
-            if (!assembleResult.success) {
-                throw new Error(assembleResult.error || 'Error al ensamblar');
-            }
-
-            // Video subido exitosamente
-            videoPathInput.value = assembleResult.videoPath;
-
-            progressContainer.style.display = 'none';
-            completeContainer.style.display = 'block';
-            completeText.textContent = `Video POV "${file.name}" subido correctamente`;
-            povIsUploading = false;
-
         } catch (error) {
-            console.error('Error en subida POV:', error);
-            progressStatus.innerHTML = '<i class="fa fa-exclamation-triangle text-danger mr-1"></i>Error: ' + error.message;
-            progressBar.classList.remove('bg-primary');
-            progressBar.classList.add('bg-danger');
-            povIsUploading = false;
+            console.error('Error ensamblando video POV', error);
+            $('#pov-upload-status').html('<i class="fa fa-exclamation-triangle text-danger mr-1"></i>Error al ensamblar');
+            $('#pov-upload-bar').removeClass('bg-primary').addClass('bg-danger');
+            updatePovUploadProgress(0, 'Error: ' + (error.responseJSON?.error || error.message || 'Fallo al ensamblar'));
+            povUploadState.uploading = false;
         }
     }
 </script>

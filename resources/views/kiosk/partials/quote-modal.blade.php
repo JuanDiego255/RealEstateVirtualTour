@@ -188,6 +188,20 @@
             </div>
         </div>
 
+        <!-- Customer Info -->
+        <div style="margin-bottom: 20px;">
+            <div style="margin-bottom: 12px;">
+                <label style="display: block; font-size: 13px; color: rgba(255,255,255,0.7); margin-bottom: 6px;">Tu nombre *</label>
+                <input type="text" id="quoteCustomerName" placeholder="Tu nombre completo" required
+                    style="width: 100%; padding: 12px 15px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; color: #fff; font-size: 14px; outline: none;">
+            </div>
+            <div>
+                <label style="display: block; font-size: 13px; color: rgba(255,255,255,0.7); margin-bottom: 6px;">Tu teléfono *</label>
+                <input type="tel" id="quoteCustomerPhone" placeholder="8888-8888" required
+                    style="width: 100%; padding: 12px 15px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; color: #fff; font-size: 14px; outline: none;">
+            </div>
+        </div>
+
         <!-- Actions -->
         <div class="quote-actions">
             <button type="button" class="btn-quote-secondary" onclick="closeModal('quoteModal')">
@@ -195,7 +209,7 @@
             </button>
             <button type="button" class="btn-quote-primary" onclick="saveAndDownloadQuote()">
                 <i class="fas fa-download"></i>
-                Guardar PDF
+                Guardar Cotizacion
             </button>
         </div>
     </div>
@@ -257,12 +271,21 @@ async function saveAndDownloadQuote() {
     const termMonths = document.getElementById('termMonths').value;
     const interestRate = document.getElementById('interestRateSlider').value;
 
-    // Ask for customer info
-    const name = prompt('Tu nombre (para la cotización):');
-    if (!name) return;
-    const phone = prompt('Tu teléfono:');
-    if (!phone) return;
-    const email = prompt('Tu email (opcional):');
+    // Get customer info from form fields
+    const name = document.getElementById('quoteCustomerName').value.trim();
+    const phone = document.getElementById('quoteCustomerPhone').value.trim();
+
+    // Validate required fields
+    if (!name) {
+        alert('Por favor ingresa tu nombre');
+        document.getElementById('quoteCustomerName').focus();
+        return;
+    }
+    if (!phone) {
+        alert('Por favor ingresa tu teléfono');
+        document.getElementById('quoteCustomerPhone').focus();
+        return;
+    }
 
     try {
         const response = await fetch('{{ route("kiosk.quote.save") }}', {
@@ -279,7 +302,7 @@ async function saveAndDownloadQuote() {
                 interest_rate: interestRate,
                 customer_name: name,
                 customer_phone: phone,
-                customer_email: email,
+                customer_email: null,
                 event_name: typeof eventName !== 'undefined' ? eventName : null
             })
         });
@@ -289,6 +312,9 @@ async function saveAndDownloadQuote() {
             // Open PDF in new tab
             window.open(`/kiosk/quote/${data.quote_id}/pdf`, '_blank');
             alert('Cotización guardada! Se descargará el PDF.');
+            // Reset form fields
+            document.getElementById('quoteCustomerName').value = '';
+            document.getElementById('quoteCustomerPhone').value = '';
             closeModal('quoteModal');
         } else {
             alert('Error al guardar la cotización.');
