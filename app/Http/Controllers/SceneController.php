@@ -174,36 +174,57 @@ class SceneController extends Controller
 
     /**
      * Virtual tour viewer - supports both property and vehicle
+     * Ahora detecta automáticamente el tipo basándose en property_type
      */
     public function pannellum($id, Request $request)
     {
-        $type = $request->query('type', 'property');
+        // Detectar automáticamente el tipo de la publicación
+        $property = Properties::find($id);
 
-        if ($type === 'vehicle') {
+        // Si tiene property_type='vehicle', usar vehicle_id en scenes
+        // Si no, usar property_id en scenes
+        $isVehicle = $property && $property->property_type === 'vehicle';
+
+        // Para vehículos, buscar por vehicle_id; para propiedades, por property_id
+        if ($isVehicle) {
+            // Los vehículos pueden tener escenas vinculadas por vehicle_id O property_id
+            // Primero intentamos con vehicle_id, si no hay, con property_id
             $fscene = DB::table('scenes')
-                ->join('vehicles', 'scenes.vehicle_id', '=', 'vehicles.id')
+                ->leftJoin('properties', function($join) use ($id) {
+                    $join->on('scenes.property_id', '=', 'properties.id')
+                         ->orOn('scenes.vehicle_id', '=', DB::raw($id));
+                })
                 ->leftJoin('spins', function ($join) {
                     $join->on('scenes.spin_id', '=', 'spins.id')
                          ->where('spins.status', '=', 'ready');
                 })
-                ->where('scenes.vehicle_id', $id)
+                ->where(function($query) use ($id) {
+                    $query->where('scenes.vehicle_id', $id)
+                          ->orWhere('scenes.property_id', $id);
+                })
                 ->where('scenes.status', '1')
-                ->select('scenes.*', 'vehicles.name as property_name', 'spins.frames_dir as spin_frames_dir', 'spins.frames_count as spin_frames_count')
+                ->select('scenes.*', 'properties.name as property_name', 'spins.frames_dir as spin_frames_dir', 'spins.frames_count as spin_frames_count')
                 ->first();
 
             $scenes = DB::table('scenes')
-                ->where('vehicle_id', $id)
-                ->join('vehicles', 'scenes.vehicle_id', '=', 'vehicles.id')
+                ->leftJoin('properties', function($join) use ($id) {
+                    $join->on('scenes.property_id', '=', 'properties.id')
+                         ->orOn('scenes.vehicle_id', '=', DB::raw($id));
+                })
                 ->leftJoin('spins', function ($join) {
                     $join->on('scenes.spin_id', '=', 'spins.id')
                          ->where('spins.status', '=', 'ready');
                 })
-                ->select('scenes.*', 'vehicles.name as property_name', 'spins.frames_dir as spin_frames_dir', 'spins.frames_count as spin_frames_count')
+                ->where(function($query) use ($id) {
+                    $query->where('scenes.vehicle_id', $id)
+                          ->orWhere('scenes.property_id', $id);
+                })
+                ->select('scenes.*', 'properties.name as property_name', 'spins.frames_dir as spin_frames_dir', 'spins.frames_count as spin_frames_count')
                 ->get();
 
+            $sceneIds = $scenes->pluck('id')->toArray();
             $hotspots = DB::table('hotspots')
-                ->where('sc1.vehicle_id', $id)
-                ->join('scenes as sc1', 'sc1.id', '=', 'hotspots.sourceScene')
+                ->whereIn('hotspots.sourceScene', $sceneIds)
                 ->leftJoin('scenes as sc2', 'sc2.id', '=', 'hotspots.targetScene')
                 ->select('hotspots.*', 'sc2.title as targetSceneName')
                 ->get();
@@ -220,7 +241,7 @@ class SceneController extends Controller
                 ->first();
 
             $scenes = DB::table('scenes')
-                ->where('property_id', $id)
+                ->where('scenes.property_id', $id)
                 ->join('properties', 'scenes.property_id', '=', 'properties.id')
                 ->leftJoin('spins', function ($join) {
                     $join->on('scenes.spin_id', '=', 'spins.id')

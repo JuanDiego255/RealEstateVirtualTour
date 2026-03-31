@@ -349,6 +349,7 @@ class KioskController extends Controller
                 'client_email' => $request->get('client_email'),
                 'client_phone' => $request->get('client_phone'),
                 'property_ids' => [],
+                'vehicle_ids' => [],
                 'event_name' => $request->get('event_name'),
             ]);
         }

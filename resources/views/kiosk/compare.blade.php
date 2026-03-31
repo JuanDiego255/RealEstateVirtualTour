@@ -350,6 +350,33 @@
             color: var(--accent);
             font-size: 13px;
         }
+
+        /* Toast styles */
+        .toast {
+            padding: 16px 24px;
+            border-radius: 12px;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+            animation: toastSlideIn 0.3s ease, toastFadeOut 0.3s ease forwards;
+            animation-delay: 0s, 3s;
+            max-width: 350px;
+        }
+        .toast-success { background: linear-gradient(135deg, #22c55e, #16a34a); }
+        .toast-error { background: linear-gradient(135deg, #ef4444, #dc2626); }
+        .toast-info { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+        @keyframes toastSlideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes toastFadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; visibility: hidden; }
+        }
     </style>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -480,6 +507,62 @@
             <input type="checkbox" id="highlightDiff" checked onchange="highlightDifferences()">
             Resaltar diferencias
         </label>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" style="position: fixed; top: 80px; right: 30px; z-index: 9999; display: flex; flex-direction: column; gap: 10px;"></div>
+
+    <!-- Lead Modal -->
+    <div class="selector-modal" id="leadModal">
+        <div class="selector-content" style="max-width: 450px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+                <h3 style="display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-heart" style="color: var(--accent);"></i>
+                    Me Interesa
+                </h3>
+                <button onclick="closeModal('leadModal')" style="background: none; border: none; color: #fff; font-size: 24px; cursor: pointer;">&times;</button>
+            </div>
+            <form id="leadForm" onsubmit="submitLeadForm(event)">
+                <input type="hidden" name="vehicle_id" id="leadVehicleId">
+                <input type="hidden" name="interest_level" id="leadInterestLevel" value="medium">
+                <div style="margin-bottom: 18px;">
+                    <label style="display: block; font-size: 13px; color: rgba(255,255,255,0.7); margin-bottom: 8px;">Nombre completo *</label>
+                    <input type="text" name="name" required placeholder="Tu nombre" style="width: 100%; padding: 14px 18px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; color: #fff; font-size: 16px;">
+                </div>
+                <div style="margin-bottom: 18px;">
+                    <label style="display: block; font-size: 13px; color: rgba(255,255,255,0.7); margin-bottom: 8px;">Teléfono *</label>
+                    <input type="tel" name="phone" required placeholder="8888-8888" style="width: 100%; padding: 14px 18px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; color: #fff; font-size: 16px;">
+                </div>
+                <div style="margin-bottom: 18px;">
+                    <label style="display: block; font-size: 13px; color: rgba(255,255,255,0.7); margin-bottom: 8px;">Email (opcional)</label>
+                    <input type="email" name="email" placeholder="tu@email.com" style="width: 100%; padding: 14px 18px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; color: #fff; font-size: 16px;">
+                </div>
+                <div style="margin-bottom: 18px;">
+                    <label style="display: block; font-size: 13px; color: rgba(255,255,255,0.7); margin-bottom: 10px;">Nivel de interés</label>
+                    <div class="interest-levels" style="display: flex; gap: 10px;">
+                        <button type="button" class="interest-btn" data-level="low" onclick="selectInterestLevel(this)" style="flex: 1; padding: 12px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; color: #fff; cursor: pointer; text-align: center;">
+                            <i class="fas fa-thermometer-empty" style="display: block; font-size: 18px; margin-bottom: 5px;"></i>
+                            Bajo
+                        </button>
+                        <button type="button" class="interest-btn active" data-level="medium" onclick="selectInterestLevel(this)" style="flex: 1; padding: 12px; background: var(--accent); border: 1px solid var(--accent); border-radius: 10px; color: #000; cursor: pointer; text-align: center;">
+                            <i class="fas fa-thermometer-half" style="display: block; font-size: 18px; margin-bottom: 5px;"></i>
+                            Medio
+                        </button>
+                        <button type="button" class="interest-btn" data-level="high" onclick="selectInterestLevel(this)" style="flex: 1; padding: 12px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; color: #fff; cursor: pointer; text-align: center;">
+                            <i class="fas fa-thermometer-three-quarters" style="display: block; font-size: 18px; margin-bottom: 5px;"></i>
+                            Alto
+                        </button>
+                        <button type="button" class="interest-btn" data-level="hot" onclick="selectInterestLevel(this)" style="flex: 1; padding: 12px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; color: #fff; cursor: pointer; text-align: center;">
+                            <i class="fas fa-fire" style="display: block; font-size: 18px; margin-bottom: 5px;"></i>
+                            Compra
+                        </button>
+                    </div>
+                </div>
+                <button type="submit" style="width: 100%; padding: 16px; background: var(--accent); color: #000; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                    <i class="fas fa-paper-plane"></i> Enviar
+                </button>
+            </form>
+        </div>
     </div>
 
     <!-- Vehicle Selector Modal -->
@@ -784,8 +867,64 @@
         }
 
         function selectVehicle(vehicleId) {
-            // Open lead modal or similar
-            alert('Función "Me interesa" - En producción abriría el modal de leads');
+            document.getElementById('leadVehicleId').value = vehicleId;
+            document.getElementById('leadModal').classList.add('active');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        function selectInterestLevel(btn) {
+            document.querySelectorAll('.interest-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('leadInterestLevel').value = btn.dataset.level;
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            let icon = type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle';
+            toast.innerHTML = `<i class="fas ${icon}"></i><span>${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3500);
+        }
+
+        async function submitLeadForm(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+            data.event_name = eventName;
+            data.source = 'compare';
+            data.vehicles_viewed = [parseInt(data.vehicle_id)];
+
+            try {
+                const response = await fetch('{{ route("kiosk.lead.capture") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showToast('Gracias por tu interés! Un asesor te contactará pronto.', 'success');
+                    e.target.reset();
+                    document.querySelectorAll('.interest-btn').forEach(b => b.classList.remove('active'));
+                    document.querySelector('.interest-btn[data-level="medium"]').classList.add('active');
+                    document.getElementById('leadInterestLevel').value = 'medium';
+                    closeModal('leadModal');
+                } else {
+                    showToast('Error al enviar. Intenta de nuevo.', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Error al enviar. Intenta de nuevo.', 'error');
+            }
         }
 
         // ============================================

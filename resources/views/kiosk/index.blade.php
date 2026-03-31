@@ -573,6 +573,122 @@
             .spin-container { padding: 70px 20px 180px; }
             .vehicle-info-panel { padding: 20px; }
         }
+
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            top: 80px;
+            right: 30px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .toast {
+            padding: 16px 24px;
+            border-radius: 12px;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+            animation: toastSlideIn 0.3s ease, toastFadeOut 0.3s ease forwards;
+            animation-delay: 0s, 3s;
+            max-width: 350px;
+        }
+
+        .toast-success {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+        }
+
+        .toast-error {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+        }
+
+        .toast-info {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+        }
+
+        .toast i {
+            font-size: 20px;
+        }
+
+        @keyframes toastSlideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes toastFadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; visibility: hidden; }
+        }
+
+        /* Spin rotation indicator */
+        .spin-rotate-hint {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.75);
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-size: 13px;
+            color: rgba(255,255,255,0.9);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .spin-rotate-hint i {
+            color: var(--kiosk-accent);
+            animation: rotateHint 2s infinite;
+        }
+
+        @keyframes rotateHint {
+            0%, 100% { transform: rotate(-20deg); }
+            50% { transform: rotate(20deg); }
+        }
+
+        /* Interest level buttons */
+        .interest-levels {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .interest-btn {
+            flex: 1;
+            padding: 12px 8px;
+            background: var(--kiosk-card);
+            border: 1px solid var(--kiosk-border);
+            border-radius: 10px;
+            color: #fff;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+            font-size: 12px;
+        }
+
+        .interest-btn:hover {
+            background: rgba(255,255,255,0.15);
+        }
+
+        .interest-btn.active {
+            background: var(--kiosk-accent);
+            color: #000;
+            border-color: var(--kiosk-accent);
+        }
+
+        .interest-btn i {
+            display: block;
+            font-size: 18px;
+            margin-bottom: 5px;
+        }
     </style>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -595,10 +711,10 @@
         @endif
     </header>
 
-    <!-- Indicador de auto-rotate -->
-    <div class="auto-rotate-indicator" id="autoRotateIndicator">
+    <!-- Indicador de control manual (antes era auto-rotate) -->
+    <div class="auto-rotate-indicator" id="autoRotateIndicator" style="display: none;">
         <span class="auto-rotate-dot"></span>
-        <span id="autoRotateText">Auto-rotando</span>
+        <span id="autoRotateText">Control manual</span>
     </div>
 
     <!-- Flechas de navegación -->
@@ -620,6 +736,10 @@
                 <div class="spin-viewer" id="spinViewer{{ $index }}">
                     @if($hasSpin)
                         <canvas id="spinCanvas{{ $index }}"></canvas>
+                        <div class="spin-rotate-hint">
+                            <i class="fas fa-sync-alt"></i>
+                            <span>Arrastra para rotar 360</span>
+                        </div>
                     @else
                         <img class="static-image"
                              src="{{ $vehicle->image ? route('file', $vehicle->image) : url('images/producto-sin-imagen.PNG') }}"
@@ -660,6 +780,32 @@
     <div class="swipe-hint" id="swipeHint">
         <i class="fas fa-hand-point-left"></i>
         <p>Desliza para ver más vehículos</p>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Modal para datos del cliente en cotización -->
+    <div class="modal-kiosk" id="quoteClientModal">
+        <div class="modal-content-kiosk">
+            <div class="modal-header-kiosk">
+                <h3><i class="fas fa-user" style="color: var(--kiosk-accent);"></i> Tus Datos</h3>
+                <button class="modal-close" onclick="closeModal('quoteClientModal')">&times;</button>
+            </div>
+            <form id="quoteClientForm" onsubmit="submitQuoteWithClient(event)">
+                <div class="form-group-kiosk">
+                    <label>Tu nombre *</label>
+                    <input type="text" name="customer_name" class="form-control-kiosk" required placeholder="Tu nombre completo" id="quoteClientName">
+                </div>
+                <div class="form-group-kiosk">
+                    <label>Tu teléfono *</label>
+                    <input type="tel" name="customer_phone" class="form-control-kiosk" required placeholder="8888-8888" id="quoteClientPhone">
+                </div>
+                <button type="submit" class="btn-kiosk btn-kiosk-primary" style="width: 100%; justify-content: center;">
+                    <i class="fas fa-download"></i> Guardar Cotización
+                </button>
+            </form>
+        </div>
     </div>
 
     <!-- Widget flotante de comparador -->
@@ -711,6 +857,7 @@
             </div>
             <form id="leadForm">
                 <input type="hidden" name="vehicle_id" id="leadVehicleId">
+                <input type="hidden" name="interest_level" id="leadInterestLevel" value="medium">
                 <div class="form-group-kiosk">
                     <label>Nombre completo *</label>
                     <input type="text" name="name" class="form-control-kiosk" required placeholder="Tu nombre">
@@ -722,6 +869,27 @@
                 <div class="form-group-kiosk">
                     <label>Email (opcional)</label>
                     <input type="email" name="email" class="form-control-kiosk" placeholder="tu@email.com">
+                </div>
+                <div class="form-group-kiosk">
+                    <label>Nivel de interés</label>
+                    <div class="interest-levels">
+                        <button type="button" class="interest-btn" data-level="low" onclick="selectInterestLevel(this)">
+                            <i class="fas fa-thermometer-empty"></i>
+                            Bajo
+                        </button>
+                        <button type="button" class="interest-btn active" data-level="medium" onclick="selectInterestLevel(this)">
+                            <i class="fas fa-thermometer-half"></i>
+                            Medio
+                        </button>
+                        <button type="button" class="interest-btn" data-level="high" onclick="selectInterestLevel(this)">
+                            <i class="fas fa-thermometer-three-quarters"></i>
+                            Alto
+                        </button>
+                        <button type="button" class="interest-btn" data-level="hot" onclick="selectInterestLevel(this)">
+                            <i class="fas fa-fire"></i>
+                            Compra
+                        </button>
+                    </div>
                 </div>
                 <button type="submit" class="btn-kiosk btn-kiosk-primary" style="width: 100%; justify-content: center;">
                     <i class="fas fa-paper-plane"></i> Enviar
@@ -808,6 +976,36 @@
         let isPaused = false;
         let spinInstances = [];
         let viewStartTime = Date.now();
+
+        // ============================================
+        // TOAST NOTIFICATIONS
+        // ============================================
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+
+            let icon = 'fa-check-circle';
+            if (type === 'error') icon = 'fa-exclamation-circle';
+            if (type === 'info') icon = 'fa-info-circle';
+
+            toast.innerHTML = `<i class="fas ${icon}"></i><span>${message}</span>`;
+            container.appendChild(toast);
+
+            // Remove after animation
+            setTimeout(() => {
+                toast.remove();
+            }, 3500);
+        }
+
+        // ============================================
+        // INTEREST LEVEL SELECTION
+        // ============================================
+        function selectInterestLevel(btn) {
+            document.querySelectorAll('#leadModal .interest-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('leadInterestLevel').value = btn.dataset.level;
+        }
 
         // ============================================
         // SLIDER NAVIGATION
@@ -963,6 +1161,12 @@
                 <i class="fas fa-balance-scale"></i> ${isInCompare ? 'Quitar' : 'Comparar'}
                 ${compareList.length > 0 ? '<span class="compare-badge">' + compareList.length + '</span>' : ''}
             </button>`;
+            buttonsHtml += `<a href="/admin/test-drive/${vehicle.id}/preview" class="btn-kiosk btn-kiosk-secondary" style="text-decoration: none;">
+                <i class="fas fa-car"></i> Test Drive
+            </a>`;
+            buttonsHtml += `<a href="/virtual-tour/${vehicle.id}" class="btn-kiosk btn-kiosk-secondary" style="text-decoration: none;">
+                <i class="fas fa-vr-cardboard"></i> Virtual Tour
+            </a>`;
 
             panel.innerHTML = `
                 <div class="vehicle-main-info">
@@ -1201,18 +1405,27 @@
         document.getElementById('termMonths').addEventListener('change', updateQuoteCalculation);
         document.getElementById('interestRate').addEventListener('input', updateQuoteCalculation);
 
-        async function saveQuote() {
+        function saveQuote() {
+            // Abrir modal para capturar datos del cliente
+            document.getElementById('quoteClientModal').classList.add('active');
+        }
+
+        async function submitQuoteWithClient(e) {
+            e.preventDefault();
+
             const vehicleId = document.getElementById('quoteVehicleId').value;
             const price = document.getElementById('quoteVehiclePrice').value;
             const downPercent = document.getElementById('downPaymentSlider').value;
             const downPayment = price * (downPercent / 100);
             const termMonths = document.getElementById('termMonths').value;
             const interestRate = document.getElementById('interestRate').value;
+            const name = document.getElementById('quoteClientName').value;
+            const phone = document.getElementById('quoteClientPhone').value;
 
-            // Pedir datos del cliente
-            const name = prompt('Tu nombre:');
-            const phone = prompt('Tu teléfono:');
-            if (!name || !phone) return;
+            if (!name || !phone) {
+                showToast('Por favor completa tu nombre y teléfono', 'error');
+                return;
+            }
 
             try {
                 const response = await fetch('{{ route("kiosk.quote.save") }}', {
@@ -1235,13 +1448,17 @@
 
                 const data = await response.json();
                 if (data.success) {
-                    alert('Cotización guardada! Puedes descargar el PDF.');
+                    showToast('Cotización guardada! Descargando PDF...', 'success');
                     window.open(`/kiosk/quote/${data.quote_id}/pdf`, '_blank');
+                    closeModal('quoteClientModal');
                     closeModal('quoteModal');
+                    document.getElementById('quoteClientForm').reset();
+                } else {
+                    showToast('Error al guardar la cotización', 'error');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('Error al guardar la cotización');
+                showToast('Error al guardar la cotización', 'error');
             }
         }
 
@@ -1269,13 +1486,19 @@
 
                 const result = await response.json();
                 if (result.success) {
-                    alert('Gracias por tu interés! Un asesor te contactará pronto.');
+                    showToast('Gracias por tu interés! Un asesor te contactará pronto.', 'success');
                     e.target.reset();
+                    // Reset interest level buttons
+                    document.querySelectorAll('#leadModal .interest-btn').forEach(b => b.classList.remove('active'));
+                    document.querySelector('#leadModal .interest-btn[data-level="medium"]').classList.add('active');
+                    document.getElementById('leadInterestLevel').value = 'medium';
                     closeModal('leadModal');
+                } else {
+                    showToast('Error al enviar. Intenta de nuevo.', 'error');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('Error al enviar. Intenta de nuevo.');
+                showToast('Error al enviar. Intenta de nuevo.', 'error');
             }
         });
 
@@ -1303,10 +1526,13 @@
                 if (data.success) {
                     wishlistToken = data.wishlist.share_token;
                     localStorage.setItem('wishlistToken', wishlistToken);
-                    alert('Agregado a tu lista! Accede en:\n' + data.share_url);
+                    showToast('Vehículo agregado a tu lista de favoritos!', 'success');
+                } else {
+                    showToast('Error al guardar. Intenta de nuevo.', 'error');
                 }
             } catch (error) {
                 console.error('Error:', error);
+                showToast('Error al guardar. Intenta de nuevo.', 'error');
             }
         }
 
@@ -1365,13 +1591,15 @@
             if (index > -1) {
                 compareList.splice(index, 1);
                 delete compareNames[vehicleId];
+                showToast('Vehículo removido de comparación', 'info');
             } else {
                 if (compareList.length >= 4) {
-                    alert('Máximo 4 vehículos para comparar');
+                    showToast('Máximo 4 vehículos para comparar', 'error');
                     return;
                 }
                 compareList.push(vehicleId);
                 compareNames[vehicleId] = vehicleName;
+                showToast('Vehículo agregado a comparación', 'success');
             }
             updateCompareUI();
             // Actualizar el panel de info para reflejar el cambio
@@ -1402,7 +1630,7 @@
         function goToCompare(event) {
             event.preventDefault();
             if (compareList.length < 2) {
-                alert('Selecciona al menos 2 vehículos para comparar');
+                showToast('Selecciona al menos 2 vehículos para comparar', 'info');
                 return;
             }
             const params = compareList.map(id => `vehicles[]=${id}`).join('&');
@@ -1453,7 +1681,8 @@
             if (vehicles.length > 0) {
                 updateVehicleInfo(vehicles[0]);
                 initSpinForSlide(0);
-                startAutoRotate();
+                // Auto-rotate deshabilitado - control manual por el agente
+                // startAutoRotate();
                 resetIdleTimeout();
             }
 

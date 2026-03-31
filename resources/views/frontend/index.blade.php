@@ -154,6 +154,23 @@
         </div>
         {{-- /Banner --}}
 
+        {{-- ACCESO RÁPIDO AL KIOSK --}}
+        <section class="py-4" style="background: linear-gradient(135deg, #c2ac1f 0%, #a89518 100%);">
+            <div class="container">
+                <div class="row align-items-center justify-content-between">
+                    <div class="col-md-8">
+                        <h4 class="mb-1 text-white"><i class="fa fa-desktop mr-2"></i> Modo Kiosko</h4>
+                        <p class="mb-0 text-white" style="opacity: 0.9;">Explora vehículos con spin 360 interactivo</p>
+                    </div>
+                    <div class="col-md-4 text-md-right mt-3 mt-md-0">
+                        <a href="{{ route('kiosk.index') }}" class="btn btn-light btn-lg" style="font-weight: 600;">
+                            <i class="fa fa-play-circle mr-2"></i> Ir al Kiosko
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         {{-- SECCIÓN DE BÚSQUEDA RÁPIDA --}}
         <section class="ftco-section bg-light py-5">
             <div class="container">

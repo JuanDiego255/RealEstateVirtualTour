@@ -62,6 +62,15 @@
                             </li>
                         @endif
 
+                        {{-- Dashboard de Eventos (Kiosk) --}}
+                        @if (method_exists(Auth::user(), 'hasActiveSubscription') &&
+                                (Auth::user()->hasActiveSubscription() ||
+                                    (method_exists(Auth::user(), 'isSuperAdmin') && Auth::user()->isSuperAdmin())))
+                            <li class="{{ Request::routeIs('kiosk.dashboard') ? 'active' : '' }}">
+                                <a href="{{ route('kiosk.dashboard') }}"><i class="fa fa-desktop"></i><span>Dashboard Eventos</span></a>
+                            </li>
+                        @endif
+
                         {{-- CRM + Agenda --}}
                         @if (method_exists(Auth::user(), 'hasActiveSubscription') &&
                                 (Auth::user()->hasActiveSubscription() ||
