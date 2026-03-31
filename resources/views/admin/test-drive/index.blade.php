@@ -654,7 +654,7 @@
 </div>
 @endsection
 
-@section('scripts')
+@push('script')
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 <script>
     const vehicleId = {{ $vehicle->id }};
@@ -803,7 +803,7 @@
         updateUploadProgress(0, 'Iniciando subida de ' + formatBytes(file.size) + ' en ' + totalChunks + ' partes...');
         $('#submitAddVideoBtn').prop('disabled', true);
 
-        var csrfToken = $('meta[name="csrf-token"]').attr('content');
+        var csrfToken = $('meta[name="csrf-token"]').attr('content') || $('input[name="_token"]').val();
 
         // Subir cada chunk
         for (var i = 0; i < totalChunks; i++) {
@@ -892,7 +892,7 @@
 
     function cancelUpload() {
         if (videoUploadState.uploadId) {
-            var csrfToken = $('meta[name="csrf-token"]').attr('content');
+            var csrfToken = $('meta[name="csrf-token"]').attr('content') || $('input[name="_token"]').val();
             $.post('{{ route("admin.test-drive.cancel-upload") }}', {
                 uploadId: videoUploadState.uploadId,
                 _token: csrfToken
@@ -995,7 +995,7 @@
         $('#pov-upload-status').html('<i class="fa fa-spinner fa-spin mr-1"></i>Subiendo video POV...');
         updatePovUploadProgress(0, 'Iniciando subida de ' + formatBytes(file.size) + ' en ' + totalChunks + ' partes...');
 
-        var csrfToken = $('meta[name="csrf-token"]').attr('content');
+        var csrfToken = $('meta[name="csrf-token"]').attr('content') || $('input[name="_token"]').val();
 
         // Subir cada chunk
         for (var i = 0; i < totalChunks; i++) {
@@ -1082,4 +1082,4 @@
         }
     }
 </script>
-@endsection
+@endpush
