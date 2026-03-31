@@ -277,12 +277,12 @@ async function saveAndDownloadQuote() {
 
     // Validate required fields
     if (!name) {
-        alert('Por favor ingresa tu nombre');
+        showToast('Por favor ingresa tu nombre', 'error');
         document.getElementById('quoteCustomerName').focus();
         return;
     }
     if (!phone) {
-        alert('Por favor ingresa tu teléfono');
+        showToast('Por favor ingresa tu teléfono', 'error');
         document.getElementById('quoteCustomerPhone').focus();
         return;
     }
@@ -311,17 +311,17 @@ async function saveAndDownloadQuote() {
         if (data.success) {
             // Open PDF in new tab
             window.open(`/kiosk/quote/${data.quote_id}/pdf`, '_blank');
-            alert('Cotización guardada! Se descargará el PDF.');
+            showToast('Cotización guardada! Se descargará el PDF.', 'success');
             // Reset form fields
             document.getElementById('quoteCustomerName').value = '';
             document.getElementById('quoteCustomerPhone').value = '';
             closeModal('quoteModal');
         } else {
-            alert('Error al guardar la cotización.');
+            showToast('Error al guardar la cotización.', 'error');
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('Error al procesar. Intenta de nuevo.');
+        showToast('Error al procesar. Intenta de nuevo.', 'error');
     }
 }
 </script>

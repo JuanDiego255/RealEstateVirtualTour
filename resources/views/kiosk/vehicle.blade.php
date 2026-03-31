@@ -360,6 +360,43 @@
             right: 30px;
             z-index: 80;
         }
+
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            top: 80px;
+            right: 30px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .toast {
+            padding: 16px 24px;
+            border-radius: 12px;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+            animation: toastSlideIn 0.3s ease, toastFadeOut 0.3s ease forwards;
+            animation-delay: 0s, 3s;
+            max-width: 350px;
+        }
+        .toast-success { background: linear-gradient(135deg, #22c55e, #16a34a); }
+        .toast-error { background: linear-gradient(135deg, #ef4444, #dc2626); }
+        .toast-info { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+        .toast i { font-size: 20px; }
+        @keyframes toastSlideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes toastFadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; visibility: hidden; }
+        }
     </style>
 </head>
 <body>
@@ -480,7 +517,22 @@
     {{-- Modal de Cotizador --}}
     @include('kiosk.partials.quote-modal')
 
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
     <script>
+        // Toast Notifications
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            let icon = 'fa-check-circle';
+            if (type === 'error') icon = 'fa-exclamation-circle';
+            if (type === 'info') icon = 'fa-info-circle';
+            toast.innerHTML = `<i class="fas ${icon}"></i><span>${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3500);
+        }
         const vehicleId = {{ $vehicle->id }};
         const eventName = '{{ $eventName ?? "" }}';
         const vehiclePrice = {{ $vehicle->price ?? 0 }};

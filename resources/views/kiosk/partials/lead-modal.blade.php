@@ -203,15 +203,15 @@ async function submitLeadForm(e) {
 
         const result = await response.json();
         if (result.success) {
-            alert('Gracias por tu interés! Un asesor te contactará pronto.');
+            showToast('Gracias por tu interés! Un asesor te contactará pronto.', 'success');
             form.reset();
             closeModal('leadModal');
         } else {
-            alert('Error al enviar. Intenta de nuevo.');
+            showToast('Error al enviar. Intenta de nuevo.', 'error');
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('Error al enviar. Intenta de nuevo.');
+        showToast('Error al enviar. Intenta de nuevo.', 'error');
     }
 }
 </script>

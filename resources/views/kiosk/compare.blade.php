@@ -876,8 +876,16 @@
         }
 
         function selectInterestLevel(btn) {
-            document.querySelectorAll('.interest-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.interest-btn').forEach(b => {
+                b.classList.remove('active');
+                b.style.background = 'rgba(255,255,255,0.08)';
+                b.style.borderColor = 'rgba(255,255,255,0.12)';
+                b.style.color = '#fff';
+            });
             btn.classList.add('active');
+            btn.style.background = 'var(--accent)';
+            btn.style.borderColor = 'var(--accent)';
+            btn.style.color = '#000';
             document.getElementById('leadInterestLevel').value = btn.dataset.level;
         }
 
@@ -914,8 +922,17 @@
                 if (result.success) {
                     showToast('Gracias por tu interés! Un asesor te contactará pronto.', 'success');
                     e.target.reset();
-                    document.querySelectorAll('.interest-btn').forEach(b => b.classList.remove('active'));
-                    document.querySelector('.interest-btn[data-level="medium"]').classList.add('active');
+                    document.querySelectorAll('.interest-btn').forEach(b => {
+                        b.classList.remove('active');
+                        b.style.background = 'rgba(255,255,255,0.08)';
+                        b.style.borderColor = 'rgba(255,255,255,0.12)';
+                        b.style.color = '#fff';
+                    });
+                    const mediumBtn = document.querySelector('.interest-btn[data-level="medium"]');
+                    mediumBtn.classList.add('active');
+                    mediumBtn.style.background = 'var(--accent)';
+                    mediumBtn.style.borderColor = 'var(--accent)';
+                    mediumBtn.style.color = '#000';
                     document.getElementById('leadInterestLevel').value = 'medium';
                     closeModal('leadModal');
                 } else {
