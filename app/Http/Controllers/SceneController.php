@@ -363,6 +363,88 @@ class SceneController extends Controller
     }
 
     /**
+     * Store multiple panorama scenes in batch (AJAX).
+     * Each scene: title, hfov, yaw, pitch, image (panorama), image_ref (thumbnail), property_id, item_type
+     */
+    public function storeBatch(Request $request)
+    {
+        $type    = $request->input('item_type', 'property');
+        $itemId  = $request->input('property_id');
+        $titles  = $request->input('titles', []);
+        $hfovs   = $request->input('hfovs', []);
+        $count   = count($titles);
+
+        if ($count === 0) {
+            return response()->json(['success' => false, 'message' => 'No se recibieron escenas'], 422);
+        }
+
+        $created = 0;
+        $errors  = [];
+
+        for ($i = 0; $i < $count; $i++) {
+            try {
+                $imageKey    = 'images_' . $i;
+                $imageRefKey = 'images_ref_' . $i;
+
+                if (!$request->hasFile($imageKey)) {
+                    $errors[] = 'Escena #' . ($i + 1) . ': falta imagen panorámica';
+                    continue;
+                }
+
+                $title = trim($titles[$i] ?? '');
+                if ($title === '') {
+                    $errors[] = 'Escena #' . ($i + 1) . ': falta título';
+                    continue;
+                }
+
+                $hfov = isset($hfovs[$i]) && is_numeric($hfovs[$i]) ? (float) $hfovs[$i] : 200;
+
+                $image    = $request->file($imageKey)->store('uploads', 'public');
+                $imageRef = $request->hasFile($imageRefKey)
+                    ? $request->file($imageRefKey)->store('uploads', 'public')
+                    : $image;
+
+                $sceneData = [
+                    'title'     => $title,
+                    'type'      => 'equirectangular',
+                    'hfov'      => $hfov,
+                    'yaw'       => 0,
+                    'pitch'     => 0,
+                    'image'     => $image,
+                    'image_ref' => $imageRef,
+                ];
+
+                if ($type === 'vehicle') {
+                    $sceneData['vehicle_id'] = $itemId;
+                } else {
+                    $sceneData['property_id'] = $itemId;
+                }
+
+                Scene::create($sceneData);
+                $created++;
+            } catch (\Exception $e) {
+                $errors[] = 'Escena #' . ($i + 1) . ': ' . $e->getMessage();
+            }
+        }
+
+        if ($created > 0) {
+            return response()->json([
+                'success'  => true,
+                'message'  => $created . ' escena(s) creada(s) exitosamente',
+                'created'  => $created,
+                'errors'   => $errors,
+                'redirect' => route('config', ['id' => $itemId, 'type' => $type]),
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'No se pudo crear ninguna escena',
+            'errors'  => $errors,
+        ], 422);
+    }
+
+    /**
      * Display the specified resource.
      */
     public function show($id)
