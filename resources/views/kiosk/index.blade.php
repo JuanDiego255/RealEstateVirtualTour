@@ -785,28 +785,6 @@
     <!-- Toast Container -->
     <div class="toast-container" id="toastContainer"></div>
 
-    <!-- Modal para datos del cliente en cotización -->
-    <div class="modal-kiosk" id="quoteClientModal">
-        <div class="modal-content-kiosk">
-            <div class="modal-header-kiosk">
-                <h3><i class="fas fa-user" style="color: var(--kiosk-accent);"></i> Tus Datos</h3>
-                <button class="modal-close" onclick="closeModal('quoteClientModal')">&times;</button>
-            </div>
-            <form id="quoteClientForm" onsubmit="submitQuoteWithClient(event)">
-                <div class="form-group-kiosk">
-                    <label>Tu nombre *</label>
-                    <input type="text" name="customer_name" class="form-control-kiosk" required placeholder="Tu nombre completo" id="quoteClientName">
-                </div>
-                <div class="form-group-kiosk">
-                    <label>Tu teléfono *</label>
-                    <input type="tel" name="customer_phone" class="form-control-kiosk" required placeholder="8888-8888" id="quoteClientPhone">
-                </div>
-                <button type="submit" class="btn-kiosk btn-kiosk-primary" style="width: 100%; justify-content: center;">
-                    <i class="fas fa-download"></i> Guardar Cotización
-                </button>
-            </form>
-        </div>
-    </div>
 
     <!-- Widget flotante de comparador -->
     <div class="compare-floating" id="compareFloating">
@@ -949,7 +927,16 @@
                     </div>
                 </div>
 
-                <button type="button" class="btn-kiosk btn-kiosk-primary" style="width: 100%; justify-content: center; margin-bottom: 10px;" onclick="saveQuote()">
+                <div class="form-group-kiosk">
+                    <label>Tu nombre *</label>
+                    <input type="text" name="customer_name" id="quoteCustomerName" class="form-control-kiosk" required placeholder="Tu nombre completo">
+                </div>
+                <div class="form-group-kiosk">
+                    <label>Tu teléfono *</label>
+                    <input type="tel" name="customer_phone" id="quoteCustomerPhone" class="form-control-kiosk" required placeholder="8888-8888">
+                </div>
+
+                <button type="button" class="btn-kiosk btn-kiosk-primary" style="width: 100%; justify-content: center; margin-bottom: 10px;" onclick="submitQuoteDirectly()">
                     <i class="fas fa-download"></i> Guardar Cotización
                 </button>
             </form>
@@ -1405,25 +1392,24 @@
         document.getElementById('termMonths').addEventListener('change', updateQuoteCalculation);
         document.getElementById('interestRate').addEventListener('input', updateQuoteCalculation);
 
-        function saveQuote() {
-            // Abrir modal para capturar datos del cliente
-            document.getElementById('quoteClientModal').classList.add('active');
-        }
-
-        async function submitQuoteWithClient(e) {
-            e.preventDefault();
-
+        async function submitQuoteDirectly() {
             const vehicleId = document.getElementById('quoteVehicleId').value;
             const price = document.getElementById('quoteVehiclePrice').value;
             const downPercent = document.getElementById('downPaymentSlider').value;
             const downPayment = price * (downPercent / 100);
             const termMonths = document.getElementById('termMonths').value;
             const interestRate = document.getElementById('interestRate').value;
-            const name = document.getElementById('quoteClientName').value;
-            const phone = document.getElementById('quoteClientPhone').value;
+            const name = document.getElementById('quoteCustomerName').value.trim();
+            const phone = document.getElementById('quoteCustomerPhone').value.trim();
 
-            if (!name || !phone) {
-                showToast('Por favor completa tu nombre y teléfono', 'error');
+            if (!name) {
+                showToast('Por favor ingresa tu nombre', 'error');
+                document.getElementById('quoteCustomerName').focus();
+                return;
+            }
+            if (!phone) {
+                showToast('Por favor ingresa tu teléfono', 'error');
+                document.getElementById('quoteCustomerPhone').focus();
                 return;
             }
 
@@ -1450,9 +1436,9 @@
                 if (data.success) {
                     showToast('Cotización guardada! Descargando PDF...', 'success');
                     window.open(`/kiosk/quote/${data.quote_id}/pdf`, '_blank');
-                    closeModal('quoteClientModal');
+                    document.getElementById('quoteCustomerName').value = '';
+                    document.getElementById('quoteCustomerPhone').value = '';
                     closeModal('quoteModal');
-                    document.getElementById('quoteClientForm').reset();
                 } else {
                     showToast('Error al guardar la cotización', 'error');
                 }
