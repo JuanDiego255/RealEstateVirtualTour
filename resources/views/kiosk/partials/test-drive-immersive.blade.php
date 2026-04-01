@@ -1154,9 +1154,9 @@ class ImmersiveTestDrive {
 
             if (engineLight) engineLight.classList.remove('active');
 
-            // Parar video
+            // Volver al video ambiente (lento) en vez de pausarlo
             if (video) {
-                video.pause();
+                video.playbackRate = 0.25;
             }
 
             // Parar sonido
@@ -1242,6 +1242,22 @@ class ImmersiveTestDrive {
         } else if (modal) {
             modal.classList.remove('vibrating');
         }
+
+        // Sincronizar playbackRate del video con las RPM
+        const video = document.getElementById('immersiveVideo');
+        if (video && !video.paused) {
+            if (this.isRunning) {
+                // 0.3x en ralentí → 2.0x en redline
+                const minRate = 0.3;
+                const maxRate = 2.0;
+                const rpmRange  = this.config.maxRpm - this.config.idleRpm;
+                const rpmOffset = Math.max(0, this.rpm - this.config.idleRpm);
+                const factor    = Math.min(1, rpmOffset / rpmRange);
+                video.playbackRate = minRate + factor * (maxRate - minRate);
+            } else {
+                video.playbackRate = 0.25; // ambiente cuando el motor está apagado
+            }
+        }
     }
 }
 
@@ -1253,7 +1269,7 @@ function launchTestDrive() {
     if (modal) {
         modal.classList.add('active');
 
-        // Inicializar si no existe
+        // Inicializar instancia si no existe
         if (!testDriveInstance) {
             testDriveInstance = new ImmersiveTestDrive();
         }
@@ -1261,6 +1277,18 @@ function launchTestDrive() {
         // Marcar boton como listo
         const btn = document.getElementById('ignitionBtn');
         if (btn) btn.classList.add('ready');
+
+        // El video estaba en display:none desde que cargó la página, así que el
+        // navegador no cargó su buffer. Forzar carga y reproducción en bucle lento
+        // en cuanto el modal sea visible (estamos dentro de un gesto del usuario).
+        const video = document.getElementById('immersiveVideo');
+        if (video) {
+            video.muted = true;
+            video.loop  = true;
+            video.load();                   // fuerza la carga del recurso
+            video.playbackRate = 0.25;      // velocidad ambiente antes de encender
+            video.play().catch(() => {});
+        }
 
         // Fullscreen en moviles
         if (document.documentElement.requestFullscreen && window.innerWidth < 768) {
