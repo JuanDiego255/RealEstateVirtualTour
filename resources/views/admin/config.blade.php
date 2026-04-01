@@ -157,10 +157,22 @@
                         data: 'title'
                     },
                     {
-                        data: 'image',
+                        data: 'image_ref',
                         render: function(data, type, full, meta) {
-                            let defaultImage = "{{ url('images/producto-sin-imagen.PNG') }}";
-                            return `<img style="height:70px;" src="${data ? "{{ route('file', '') }}/" + data : defaultImage}" />`;
+                            let fileBase = "{{ route('file', '') }}/";
+                            // Preferir miniatura (image_ref), luego panorama, luego placeholder
+                            let src = data ? fileBase + data : (full.image ? fileBase + full.image : null);
+                            if (src) {
+                                return `<img style="height:70px;width:90px;object-fit:cover;border-radius:4px;border:1px solid #dee2e6;" src="${src}" />`;
+                            }
+                            // Placeholder CSS con iniciales y título cuando no hay imagen
+                            let title  = full.title || 'Escena';
+                            let initials = title.substring(0, 2).toUpperCase();
+                            let short    = title.length > 12 ? title.substring(0, 12) + '…' : title;
+                            return `<div style="height:70px;width:90px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;gap:3px;">
+                                        <span style="font-size:22px;font-weight:700;line-height:1;">${initials}</span>
+                                        <span style="font-size:9px;text-align:center;padding:0 4px;opacity:.85;word-break:break-word;">${short}</span>
+                                    </div>`;
                         },
                         orderable: false,
                         searchable: false
