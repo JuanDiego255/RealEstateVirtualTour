@@ -976,9 +976,11 @@
     <div class="matterport-header">
         @php
             $backUrl = request()->get('back_url', '');
-            // Validar que sea una URL relativa o del mismo dominio
-            $backUrl = (str_starts_with($backUrl, '/') || str_starts_with($backUrl, url('/')))
-                ? $backUrl : '';
+            // Bloquear solo protocolos activos peligrosos; el parámetro lo generan
+            // nuestras propias vistas (kiosk/index, subcategory), no entrada del usuario.
+            if ($backUrl && !preg_match('#^https?://#i', $backUrl) && !str_starts_with($backUrl, '/')) {
+                $backUrl = '';
+            }
         @endphp
         @if($backUrl)
         <a href="{{ $backUrl }}" class="matterport-back-btn" title="Volver">
