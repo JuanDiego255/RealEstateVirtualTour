@@ -1283,44 +1283,54 @@ function launchTestDrive() {
         // en cuanto el modal sea visible (estamos dentro de un gesto del usuario).
         const video = document.getElementById('immersiveVideo');
         if (video) {
-            video.muted    = true;
-            video.loop     = true;
-            video.controls = false;
+            video.muted = true;
+            video.loop  = true;
 
-            // Estrategia: setear video.src directo (sin MIME type) para que el
-            // browser detecte el formato desde los bytes del archivo.
-            // Esto evita que el <source type="..."> sea rechazado por el browser
-            // antes de intentar siquiera leer el archivo (el caso MOV/QuickTime).
-            const sourceEl = video.querySelector('source');
-            if (sourceEl && sourceEl.src) {
-                video.src = sourceEl.src;
-            }
+            // Log completo para diagnóstico
+            console.log('[TD] video encontrado — readyState:', video.readyState,
+                '| src attr:', video.getAttribute('src'),
+                '| sources:', Array.from(video.querySelectorAll('source')).map(s => s.src + ' [' + s.type + ']'));
 
-            // Diagnóstico: visible en consola para identificar problemas de codec
-            video.addEventListener('loadedmetadata', () => {
-                console.log('[TestDrive] Video cargado:', video.videoWidth + 'x' + video.videoHeight,
-                    '| duración:', video.duration + 's', '| src:', video.currentSrc);
-                if (video.videoWidth === 0) {
-                    console.warn('[TestDrive] videoWidth=0: el codec probablemente no es compatible con este browser (HEVC/ProRes no soportados en Chrome/Firefox sin hardware). Convierte el archivo a H.264 MP4.');
+            video.addEventListener('loadedmetadata', function() {
+                console.log('[TD] loadedmetadata — ' + video.videoWidth + 'x' + video.videoHeight +
+                    ' | dur:' + video.duration + 's | currentSrc:', video.currentSrc);
+            }, { once: true });
+
+            video.addEventListener('stalled', function() {
+                console.warn('[TD] stalled — networkState:', video.networkState, '| readyState:', video.readyState);
+            });
+
+            video.addEventListener('error', function() {
+                console.error('[TD] error — código:', video.error?.code,
+                    '| msg:', video.error?.message, '| src:', video.currentSrc);
+            }, { once: true });
+
+            video.addEventListener('canplay', function() {
+                console.log('[TD] canplay — lanzando play');
+                video.play().then(function() {
+                    console.log('[TD] reproduciendo — playbackRate:', video.playbackRate,
+                        '| paused:', video.paused, '| dim:', video.videoWidth + 'x' + video.videoHeight);
+                }).catch(function(e) {
+                    console.warn('[TD] play() rechazado:', e.name, e.message);
+                });
+            }, { once: true });
+
+            // Fallback: si canplay nunca llega en 5s, logear estado y forzar play
+            var _fb = setTimeout(function() {
+                console.warn('[TD] timeout 5s sin canplay — readyState:', video.readyState,
+                    '| networkState:', video.networkState, '| error:', video.error,
+                    '| currentSrc:', video.currentSrc);
+                if (video.paused) {
+                    video.play().catch(function(e) {
+                        console.warn('[TD] fallback play fallido:', e.name, e.message);
+                    });
                 }
-            }, { once: true });
+            }, 5000);
+            video.addEventListener('playing', function() { clearTimeout(_fb); }, { once: true });
 
-            video.addEventListener('error', () => {
-                const err = video.error;
-                console.error('[TestDrive] Error de video — código:', err?.code, '| mensaje:', err?.message, '| src:', video.currentSrc);
-            }, { once: true });
-
-            const startAmbientVideo = () => {
-                video.playbackRate = 0.25;
-                video.play().catch(e => console.warn('[TestDrive] video.play() rechazado:', e));
-            };
-
-            if (video.readyState >= 3) {
-                startAmbientVideo();
-            } else {
-                video.addEventListener('canplay', startAmbientVideo, { once: true });
-                video.load();
-            }
+            video.load();
+        } else {
+            console.warn('[TD] #immersiveVideo NO encontrado en el DOM — verifica que hay videos activos asignados al vehículo');
         }
 
         // Fullscreen en moviles
