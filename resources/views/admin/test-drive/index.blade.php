@@ -740,6 +740,59 @@
     }
 
     // ============================================
+    // DETECCION DE CODEC DE VIDEO
+    // Verifica que el browser pueda decodificar el archivo antes de subirlo.
+    // Los archivos MOV/MP4 grabados con iPhone desde iOS 11+ usan HEVC (H.265),
+    // que Chrome y Firefox no decodifican sin soporte de hardware.
+    // ============================================
+
+    function checkVideoCodecSupport(file) {
+        return new Promise(function(resolve) {
+            var url = URL.createObjectURL(file);
+            var tmp = document.createElement('video');
+            tmp.muted   = true;
+            tmp.preload = 'metadata';
+
+            // Timeout de seguridad: si no hay respuesta en 8s, permitir upload
+            var timer = setTimeout(function() {
+                cleanup();
+                resolve(true);
+            }, 8000);
+
+            function cleanup() {
+                clearTimeout(timer);
+                URL.revokeObjectURL(url);
+                tmp.src = '';
+            }
+
+            tmp.addEventListener('loadedmetadata', function() {
+                var ok = tmp.videoWidth > 0 && tmp.videoHeight > 0;
+                cleanup();
+                resolve(ok);
+            }, { once: true });
+
+            tmp.addEventListener('error', function() {
+                cleanup();
+                resolve(false);
+            }, { once: true });
+
+            tmp.src = url;
+        });
+    }
+
+    function showCodecError(inputEl, labelText) {
+        inputEl.value = '';
+        $(inputEl).next('.custom-file-label').text(labelText || 'Seleccionar video...');
+        alert(
+            'El video usa un codec no compatible con Chrome/Firefox (probablemente HEVC / H.265).\n\n' +
+            'Por favor convierte el archivo a H.264 MP4 antes de subirlo.\n\n' +
+            'Herramientas gratuitas:\n' +
+            '• HandBrake (https://handbrake.fr) — selecciona preset "Fast 1080p30"\n' +
+            '• VLC → Medios → Convertir/Guardar → Perfil H.264+MP3'
+        );
+    }
+
+    // ============================================
     // SUBIDA DE VIDEO POR CHUNKS (usando jQuery AJAX)
     // ============================================
 
@@ -775,7 +828,7 @@
         // Actualizar label
         $(this).next('.custom-file-label').text(file.name);
 
-        // Validar tipo
+        // Validar tipo MIME
         var validTypes = ['video/mp4', 'video/webm', 'video/quicktime'];
         if (!validTypes.includes(file.type)) {
             alert('Formato no valido. Use MP4 o WebM.');
@@ -784,8 +837,15 @@
             return;
         }
 
-        // Iniciar subida por chunks
-        uploadVideoInChunks(file);
+        // Verificar que el codec sea compatible antes de subir
+        var inputEl = this;
+        checkVideoCodecSupport(file).then(function(supported) {
+            if (!supported) {
+                showCodecError(inputEl, 'Seleccionar video...');
+                return;
+            }
+            uploadVideoInChunks(file);
+        });
     });
 
     async function uploadVideoInChunks(file) {
@@ -968,7 +1028,7 @@
         // Actualizar label
         $(this).next('.custom-file-label').text(file.name);
 
-        // Validar tipo
+        // Validar tipo MIME
         var validTypes = ['video/mp4', 'video/webm', 'video/quicktime'];
         if (!validTypes.includes(file.type)) {
             alert('Formato no valido. Use MP4 o WebM.');
@@ -977,8 +1037,15 @@
             return;
         }
 
-        // Iniciar subida por chunks
-        uploadPovVideoInChunks(file);
+        // Verificar que el codec sea compatible antes de subir
+        var inputEl = this;
+        checkVideoCodecSupport(file).then(function(supported) {
+            if (!supported) {
+                showCodecError(inputEl, 'Seleccionar video...');
+                return;
+            }
+            uploadPovVideoInChunks(file);
+        });
     });
 
     async function uploadPovVideoInChunks(file) {
