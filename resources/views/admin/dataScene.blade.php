@@ -181,38 +181,54 @@
                 <h5 class="modal-title"><i class="fa fa-upload mr-2"></i>Carga Masiva de Escenas Panorámicas</h5>
                 <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body" style="max-height:82vh; overflow-y:auto;">
                 <input type="hidden" id="batchPropertyId" value="{{ $id }}">
-                <input type="hidden" id="batchItemType" value="{{ $type ?? 'property' }}">
+                <input type="hidden" id="batchItemType"   value="{{ $type ?? 'property' }}">
 
-                {{-- Zona de drop / selector de archivos --}}
-                <div id="batchDropZone"
-                    style="border: 2px dashed #28a745; border-radius: 8px; padding: 30px; text-align: center; cursor: pointer; background: #f8fff9; transition: background 0.2s;">
+                {{-- Inputs de archivo ocultos --}}
+                <input type="file" id="batchImageInput" multiple accept="image/*" style="display:none;">
+                <input type="file" id="batchThumbInput"          accept="image/*" style="display:none;">
+
+                {{-- Zona drag & drop --}}
+                <div id="batchDropZone" style="border:2px dashed #28a745;border-radius:8px;padding:24px;text-align:center;cursor:pointer;background:#f8fff9;transition:background .2s;">
                     <i class="fa fa-images fa-3x text-success mb-2"></i>
-                    <p class="mb-1 font-weight-bold">Arrastra tus imágenes aquí o haz clic para seleccionar</p>
-                    <p class="text-muted" style="font-size: 12px;">Soporta JPG, PNG, WEBP. Puedes seleccionar múltiples archivos a la vez.</p>
-                    <input type="file" id="batchImageInput" multiple accept="image/*" style="display:none;">
-                    <button type="button" class="btn btn-sm btn-success mt-2" id="batchSelectBtn">
+                    <p class="mb-1 font-weight-bold">Arrastra tus imágenes 360 aquí o haz clic para seleccionar</p>
+                    <p class="text-muted mb-2" style="font-size:12px;">
+                        Soporta JPG, PNG, WEBP · Múltiples archivos a la vez ·
+                        <span class="badge badge-info">Solo Panorama 360</span>
+                        — las escenas de órbita se crean individualmente con "Nueva Escena"
+                    </p>
+                    <button type="button" class="btn btn-sm btn-success" id="batchSelectBtn">
                         <i class="fa fa-folder-open mr-1"></i> Seleccionar imágenes
                     </button>
                 </div>
 
-                {{-- Lista de escenas a crear --}}
+                {{-- Tabla de escenas --}}
                 <div id="batchSceneList" class="mt-3" style="display:none;">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h6 class="mb-0"><i class="fa fa-list mr-1"></i> Escenas a crear <span class="badge badge-success ml-1" id="batchCount">0</span></h6>
+                        <h6 class="mb-0">
+                            <i class="fa fa-list mr-1"></i> Escenas a crear
+                            <span class="badge badge-success ml-1" id="batchCount">0</span>
+                        </h6>
                         <button type="button" class="btn btn-sm btn-outline-danger" id="batchClearAll">
                             <i class="fa fa-trash mr-1"></i> Limpiar todo
                         </button>
                     </div>
-                    <div class="table-responsive" style="max-height: 340px; overflow-y: auto;">
-                        <table class="table table-sm table-hover mb-0">
-                            <thead class="thead-light">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered mb-0" id="batchSceneTable" style="font-size:13px;">
+                            <thead class="thead-light text-center">
                                 <tr>
-                                    <th style="width:70px;">Vista</th>
-                                    <th>Título de la escena</th>
-                                    <th style="width:100px;">HFOV</th>
-                                    <th style="width:40px;"></th>
+                                    <th style="width:40px;">#</th>
+                                    <th style="width:65px;">Panorama</th>
+                                    <th style="width:85px;">Tipo</th>
+                                    <th>Título</th>
+                                    <th style="width:82px;">HFOV</th>
+                                    <th style="width:100px;">Miniatura</th>
+                                    <th style="width:110px;">
+                                        Yaw / Pitch
+                                        <small class="d-block text-muted font-weight-normal" style="font-size:10px;">clic en visor</small>
+                                    </th>
+                                    <th style="width:100px;">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody id="batchSceneBody"></tbody>
@@ -220,10 +236,32 @@
                     </div>
                 </div>
 
+                {{-- Mini visor Pannellum (singleton) --}}
+                <div id="batchViewerSection" class="mt-3" style="display:none;">
+                    <div class="card border-success shadow-sm">
+                        <div class="card-header bg-success text-white py-2 d-flex justify-content-between align-items-center">
+                            <span>
+                                <i class="fa fa-eye mr-1"></i>
+                                Vista inicial — <strong id="batchViewerSceneTitle">Escena</strong>
+                            </span>
+                            <button type="button" id="closeBatchViewer" class="close text-white" style="font-size:18px;">&times;</button>
+                        </div>
+                        <div class="card-body p-0">
+                            <div id="batchPannellumContainer" style="width:100%;height:360px;"></div>
+                        </div>
+                        <div class="card-footer py-2" style="font-size:12px;">
+                            <i class="fa fa-mouse-pointer text-success mr-1"></i>
+                            Navega y haz <strong>clic</strong> donde deseas que inicie la escena. &nbsp;
+                            Yaw: <strong id="batchViewerYawDisplay">0</strong> &nbsp;·&nbsp;
+                            Pitch: <strong id="batchViewerPitchDisplay">0</strong>
+                        </div>
+                    </div>
+                </div>
+
                 {{-- Barra de progreso --}}
                 <div id="batchProgressSection" class="mt-3" style="display:none;">
                     <div class="d-flex justify-content-between mb-1">
-                        <span id="batchProgressLabel" class="small text-primary">
+                        <span class="small text-primary">
                             <i class="fa fa-spinner fa-spin"></i> Guardando escenas...
                         </span>
                         <span id="batchProgressPercent" class="badge badge-info">0%</span>
@@ -250,103 +288,288 @@
 <script>
 $(document).ready(function () {
 
-    // ---- Estado interno ----
-    var batchScenes = []; // [{file, title, hfov, previewUrl}]
+    // ─── Estado ───────────────────────────────────────────────────────────────
+    // { file, title, hfov, yaw, pitch, previewUrl, thumbFile, thumbPreviewUrl }
+    var batchScenes = [];
 
+    // Visor Pannellum singleton
+    var batchViewerInstance  = null;
+    var batchActiveIdx       = -1;
+    var batchThumbTargetIdx  = -1;
+    var batchViewerDragState = { isMouseDown:false, startX:0, startY:0, hasMoved:false, coords:null };
+
+    // ─── Helpers ──────────────────────────────────────────────────────────────
     function generateTitle(filename) {
         return filename.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ');
     }
 
+    function round3(n) { return parseFloat(parseFloat(n).toFixed(3)); }
+
+    function destroyBatchViewer() {
+        if (batchViewerInstance) {
+            try { batchViewerInstance.destroy(); } catch(e) {}
+            batchViewerInstance = null;
+        }
+    }
+
+    // ─── Abrir / cerrar visor ─────────────────────────────────────────────────
+    function openBatchViewer(idx) {
+        if (!batchScenes[idx]) return;
+        var s = batchScenes[idx];
+
+        destroyBatchViewer();
+        batchActiveIdx = idx;
+
+        $('#batchViewerSection').show();
+        $('#batchViewerSceneTitle').text(s.title || ('Escena ' + (idx + 1)));
+        $('#batchViewerYawDisplay').text(s.yaw.toFixed(3));
+        $('#batchViewerPitchDisplay').text(s.pitch.toFixed(3));
+
+        batchViewerInstance = pannellum.viewer('batchPannellumContainer', {
+            type:         'equirectangular',
+            panorama:     s.previewUrl,
+            autoLoad:     true,
+            showControls: true,
+            mouseZoom:    true,
+            draggable:    true,
+            yaw:          s.yaw,
+            pitch:        s.pitch
+        });
+
+        // Registrar mousedown para distinguir click de arrastre
+        batchViewerInstance.on('mousedown', function(ev) {
+            var coords = batchViewerInstance.mouseEventToCoords(ev);
+            if (!coords) return;
+            batchViewerDragState.isMouseDown = true;
+            batchViewerDragState.startX      = ev.clientX;
+            batchViewerDragState.startY      = ev.clientY;
+            batchViewerDragState.hasMoved    = false;
+            batchViewerDragState.coords      = coords;
+        });
+
+        // Scroll suave hasta el visor
+        var modalBody = document.querySelector('#addSceneBatch .modal-body');
+        if (modalBody) {
+            setTimeout(function() {
+                modalBody.scrollTo({ top: modalBody.scrollHeight, behavior: 'smooth' });
+            }, 200);
+        }
+    }
+
+    function closeBatchViewer() {
+        destroyBatchViewer();
+        batchActiveIdx = -1;
+        $('#batchViewerSection').hide();
+    }
+
+    // ─── Detectar click vs drag en el visor ───────────────────────────────────
+    $(document).on('mousemove.batchViewer', function(e) {
+        if (!batchViewerDragState.isMouseDown) return;
+        if (Math.abs(e.clientX - batchViewerDragState.startX) > 5 ||
+            Math.abs(e.clientY - batchViewerDragState.startY) > 5) {
+            batchViewerDragState.hasMoved = true;
+        }
+    });
+
+    $(document).on('mouseup.batchViewer', function() {
+        if (!batchViewerDragState.isMouseDown) return;
+        var wasDragging = batchViewerDragState.hasMoved;
+        var coords      = batchViewerDragState.coords;
+        batchViewerDragState.isMouseDown = false;
+
+        if (!wasDragging && coords && batchActiveIdx >= 0 && batchViewerInstance) {
+            var pitch = round3(coords[0]);
+            var yaw   = round3(coords[1]);
+            batchScenes[batchActiveIdx].yaw   = yaw;
+            batchScenes[batchActiveIdx].pitch = pitch;
+
+            // Actualizar displays del visor y de la fila de la tabla
+            $('#batchViewerYawDisplay').text(yaw.toFixed(3));
+            $('#batchViewerPitchDisplay').text(pitch.toFixed(3));
+            $('#batch-yaw-'   + batchActiveIdx).text(yaw.toFixed(1));
+            $('#batch-pitch-' + batchActiveIdx).text(pitch.toFixed(1));
+        }
+    });
+
+    // ─── Renderizar tabla ─────────────────────────────────────────────────────
     function updateBatchUI() {
         $('#batchCount').text(batchScenes.length);
         $('#batchSaveCount').text(batchScenes.length);
         $('#saveBatchScenes').prop('disabled', batchScenes.length === 0);
-        if (batchScenes.length > 0) {
-            $('#batchSceneList').show();
-        } else {
-            $('#batchSceneList').hide();
-        }
+        $('#batchSceneList').toggle(batchScenes.length > 0);
+        if (batchScenes.length === 0) closeBatchViewer();
 
         var $tbody = $('#batchSceneBody');
         $tbody.empty();
-        batchScenes.forEach(function (s, idx) {
-            var row = '<tr data-index="' + idx + '">' +
-                '<td><img src="' + s.previewUrl + '" style="width:55px;height:40px;object-fit:cover;border-radius:4px;border:1px solid #ddd;"></td>' +
-                '<td><input type="text" class="form-control form-control-sm batch-title-input" data-index="' + idx + '" value="' + $('<div>').text(s.title).html() + '"></td>' +
-                '<td><input type="number" class="form-control form-control-sm batch-hfov-input" data-index="' + idx + '" value="' + s.hfov + '" min="50" max="360" step="1"></td>' +
-                '<td><button type="button" class="btn btn-sm btn-outline-danger batch-remove" data-index="' + idx + '"><i class="fa fa-times"></i></button></td>' +
-                '</tr>';
-            $tbody.append(row);
+
+        batchScenes.forEach(function(s, idx) {
+            // Miniatura: si tiene thumbFile, mostrar preview; si no, botón "Elegir"
+            var thumbHtml = s.thumbPreviewUrl
+                ? '<img id="batch-thumb-preview-' + idx + '" src="' + s.thumbPreviewUrl + '"' +
+                  ' style="width:40px;height:30px;object-fit:cover;border-radius:3px;border:1px solid #ccc;cursor:pointer;"' +
+                  ' class="batch-thumb-btn" data-index="' + idx + '" title="Cambiar miniatura">'
+                : '<button type="button" class="btn btn-sm btn-outline-secondary batch-thumb-btn" data-index="' + idx + '"' +
+                  ' style="font-size:11px;padding:2px 7px;"><i class="fa fa-image mr-1"></i>Elegir</button>';
+
+            // Estado del botón visor (resaltado si está activo)
+            var viewerBtnClass = (idx === batchActiveIdx)
+                ? 'btn-success'
+                : 'btn-outline-success';
+
+            $tbody.append(
+                '<tr data-index="' + idx + '">' +
+                '<td class="align-middle text-center text-muted">' + (idx + 1) + '</td>' +
+                '<td class="align-middle text-center">' +
+                    '<img src="' + s.previewUrl + '" style="width:56px;height:38px;object-fit:cover;border-radius:3px;border:1px solid #ccc;">' +
+                '</td>' +
+                '<td class="align-middle text-center">' +
+                    '<span class="badge badge-info" style="font-size:10px;">Panorama 360</span>' +
+                '</td>' +
+                '<td class="align-middle">' +
+                    '<input type="text" class="form-control form-control-sm batch-title-input" data-index="' + idx + '"' +
+                    ' value="' + $('<div>').text(s.title).html() + '">' +
+                '</td>' +
+                '<td class="align-middle">' +
+                    '<input type="number" class="form-control form-control-sm batch-hfov-input" data-index="' + idx + '"' +
+                    ' value="' + s.hfov + '" min="50" max="360" step="1">' +
+                '</td>' +
+                '<td class="align-middle text-center">' + thumbHtml + '</td>' +
+                '<td class="align-middle text-center" style="font-size:11px;line-height:1.6;">' +
+                    'Y: <span id="batch-yaw-'   + idx + '" class="font-weight-bold">' + s.yaw.toFixed(1)   + '</span><br>' +
+                    'P: <span id="batch-pitch-' + idx + '" class="font-weight-bold">' + s.pitch.toFixed(1) + '</span>' +
+                '</td>' +
+                '<td class="align-middle text-center">' +
+                    '<button type="button" class="btn btn-sm ' + viewerBtnClass + ' batch-open-viewer mr-1" data-index="' + idx + '"' +
+                    ' title="Ajustar vista inicial" style="padding:2px 7px;font-size:12px;"><i class="fa fa-eye"></i></button>' +
+                    '<button type="button" class="btn btn-sm btn-outline-danger batch-remove" data-index="' + idx + '"' +
+                    ' style="padding:2px 7px;font-size:12px;"><i class="fa fa-times"></i></button>' +
+                '</td>' +
+                '</tr>'
+            );
         });
+
+        // Si el visor activo sigue vigente, actualizar su título (sin destruirlo)
+        if (batchActiveIdx >= 0) {
+            if (batchActiveIdx < batchScenes.length) {
+                $('#batchViewerSceneTitle').text(batchScenes[batchActiveIdx].title || ('Escena ' + (batchActiveIdx + 1)));
+            } else {
+                closeBatchViewer();
+            }
+        }
     }
 
+    // ─── Agregar imágenes ─────────────────────────────────────────────────────
     function addFiles(files) {
-        Array.from(files).forEach(function (file) {
+        Array.from(files).forEach(function(file) {
             if (!file.type.startsWith('image/')) return;
-            var previewUrl = URL.createObjectURL(file);
             batchScenes.push({
-                file: file,
-                title: generateTitle(file.name),
-                hfov: 200,
-                previewUrl: previewUrl
+                file:            file,
+                title:           generateTitle(file.name),
+                hfov:            200,
+                yaw:             0,
+                pitch:           0,
+                previewUrl:      URL.createObjectURL(file),
+                thumbFile:       null,
+                thumbPreviewUrl: null
             });
         });
         updateBatchUI();
     }
 
-    // Drag & drop
+    // ─── Drag & drop ──────────────────────────────────────────────────────────
     var dropZone = document.getElementById('batchDropZone');
-    dropZone.addEventListener('dragover', function (e) {
-        e.preventDefault();
-        dropZone.style.background = '#e8f5e9';
-    });
-    dropZone.addEventListener('dragleave', function () {
-        dropZone.style.background = '#f8fff9';
-    });
-    dropZone.addEventListener('drop', function (e) {
+    dropZone.addEventListener('dragover',  function(e) { e.preventDefault(); dropZone.style.background = '#e8f5e9'; });
+    dropZone.addEventListener('dragleave', function()  { dropZone.style.background = '#f8fff9'; });
+    dropZone.addEventListener('drop',      function(e) {
         e.preventDefault();
         dropZone.style.background = '#f8fff9';
         addFiles(e.dataTransfer.files);
     });
 
-    $('#batchSelectBtn').on('click', function () {
-        $('#batchImageInput').click();
-    });
-    $('#batchImageInput').on('change', function () {
-        addFiles(this.files);
-        $(this).val(''); // permitir re-selección del mismo archivo
-    });
+    $('#batchSelectBtn').on('click', function() { $('#batchImageInput').click(); });
+    $('#batchImageInput').on('change', function() { addFiles(this.files); $(this).val(''); });
 
-    // Editar título inline
-    $(document).on('input', '.batch-title-input', function () {
-        var idx = $(this).data('index');
+    // ─── Edición inline en la tabla ───────────────────────────────────────────
+    $(document).on('input', '.batch-title-input', function() {
+        var idx = parseInt($(this).data('index'));
         batchScenes[idx].title = $(this).val();
+        if (idx === batchActiveIdx) {
+            $('#batchViewerSceneTitle').text(batchScenes[idx].title || ('Escena ' + (idx + 1)));
+        }
     });
 
-    // Editar hfov inline
-    $(document).on('input', '.batch-hfov-input', function () {
-        var idx = $(this).data('index');
-        batchScenes[idx].hfov = $(this).val();
+    $(document).on('input', '.batch-hfov-input', function() {
+        batchScenes[parseInt($(this).data('index'))].hfov = parseFloat($(this).val()) || 200;
     });
 
-    // Eliminar una escena de la lista
-    $(document).on('click', '.batch-remove', function () {
-        var idx = $(this).data('index');
-        URL.revokeObjectURL(batchScenes[idx].previewUrl);
-        batchScenes.splice(idx, 1);
+    // ─── Visor por escena ────────────────────────────────────────────────────
+    $(document).on('click', '.batch-open-viewer', function() {
+        var idx = parseInt($(this).data('index'));
+        if (idx === batchActiveIdx) {
+            // Clic en el botón de la escena ya activa → cerrar
+            closeBatchViewer();
+            updateBatchUI(); // re-render para quitar el resaltado
+        } else {
+            openBatchViewer(idx);
+            updateBatchUI(); // re-render para resaltar el botón activo
+            // Re-abrir el visor porque updateBatchUI destruyó el DOM del botón
+            // pero NO el viewer (el viewer vive en #batchPannellumContainer, fuera de $tbody)
+        }
+    });
+
+    $('#closeBatchViewer').on('click', function() {
+        closeBatchViewer();
         updateBatchUI();
     });
 
-    // Limpiar todo
-    $('#batchClearAll').on('click', function () {
-        batchScenes.forEach(function (s) { URL.revokeObjectURL(s.previewUrl); });
+    // ─── Miniatura por escena ─────────────────────────────────────────────────
+    $(document).on('click', '.batch-thumb-btn', function() {
+        batchThumbTargetIdx = parseInt($(this).data('index'));
+        $('#batchThumbInput').click();
+    });
+
+    $('#batchThumbInput').on('change', function() {
+        if (batchThumbTargetIdx < 0 || !this.files[0]) return;
+        var idx  = batchThumbTargetIdx;
+        var file = this.files[0];
+        // Liberar URL anterior
+        if (batchScenes[idx].thumbPreviewUrl) URL.revokeObjectURL(batchScenes[idx].thumbPreviewUrl);
+        batchScenes[idx].thumbFile       = file;
+        batchScenes[idx].thumbPreviewUrl = URL.createObjectURL(file);
+        batchThumbTargetIdx = -1;
+        $(this).val('');
+        updateBatchUI();
+    });
+
+    // ─── Eliminar / limpiar ───────────────────────────────────────────────────
+    $(document).on('click', '.batch-remove', function() {
+        var idx = parseInt($(this).data('index'));
+        if (idx === batchActiveIdx) closeBatchViewer();
+        var s = batchScenes[idx];
+        URL.revokeObjectURL(s.previewUrl);
+        if (s.thumbPreviewUrl) URL.revokeObjectURL(s.thumbPreviewUrl);
+        batchScenes.splice(idx, 1);
+        if (batchActiveIdx > idx) batchActiveIdx--;
+        updateBatchUI();
+    });
+
+    $('#batchClearAll').on('click', function() {
+        closeBatchViewer();
+        batchScenes.forEach(function(s) {
+            URL.revokeObjectURL(s.previewUrl);
+            if (s.thumbPreviewUrl) URL.revokeObjectURL(s.thumbPreviewUrl);
+        });
         batchScenes = [];
         updateBatchUI();
     });
 
-    // Limpiar al cerrar el modal
-    $('#addSceneBatch').on('hidden.bs.modal', function () {
-        batchScenes.forEach(function (s) { URL.revokeObjectURL(s.previewUrl); });
+    // ─── Limpiar al cerrar el modal ───────────────────────────────────────────
+    $('#addSceneBatch').on('hidden.bs.modal', function() {
+        closeBatchViewer();
+        batchScenes.forEach(function(s) {
+            URL.revokeObjectURL(s.previewUrl);
+            if (s.thumbPreviewUrl) URL.revokeObjectURL(s.thumbPreviewUrl);
+        });
         batchScenes = [];
         updateBatchUI();
         $('#batchProgressSection').hide();
@@ -354,8 +577,8 @@ $(document).ready(function () {
         $('#batchProgressPercent').text('0%');
     });
 
-    // Guardar todas las escenas
-    $('#saveBatchScenes').on('click', function () {
+    // ─── Guardar ──────────────────────────────────────────────────────────────
+    $('#saveBatchScenes').on('click', function() {
         if (batchScenes.length === 0) return;
 
         var $btn = $(this);
@@ -363,26 +586,29 @@ $(document).ready(function () {
         $('#batchProgressSection').show();
 
         var formData = new FormData();
-        formData.append('_token', '{{ csrf_token() }}');
-        formData.append('property_id', $('#batchPropertyId').val());
-        formData.append('item_type', $('#batchItemType').val());
+        formData.append('_token',       '{{ csrf_token() }}');
+        formData.append('property_id',  $('#batchPropertyId').val());
+        formData.append('item_type',    $('#batchItemType').val());
 
-        batchScenes.forEach(function (s, idx) {
-            formData.append('titles[' + idx + ']', s.title);
-            formData.append('hfovs[' + idx + ']', s.hfov || 200);
-            formData.append('images_' + idx, s.file);
+        batchScenes.forEach(function(s, idx) {
+            formData.append('titles['  + idx + ']', s.title);
+            formData.append('hfovs['  + idx + ']', s.hfov  || 200);
+            formData.append('yaws['   + idx + ']', s.yaw   || 0);
+            formData.append('pitchs[' + idx + ']', s.pitch || 0);
+            formData.append('images_'     + idx,   s.file);
+            if (s.thumbFile) formData.append('images_ref_' + idx, s.thumbFile);
         });
 
         $('#batchProgressBar').css('width', '60%');
         $('#batchProgressPercent').text('60%');
 
         $.ajax({
-            url: '{{ route("addSceneBatch") }}',
-            method: 'POST',
-            data: formData,
+            url:         '{{ route("addSceneBatch") }}',
+            method:      'POST',
+            data:        formData,
             processData: false,
             contentType: false,
-            success: function (response) {
+            success: function(response) {
                 $('#batchProgressBar').css('width', '100%');
                 $('#batchProgressPercent').text('100%');
                 if (response.success) {
@@ -398,7 +624,7 @@ $(document).ready(function () {
                     $('#batchProgressSection').hide();
                 }
             },
-            error: function (xhr) {
+            error: function(xhr) {
                 var msg = 'Error al crear las escenas';
                 if (xhr.responseJSON && xhr.responseJSON.message) msg = xhr.responseJSON.message;
                 alert(msg);

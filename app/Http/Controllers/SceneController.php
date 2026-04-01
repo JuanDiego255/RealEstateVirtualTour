@@ -372,6 +372,8 @@ class SceneController extends Controller
         $itemId  = $request->input('property_id');
         $titles  = $request->input('titles', []);
         $hfovs   = $request->input('hfovs', []);
+        $yaws    = $request->input('yaws', []);
+        $pitchs  = $request->input('pitchs', []);
         $count   = count($titles);
 
         if ($count === 0) {
@@ -397,7 +399,9 @@ class SceneController extends Controller
                     continue;
                 }
 
-                $hfov = isset($hfovs[$i]) && is_numeric($hfovs[$i]) ? (float) $hfovs[$i] : 200;
+                $hfov  = isset($hfovs[$i])  && is_numeric($hfovs[$i])  ? (float) $hfovs[$i]  : 200;
+                $yaw   = isset($yaws[$i])   && is_numeric($yaws[$i])   ? (float) $yaws[$i]   : 0;
+                $pitch = isset($pitchs[$i]) && is_numeric($pitchs[$i]) ? (float) $pitchs[$i] : 0;
 
                 $image    = $request->file($imageKey)->store('uploads', 'public');
                 $imageRef = $request->hasFile($imageRefKey)
@@ -408,8 +412,8 @@ class SceneController extends Controller
                     'title'     => $title,
                     'type'      => 'equirectangular',
                     'hfov'      => $hfov,
-                    'yaw'       => 0,
-                    'pitch'     => 0,
+                    'yaw'       => $yaw,
+                    'pitch'     => $pitch,
                     'image'     => $image,
                     'image_ref' => $imageRef,
                 ];
