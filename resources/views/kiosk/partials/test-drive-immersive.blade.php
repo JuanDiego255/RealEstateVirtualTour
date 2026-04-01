@@ -639,6 +639,21 @@
             <video class="immersive-video" id="immersiveVideo" loop muted playsinline autoplay>
                 <source src="{{ route('file', $mainVideo->video_path) }}" type="{{ $videoMime }}">
             </video>
+        {{-- Aviso visible cuando el codec del video no es compatible con el browser --}}
+        <div id="tdCodecWarning" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,0.85);
+             z-index:5;flex-direction:column;align-items:center;justify-content:center;
+             color:#fff;text-align:center;padding:30px;">
+            <i class="fas fa-exclamation-triangle" style="font-size:48px;color:#ffc107;margin-bottom:16px;"></i>
+            <h4 style="margin-bottom:8px;">Codec de video no compatible</h4>
+            <p style="max-width:380px;color:rgba(255,255,255,0.75);font-size:14px;margin-bottom:20px;">
+                El video usa HEVC (H.265), que no es soportado por Chrome/Firefox.<br>
+                Elimina este video y sube uno nuevo en <strong>H.264 MP4</strong>.
+            </p>
+            <p style="font-size:12px;color:rgba(255,255,255,0.45);">
+                Conversor gratuito: <strong>HandBrake</strong> → preset "Fast 1080p30"
+            </p>
+        </div>
+
         @else
             {{-- Imagen de fondo si no hay video --}}
             @if($vehicle->featured_image)
@@ -1286,51 +1301,28 @@ function launchTestDrive() {
             video.muted = true;
             video.loop  = true;
 
-            // Log completo para diagnóstico
-            console.log('[TD] video encontrado — readyState:', video.readyState,
-                '| src attr:', video.getAttribute('src'),
-                '| sources:', Array.from(video.querySelectorAll('source')).map(s => s.src + ' [' + s.type + ']'));
-
-            video.addEventListener('loadedmetadata', function() {
-                console.log('[TD] loadedmetadata — ' + video.videoWidth + 'x' + video.videoHeight +
-                    ' | dur:' + video.duration + 's | currentSrc:', video.currentSrc);
+            video.addEventListener('error', function() {
+                console.error('[TD] error — código:', video.error?.code, '| src:', video.currentSrc);
             }, { once: true });
 
-            video.addEventListener('stalled', function() {
-                console.warn('[TD] stalled — networkState:', video.networkState, '| readyState:', video.readyState);
-            });
-
-            video.addEventListener('error', function() {
-                console.error('[TD] error — código:', video.error?.code,
-                    '| msg:', video.error?.message, '| src:', video.currentSrc);
+            video.addEventListener('playing', function() {
+                if (video.videoWidth === 0) {
+                    // Codec no soportado (HEVC/ProRes): mostrar aviso en lugar de pantalla negra
+                    var warn = document.getElementById('tdCodecWarning');
+                    if (warn) warn.style.display = 'flex';
+                    console.warn('[TD] videoWidth=0 reproduciendo — codec incompatible. Usa H.264 MP4.');
+                }
             }, { once: true });
 
             video.addEventListener('canplay', function() {
-                console.log('[TD] canplay — lanzando play');
-                video.play().then(function() {
-                    console.log('[TD] reproduciendo — playbackRate:', video.playbackRate,
-                        '| paused:', video.paused, '| dim:', video.videoWidth + 'x' + video.videoHeight);
-                }).catch(function(e) {
+                video.play().catch(function(e) {
                     console.warn('[TD] play() rechazado:', e.name, e.message);
                 });
             }, { once: true });
 
-            // Fallback: si canplay nunca llega en 5s, logear estado y forzar play
-            var _fb = setTimeout(function() {
-                console.warn('[TD] timeout 5s sin canplay — readyState:', video.readyState,
-                    '| networkState:', video.networkState, '| error:', video.error,
-                    '| currentSrc:', video.currentSrc);
-                if (video.paused) {
-                    video.play().catch(function(e) {
-                        console.warn('[TD] fallback play fallido:', e.name, e.message);
-                    });
-                }
-            }, 5000);
-            video.addEventListener('playing', function() { clearTimeout(_fb); }, { once: true });
-
             video.load();
         } else {
-            console.warn('[TD] #immersiveVideo NO encontrado en el DOM — verifica que hay videos activos asignados al vehículo');
+            console.warn('[TD] #immersiveVideo no encontrado — asigna al menos un video activo al vehículo.');
         }
 
         // Fullscreen en moviles

@@ -750,22 +750,26 @@
         return new Promise(function(resolve) {
             var url = URL.createObjectURL(file);
             var tmp = document.createElement('video');
-            tmp.muted   = true;
-            tmp.preload = 'metadata';
+            tmp.muted    = true;
+            tmp.preload  = 'auto'; // necesario para que el decoder se inicialice
 
-            // Timeout de seguridad: si no hay respuesta en 8s, permitir upload
+            // Timeout de seguridad: si no hay respuesta en 10s, permitir upload
             var timer = setTimeout(function() {
                 cleanup();
                 resolve(true);
-            }, 8000);
+            }, 10000);
 
             function cleanup() {
                 clearTimeout(timer);
+                tmp.pause();
                 URL.revokeObjectURL(url);
                 tmp.src = '';
+                tmp.load(); // liberar recursos
             }
 
-            tmp.addEventListener('loadedmetadata', function() {
+            // Esperar canplay (no loadedmetadata): en este punto el decoder ya
+            // intentó inicializarse. Si videoWidth sigue en 0, el codec no funciona.
+            tmp.addEventListener('canplay', function() {
                 var ok = tmp.videoWidth > 0 && tmp.videoHeight > 0;
                 cleanup();
                 resolve(ok);
