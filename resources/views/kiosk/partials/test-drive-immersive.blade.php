@@ -1137,10 +1137,10 @@ class ImmersiveTestDrive {
             if (engineLight) engineLight.classList.add('active');
             if (fuelLight) fuelLight.classList.add('active');
 
-            // Reproducir video
+            // El video lo controla updateDisplay(); aquí solo nos aseguramos
+            // de que esté listo para reproducir en cuanto se pise el acelerador.
             if (video) {
                 video.muted = true;
-                video.play().catch(() => {});
             }
 
             // Sonido de arranque
@@ -1169,9 +1169,9 @@ class ImmersiveTestDrive {
 
             if (engineLight) engineLight.classList.remove('active');
 
-            // Volver al video ambiente (lento) en vez de pausarlo
-            if (video) {
-                video.playbackRate = 0.25;
+            // Pausar video al apagar el motor
+            if (video && !video.paused) {
+                video.pause();
             }
 
             // Parar sonido
@@ -1258,19 +1258,22 @@ class ImmersiveTestDrive {
             modal.classList.remove('vibrating');
         }
 
-        // Sincronizar playbackRate del video con las RPM
+        // Sincronizar video con el acelerador:
+        // - Motor apagado o sin acelerar → video pausado
+        // - Acelerando → video reproduce a velocidad proporcional al throttle
         const video = document.getElementById('immersiveVideo');
-        if (video && !video.paused) {
-            if (this.isRunning) {
-                // 0.3x en ralentí → 2.0x en redline
-                const minRate = 0.3;
-                const maxRate = 2.0;
-                const rpmRange  = this.config.maxRpm - this.config.idleRpm;
-                const rpmOffset = Math.max(0, this.rpm - this.config.idleRpm);
-                const factor    = Math.min(1, rpmOffset / rpmRange);
-                video.playbackRate = minRate + factor * (maxRate - minRate);
+        if (video) {
+            const shouldPlay = this.isRunning && this.throttle > 0.01;
+            if (shouldPlay) {
+                // Velocidad: 0.1x con poco gas → 2.5x a fondo
+                video.playbackRate = 0.1 + this.throttle * 2.4;
+                if (video.paused) {
+                    video.play().catch(() => {});
+                }
             } else {
-                video.playbackRate = 0.25; // ambiente cuando el motor está apagado
+                if (!video.paused) {
+                    video.pause();
+                }
             }
         }
     }
@@ -1307,22 +1310,17 @@ function launchTestDrive() {
 
             video.addEventListener('playing', function() {
                 if (video.videoWidth === 0) {
-                    // Codec no soportado (HEVC/ProRes): mostrar aviso en lugar de pantalla negra
                     var warn = document.getElementById('tdCodecWarning');
                     if (warn) warn.style.display = 'flex';
-                    console.warn('[TD] videoWidth=0 reproduciendo — codec incompatible. Usa H.264 MP4.');
+                    console.warn('[TD] videoWidth=0 — codec incompatible. Usa H.264 MP4.');
                 }
             }, { once: true });
 
-            video.addEventListener('canplay', function() {
-                video.play().catch(function(e) {
-                    console.warn('[TD] play() rechazado:', e.name, e.message);
-                });
-            }, { once: true });
-
+            // Solo cargar el recurso; la reproducción la controla updateDisplay()
+            // según el acelerador. El video NO inicia solo.
             video.load();
         } else {
-            console.warn('[TD] #immersiveVideo no encontrado — asigna al menos un video activo al vehículo.');
+            console.warn('[TD] #immersiveVideo no encontrado — asigna al menos un video activo.');
         }
 
         // Fullscreen en moviles
