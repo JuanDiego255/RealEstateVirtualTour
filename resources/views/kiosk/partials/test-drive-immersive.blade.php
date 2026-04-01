@@ -617,7 +617,7 @@
             @php
                 $povExt = strtolower(pathinfo($povVideo, PATHINFO_EXTENSION));
                 $povMime = match($povExt) {
-                    'mov' => 'video/quicktime',
+                    'mov' => 'video/mp4',   // MOV (H.264) usa mismos codecs que MP4; quicktime no soportado en Chrome/Firefox
                     'webm' => 'video/webm',
                     'ogg', 'ogv' => 'video/ogg',
                     default => 'video/mp4'
@@ -630,7 +630,7 @@
             @php
                 $videoExt = strtolower(pathinfo($mainVideo->video_path, PATHINFO_EXTENSION));
                 $videoMime = match($videoExt) {
-                    'mov' => 'video/quicktime',
+                    'mov' => 'video/mp4',   // MOV (H.264) usa mismos codecs que MP4; quicktime no soportado en Chrome/Firefox
                     'webm' => 'video/webm',
                     'ogg', 'ogv' => 'video/ogg',
                     default => 'video/mp4'
@@ -1285,9 +1285,20 @@ function launchTestDrive() {
         if (video) {
             video.muted = true;
             video.loop  = true;
-            video.load();                   // fuerza la carga del recurso
-            video.playbackRate = 0.25;      // velocidad ambiente antes de encender
-            video.play().catch(() => {});
+
+            const startAmbientVideo = () => {
+                video.playbackRate = 0.25;
+                video.play().catch(e => console.warn('[TestDrive] video.play():', e));
+            };
+
+            if (video.readyState >= 3) {
+                // Ya tiene datos suficientes para reproducir
+                startAmbientVideo();
+            } else {
+                // Esperar a que el browser tenga datos antes de reproducir
+                video.addEventListener('canplay', startAmbientVideo, { once: true });
+                video.load(); // fuerza la carga del recurso
+            }
         }
 
         // Fullscreen en moviles
