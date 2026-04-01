@@ -79,9 +79,15 @@
     <div class="preview-header">
         <h1><i class="fas fa-eye mr-2"></i> Vista Previa - Test Drive</h1>
         <span class="badge">{{ $vehicle->brand }} {{ $vehicle->model }} {{ $vehicle->year }}</span>
-        <a href="{{ route('admin.test-drive.index', $vehicle->id) }}">
-            <i class="fas fa-arrow-left"></i> Volver al Admin
-        </a>
+        @if(request()->get('from') === 'kiosk')
+            <button onclick="window.close()" style="background:none;border:none;color:var(--accent);cursor:pointer;display:flex;align-items:center;gap:6px;font-size:14px;">
+                <i class="fas fa-times"></i> Cerrar
+            </button>
+        @else
+            <a href="{{ route('admin.test-drive.index', $vehicle->id) }}">
+                <i class="fas fa-arrow-left"></i> Volver al Admin
+            </a>
+        @endif
     </div>
 
     <div class="preview-content">

@@ -1148,10 +1148,10 @@
                 <i class="fas fa-balance-scale"></i> ${isInCompare ? 'Quitar' : 'Comparar'}
                 ${compareList.length > 0 ? '<span class="compare-badge">' + compareList.length + '</span>' : ''}
             </button>`;
-            buttonsHtml += `<a href="/admin/test-drive/${vehicle.id}/preview" class="btn-kiosk btn-kiosk-secondary" style="text-decoration: none;">
+            buttonsHtml += `<a href="/admin/test-drive/${vehicle.id}/preview?from=kiosk" class="btn-kiosk btn-kiosk-secondary" style="text-decoration: none;" target="_blank">
                 <i class="fas fa-car"></i> Test Drive
             </a>`;
-            buttonsHtml += `<a href="/virtual-tour/${vehicle.id}" class="btn-kiosk btn-kiosk-secondary" style="text-decoration: none;">
+            buttonsHtml += `<a href="/virtual-tour/${vehicle.id}?back_url=${encodeURIComponent(window.location.href)}" class="btn-kiosk btn-kiosk-secondary" style="text-decoration: none;" target="_blank">
                 <i class="fas fa-vr-cardboard"></i> Virtual Tour
             </a>`;
 
@@ -1199,7 +1199,7 @@
             let dragging = false;
             let startX = 0;
             let accX = 0;
-            let autoRotate = true;
+            let autoRotate = false; // el usuario controla el spin manualmente
             let autoDir = 1;
             let lastT = performance.now();
             let autoAcc = 0;
@@ -1288,7 +1288,7 @@
             document.addEventListener('mouseup', () => {
                 if (dragging) {
                     dragging = false;
-                    setTimeout(() => { autoRotate = true; }, 1500);
+                    // autoRotate permanece false; el usuario controla el spin
                 }
             });
 
@@ -1319,7 +1319,7 @@
             viewer.addEventListener('touchend', () => {
                 if (dragging) {
                     dragging = false;
-                    setTimeout(() => { autoRotate = true; }, 1500);
+                    // autoRotate permanece false; el usuario controla el spin
                 }
             }, { passive: true });
 

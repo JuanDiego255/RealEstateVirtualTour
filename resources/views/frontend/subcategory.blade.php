@@ -60,7 +60,7 @@
                                 $hasSpin = !empty($spin);
                                 $isVehicle = ($property->property_type ?? '') === 'vehicle';
                                 // No usar type=vehicle, el controlador detecta automáticamente
-                                $tourUrl = route('virtual-tour', $property->id);
+                                $tourUrl = route('virtual-tour', $property->id) . '?back_url=' . urlencode(url()->current());
                             @endphp
                             <div class="col-md-4 mb-4">
                                 <div class="card spin-card ftco-animate h-100">
