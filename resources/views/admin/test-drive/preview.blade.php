@@ -85,12 +85,11 @@
     </div>
 
     <div class="preview-content">
+        @php
+            // Variable necesaria para el partial (debe estar ANTES del include)
+            $testDriveVideos = $videos;
+        @endphp
         @include('kiosk.partials.test-drive-immersive')
     </div>
-
-    @php
-        // Variables necesarias para el partial
-        $testDriveVideos = $videos;
-    @endphp
 </body>
 </html>
