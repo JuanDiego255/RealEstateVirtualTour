@@ -160,8 +160,8 @@
                         data: 'image_ref',
                         render: function(data, type, full, meta) {
                             let fileBase = "{{ route('file', '') }}/";
-                            // Preferir miniatura (image_ref), luego panorama, luego placeholder
-                            let src = data ? fileBase + data : (full.image ? fileBase + full.image : null);
+                            // Solo mostrar miniatura (image_ref); si no existe, placeholder CSS
+                            let src = data ? fileBase + data : null;
                             if (src) {
                                 return `<img style="height:70px;width:90px;object-fit:cover;border-radius:4px;border:1px solid #dee2e6;" src="${src}" />`;
                             }

@@ -406,7 +406,7 @@ class SceneController extends Controller
                 $image    = $request->file($imageKey)->store('uploads', 'public');
                 $imageRef = $request->hasFile($imageRefKey)
                     ? $request->file($imageRefKey)->store('uploads', 'public')
-                    : $image;
+                    : null;
 
                 $sceneData = [
                     'title'     => $title,
