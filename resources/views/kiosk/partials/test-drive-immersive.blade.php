@@ -1283,21 +1283,43 @@ function launchTestDrive() {
         // en cuanto el modal sea visible (estamos dentro de un gesto del usuario).
         const video = document.getElementById('immersiveVideo');
         if (video) {
-            video.muted = true;
-            video.loop  = true;
+            video.muted    = true;
+            video.loop     = true;
+            video.controls = false;
+
+            // Estrategia: setear video.src directo (sin MIME type) para que el
+            // browser detecte el formato desde los bytes del archivo.
+            // Esto evita que el <source type="..."> sea rechazado por el browser
+            // antes de intentar siquiera leer el archivo (el caso MOV/QuickTime).
+            const sourceEl = video.querySelector('source');
+            if (sourceEl && sourceEl.src) {
+                video.src = sourceEl.src;
+            }
+
+            // Diagnóstico: visible en consola para identificar problemas de codec
+            video.addEventListener('loadedmetadata', () => {
+                console.log('[TestDrive] Video cargado:', video.videoWidth + 'x' + video.videoHeight,
+                    '| duración:', video.duration + 's', '| src:', video.currentSrc);
+                if (video.videoWidth === 0) {
+                    console.warn('[TestDrive] videoWidth=0: el codec probablemente no es compatible con este browser (HEVC/ProRes no soportados en Chrome/Firefox sin hardware). Convierte el archivo a H.264 MP4.');
+                }
+            }, { once: true });
+
+            video.addEventListener('error', () => {
+                const err = video.error;
+                console.error('[TestDrive] Error de video — código:', err?.code, '| mensaje:', err?.message, '| src:', video.currentSrc);
+            }, { once: true });
 
             const startAmbientVideo = () => {
                 video.playbackRate = 0.25;
-                video.play().catch(e => console.warn('[TestDrive] video.play():', e));
+                video.play().catch(e => console.warn('[TestDrive] video.play() rechazado:', e));
             };
 
             if (video.readyState >= 3) {
-                // Ya tiene datos suficientes para reproducir
                 startAmbientVideo();
             } else {
-                // Esperar a que el browser tenga datos antes de reproducir
                 video.addEventListener('canplay', startAmbientVideo, { once: true });
-                video.load(); // fuerza la carga del recurso
+                video.load();
             }
         }
 
