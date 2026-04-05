@@ -332,7 +332,17 @@
                 </tr>
                 <tr class="highlight">
                     <td class="label">Plazo</td>
-                    <td class="value">{{ $quote->term_months }} meses</td>
+                    <td class="value">
+                        @if(($quote->payment_frequency ?? 'monthly') === 'annual')
+                            {{ ceil($quote->term_months / 12) }} {{ ceil($quote->term_months / 12) == 1 ? 'ano' : 'anos' }}
+                        @else
+                            {{ $quote->term_months }} meses
+                        @endif
+                    </td>
+                </tr>
+                <tr>
+                    <td class="label">Frecuencia de pago</td>
+                    <td class="value">{{ ($quote->payment_frequency ?? 'monthly') === 'annual' ? 'Anual' : 'Mensual' }}</td>
                 </tr>
                 <tr>
                     <td class="label">Tasa de interes anual</td>
@@ -349,13 +359,25 @@
             </table>
         </div>
 
-        <!-- Monthly Payment Box -->
+        <!-- Payment Box -->
         <div class="monthly-payment-box">
-            <div class="monthly-label">Cuota Mensual Estimada</div>
+            <div class="monthly-label">
+                @if(($quote->payment_frequency ?? 'monthly') === 'annual')
+                    Cuota Anual Estimada
+                @else
+                    Cuota Mensual Estimada
+                @endif
+            </div>
             <div class="monthly-amount">
                 {{ $quote->currency === 'USD' ? '$' : 'CRC ' }}{{ number_format($quote->monthly_payment, 0, ',', '.') }}
             </div>
-            <div class="monthly-term">por {{ $quote->term_months }} meses</div>
+            <div class="monthly-term">
+                @if(($quote->payment_frequency ?? 'monthly') === 'annual')
+                    por {{ ceil($quote->term_months / 12) }} {{ ceil($quote->term_months / 12) == 1 ? 'ano' : 'anos' }}
+                @else
+                    por {{ $quote->term_months }} meses
+                @endif
+            </div>
         </div>
 
         <!-- Disclaimer -->

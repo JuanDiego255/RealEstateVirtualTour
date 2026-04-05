@@ -82,6 +82,32 @@
         color: #000;
         border-color: var(--accent, #c2ac1f);
     }
+    .frequency-selector {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+    .frequency-btn {
+        flex: 1;
+        padding: 12px;
+        background: rgba(255,255,255,0.08);
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 10px;
+        color: #fff;
+        cursor: pointer;
+        text-align: center;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+    .frequency-btn.active {
+        background: var(--accent, #c2ac1f);
+        color: #000;
+        border-color: var(--accent, #c2ac1f);
+    }
+    .frequency-btn:hover:not(.active) {
+        background: rgba(255,255,255,0.12);
+    }
     .quote-actions {
         display: flex;
         gap: 10px;
@@ -144,10 +170,24 @@
             </div>
         </div>
 
+        <!-- Payment Frequency Selection -->
+        <div style="margin-bottom: 15px;">
+            <div style="font-size: 13px; color: rgba(255,255,255,0.6); margin-bottom: 10px;">Frecuencia de pago</div>
+            <div class="frequency-selector">
+                <button type="button" class="frequency-btn active" data-frequency="monthly" onclick="selectFrequency(this)">
+                    <i class="fas fa-calendar-alt"></i> Mensual
+                </button>
+                <button type="button" class="frequency-btn" data-frequency="annual" onclick="selectFrequency(this)">
+                    <i class="fas fa-calendar"></i> Anual
+                </button>
+            </div>
+            <input type="hidden" id="paymentFrequency" value="monthly">
+        </div>
+
         <!-- Term Selection -->
         <div style="margin-bottom: 15px;">
-            <div style="font-size: 13px; color: rgba(255,255,255,0.6); margin-bottom: 10px;">Plazo</div>
-            <div class="term-buttons">
+            <div style="font-size: 13px; color: rgba(255,255,255,0.6); margin-bottom: 10px;" id="termLabel">Plazo</div>
+            <div class="term-buttons" id="termButtonsContainer">
                 <button type="button" class="term-btn" data-months="12" onclick="selectTerm(this)">12 meses</button>
                 <button type="button" class="term-btn" data-months="24" onclick="selectTerm(this)">24 meses</button>
                 <button type="button" class="term-btn active" data-months="36" onclick="selectTerm(this)">36 meses</button>
@@ -170,7 +210,7 @@
 
         <!-- Result -->
         <div class="quote-result">
-            <div class="label">Cuota mensual estimada</div>
+            <div class="label" id="paymentLabel">Cuota mensual estimada</div>
             <div class="monthly" id="monthlyPaymentDisplay">₡0</div>
             <div class="quote-details">
                 <div>
@@ -217,6 +257,25 @@
 
 <script>
 let quoteTermMonths = 36;
+let quotePaymentFrequency = 'monthly';
+
+function selectFrequency(btn) {
+    document.querySelectorAll('.frequency-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    quotePaymentFrequency = btn.dataset.frequency;
+    document.getElementById('paymentFrequency').value = quotePaymentFrequency;
+
+    // Update labels based on frequency
+    if (quotePaymentFrequency === 'annual') {
+        document.getElementById('paymentLabel').textContent = 'Cuota anual estimada';
+        document.getElementById('termLabel').textContent = 'Plazo (años)';
+    } else {
+        document.getElementById('paymentLabel').textContent = 'Cuota mensual estimada';
+        document.getElementById('termLabel').textContent = 'Plazo';
+    }
+
+    updateQuoteCalculation();
+}
 
 function selectTerm(btn) {
     document.querySelectorAll('.term-btn').forEach(b => b.classList.remove('active'));
@@ -232,26 +291,50 @@ function updateQuoteCalculation() {
     const downPayment = price * (downPercent / 100);
     const termMonths = parseInt(document.getElementById('termMonths').value) || 36;
     const interestRate = parseFloat(document.getElementById('interestRateSlider').value) || 12;
+    const frequency = document.getElementById('paymentFrequency').value || 'monthly';
 
     const principal = price - downPayment;
-    const monthlyRate = (interestRate / 100) / 12;
 
-    let monthlyPayment;
-    if (interestRate === 0) {
-        monthlyPayment = principal / termMonths;
+    let payment, totalAmount, totalInterest, numPayments;
+
+    if (frequency === 'annual') {
+        // Calculo anual - metodo frances con tasa anual y periodos anuales
+        const annualRate = interestRate / 100;
+        const years = Math.ceil(termMonths / 12); // Convertir meses a años
+        numPayments = years;
+
+        if (interestRate === 0) {
+            payment = principal / years;
+        } else {
+            // Formula francesa: C = P * (i * (1 + i)^n) / ((1 + i)^n - 1)
+            payment = principal * (annualRate * Math.pow(1 + annualRate, years))
+                / (Math.pow(1 + annualRate, years) - 1);
+        }
+
+        totalAmount = payment * years;
+        totalInterest = totalAmount - principal;
     } else {
-        monthlyPayment = principal * (monthlyRate * Math.pow(1 + monthlyRate, termMonths))
-            / (Math.pow(1 + monthlyRate, termMonths) - 1);
-    }
+        // Calculo mensual - metodo frances con tasa mensual
+        const monthlyRate = (interestRate / 100) / 12;
+        numPayments = termMonths;
 
-    const totalAmount = monthlyPayment * termMonths;
-    const totalInterest = totalAmount - principal;
+        if (interestRate === 0) {
+            payment = principal / termMonths;
+        } else {
+            // Formula francesa: C = P * (i * (1 + i)^n) / ((1 + i)^n - 1)
+            payment = principal * (monthlyRate * Math.pow(1 + monthlyRate, termMonths))
+                / (Math.pow(1 + monthlyRate, termMonths) - 1);
+        }
+
+        totalAmount = payment * termMonths;
+        totalInterest = totalAmount - principal;
+    }
 
     // Update displays
     document.getElementById('downPaymentPercent').textContent = downPercent;
     document.getElementById('downPaymentDisplay').textContent = '₡' + Math.round(downPayment).toLocaleString('es-CR');
     document.getElementById('interestRateDisplay').textContent = interestRate;
-    document.getElementById('monthlyPaymentDisplay').textContent = '₡' + Math.round(monthlyPayment).toLocaleString('es-CR');
+    document.getElementById('monthlyPaymentDisplay').textContent = '₡' + Math.round(payment).toLocaleString('es-CR');
     document.getElementById('totalInterestDisplay').textContent = '₡' + Math.round(totalInterest).toLocaleString('es-CR');
     document.getElementById('financedAmountDisplay').textContent = '₡' + Math.round(principal).toLocaleString('es-CR');
     document.getElementById('totalAmountDisplay').textContent = '₡' + Math.round(totalAmount).toLocaleString('es-CR');
@@ -270,6 +353,7 @@ async function saveAndDownloadQuote() {
     const downPayment = price * (downPercent / 100);
     const termMonths = document.getElementById('termMonths').value;
     const interestRate = document.getElementById('interestRateSlider').value;
+    const paymentFrequency = document.getElementById('paymentFrequency').value || 'monthly';
 
     // Get customer info from form fields
     const name = document.getElementById('quoteCustomerName').value.trim();
@@ -300,6 +384,7 @@ async function saveAndDownloadQuote() {
                 down_payment: downPayment,
                 term_months: termMonths,
                 interest_rate: interestRate,
+                payment_frequency: paymentFrequency,
                 customer_name: name,
                 customer_phone: phone,
                 customer_email: null,

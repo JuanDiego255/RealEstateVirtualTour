@@ -167,13 +167,15 @@ class KioskController extends Controller
             'down_payment' => 'required|numeric|min:0',
             'term_months' => 'required|integer|in:12,24,36,48,60,72,84',
             'interest_rate' => 'required|numeric|min:0|max:100',
+            'payment_frequency' => 'nullable|in:monthly,annual',
         ]);
 
         $quote = VehicleQuote::generateQuote(
             $request->vehicle_price,
             $request->down_payment,
             $request->term_months,
-            $request->interest_rate
+            $request->interest_rate,
+            $request->get('payment_frequency', 'monthly')
         );
 
         return response()->json($quote);
@@ -193,13 +195,17 @@ class KioskController extends Controller
             'down_payment' => 'required|numeric',
             'term_months' => 'required|integer',
             'interest_rate' => 'required|numeric',
+            'payment_frequency' => 'nullable|in:monthly,annual',
         ]);
+
+        $paymentFrequency = $request->get('payment_frequency', 'monthly');
 
         $quoteData = VehicleQuote::generateQuote(
             $request->vehicle_price,
             $request->down_payment,
             $request->term_months,
-            $request->interest_rate
+            $request->interest_rate,
+            $paymentFrequency
         );
 
         $quote = VehicleQuote::create([
@@ -217,6 +223,7 @@ class KioskController extends Controller
             'total_amount' => $quoteData['total_amount'],
             'currency' => $request->get('currency', 'CRC'),
             'event_name' => $request->get('event_name'),
+            'payment_frequency' => $paymentFrequency,
         ]);
 
         // Actualizar estadisticas
