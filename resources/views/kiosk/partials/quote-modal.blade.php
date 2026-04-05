@@ -162,9 +162,9 @@
         <div class="range-container">
             <div class="range-header">
                 <span>Prima (enganche)</span>
-                <span class="value"><span id="downPaymentPercent">20</span>%</span>
+                <span class="value"><span id="downPaymentPercent">50</span>%</span>
             </div>
-            <input type="range" id="downPaymentSlider" min="10" max="60" value="20" step="5">
+            <input type="range" id="downPaymentSlider" min="10" max="60" value="50" step="5">
             <div style="text-align: center; margin-top: 8px; font-size: 18px; font-weight: 600;" id="downPaymentDisplay">
                 ₡0
             </div>
@@ -213,7 +213,7 @@
             <div class="label" id="paymentLabel">Cuota mensual estimada</div>
             <div class="monthly" id="monthlyPaymentDisplay">₡0</div>
             <div class="quote-details">
-                <div>
+                <div class="d-none">
                     <span>Total intereses:</span><br>
                     <strong id="totalInterestDisplay">₡0</strong>
                 </div>

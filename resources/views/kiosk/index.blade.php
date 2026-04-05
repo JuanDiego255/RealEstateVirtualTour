@@ -922,8 +922,8 @@
                 </div>
 
                 <div class="form-group-kiosk">
-                    <label>Prima (enganche) - <span id="downPaymentPercent">20</span>%</label>
-                    <input type="range" id="downPaymentSlider" min="10" max="50" value="20" style="width: 100%;">
+                    <label>Prima (enganche) - <span id="downPaymentPercent">50</span>%</label>
+                    <input type="range" id="downPaymentSlider" min="10" max="50" value="50" style="width: 100%;">
                     <input type="text" class="form-control-kiosk" id="downPaymentDisplay" readonly style="margin-top: 10px;">
                 </div>
 
@@ -962,7 +962,7 @@
                         <p style="color: rgba(255,255,255,0.6); font-size: 13px;" id="paymentLabelIndex">Cuota mensual estimada</p>
                         <p style="font-size: 36px; font-weight: 700; color: var(--kiosk-accent);" id="monthlyPaymentDisplay">₡0</p>
                     </div>
-                    <div style="display: flex; justify-content: space-between; margin-top: 15px; font-size: 13px; color: rgba(255,255,255,0.7);">
+                    <div style="display: none; justify-content: space-between; margin-top: 15px; font-size: 13px; color: rgba(255,255,255,0.7);">
                         <span>Total intereses: <strong id="totalInterestDisplay">₡0</strong></span>
                         <span>Monto total: <strong id="totalAmountDisplay">₡0</strong></span>
                     </div>
@@ -1164,7 +1164,7 @@
 
             let specsHtml = '';
             if (vehicle.year) specsHtml += `<div class="spec-item"><i class="fas fa-calendar"></i> ${vehicle.year}</div>`;
-            if (vehicle.mileage_km) specsHtml += `<div class="spec-item"><i class="fas fa-tachometer-alt"></i> ${Number(vehicle.mileage_km).toLocaleString()} km</div>`;
+            /* if (vehicle.mileage_km) specsHtml += `<div class="spec-item"><i class="fas fa-tachometer-alt"></i> ${Number(vehicle.mileage_km).toLocaleString()} km</div>`; */
             if (vehicle.fuel_type) specsHtml += `<div class="spec-item"><i class="fas fa-gas-pump"></i> ${vehicle.fuel_type}</div>`;
             if (vehicle.transmission) specsHtml += `<div class="spec-item"><i class="fas fa-cogs"></i> ${vehicle.transmission}</div>`;
             if (vehicle.engine_cc) specsHtml += `<div class="spec-item"><i class="fas fa-bolt"></i> ${vehicle.engine_cc} CC</div>`;
@@ -1189,10 +1189,10 @@
                 <i class="fas fa-balance-scale"></i> ${isInCompare ? 'Quitar' : 'Comparar'}
                 ${compareList.length > 0 ? '<span class="compare-badge">' + compareList.length + '</span>' : ''}
             </button>`;
-            buttonsHtml += `<a href="/admin/test-drive/${vehicle.id}/preview" class="btn-kiosk btn-kiosk-secondary" style="text-decoration: none;">
+            buttonsHtml += `<a href="/admin/test-drive/${vehicle.id}/preview?from=kiosk" class="btn-kiosk btn-kiosk-secondary" style="text-decoration: none;" target="_blank">
                 <i class="fas fa-car"></i> Test Drive
             </a>`;
-            buttonsHtml += `<a href="/virtual-tour/${vehicle.id}" class="btn-kiosk btn-kiosk-secondary" style="text-decoration: none;">
+            buttonsHtml += `<a href="/virtual-tour/${vehicle.id}?back_url=${encodeURIComponent(window.location.href)}" class="btn-kiosk btn-kiosk-secondary" style="text-decoration: none;" target="_blank">
                 <i class="fas fa-vr-cardboard"></i> Virtual Tour
             </a>`;
 
@@ -1240,7 +1240,7 @@
             let dragging = false;
             let startX = 0;
             let accX = 0;
-            let autoRotate = true;
+            let autoRotate = false; // el usuario controla el spin manualmente
             let autoDir = 1;
             let lastT = performance.now();
             let autoAcc = 0;
@@ -1329,7 +1329,7 @@
             document.addEventListener('mouseup', () => {
                 if (dragging) {
                     dragging = false;
-                    setTimeout(() => { autoRotate = true; }, 1500);
+                    // autoRotate permanece false; el usuario controla el spin
                 }
             });
 
@@ -1360,7 +1360,7 @@
             viewer.addEventListener('touchend', () => {
                 if (dragging) {
                     dragging = false;
-                    setTimeout(() => { autoRotate = true; }, 1500);
+                    // autoRotate permanece false; el usuario controla el spin
                 }
             }, { passive: true });
 

@@ -438,6 +438,27 @@
             box-shadow: none;
         }
 
+        /* Botón volver al origen (kiosk / subcategory) */
+        .matterport-back-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+            border-radius: 50%;
+            color: #fff;
+            text-decoration: none;
+            font-size: 16px;
+            transition: background 0.2s;
+            flex-shrink: 0;
+        }
+        .matterport-back-btn:hover {
+            background: rgba(0,0,0,0.85);
+            color: #fff;
+        }
+
         /* Header info superior izquierda */
         .matterport-header {
             position: fixed;
@@ -953,6 +974,19 @@
 
     {{-- Header con info de la propiedad --}}
     <div class="matterport-header">
+        @php
+            $backUrl = request()->get('back_url', '');
+            // Bloquear solo protocolos activos peligrosos; el parámetro lo generan
+            // nuestras propias vistas (kiosk/index, subcategory), no entrada del usuario.
+            if ($backUrl && !preg_match('#^https?://#i', $backUrl) && !str_starts_with($backUrl, '/')) {
+                $backUrl = '';
+            }
+        @endphp
+        @if($backUrl)
+        <a href="{{ $backUrl }}" class="matterport-back-btn" title="Volver">
+            <i class="fa fa-arrow-left"></i>
+        </a>
+        @endif
         <button class="matterport-search-btn" id="matterport-menu-toggle" title="Buscar escenas">
             <i class="fa fa-search"></i>
         </button>

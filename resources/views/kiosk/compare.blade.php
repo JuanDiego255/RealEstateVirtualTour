@@ -478,7 +478,14 @@
 
             <!-- Actions -->
             <div class="actions">
-                <a href="{{ route('kiosk.vehicle', ['id' => $vehicle->id, 'event' => $eventName]) }}" class="action-btn btn-secondary">
+                @php
+                    $compareBackParams = http_build_query([
+                        'event'    => $eventName,
+                        'from'     => 'compare',
+                        'vehicles' => $vehicles->pluck('id')->toArray(),
+                    ]);
+                @endphp
+                <a href="{{ route('kiosk.vehicle', $vehicle->id) . '?' . $compareBackParams }}" class="action-btn btn-secondary">
                     <i class="fas fa-eye"></i> Ver detalle
                 </a>
                 <button class="action-btn btn-primary" onclick="selectVehicle({{ $vehicle->id }})">

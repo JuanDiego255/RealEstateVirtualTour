@@ -402,7 +402,16 @@
 <body>
     <!-- Header -->
     <header class="kiosk-header">
-        <a href="{{ route('kiosk.index', ['event' => $eventName]) }}" class="back-btn">
+        @php
+            $backFrom = request()->get('from', '');
+            $backVehicles = request()->get('vehicles', []);
+            if ($backFrom === 'compare' && !empty($backVehicles)) {
+                $backHref = route('kiosk.compare') . '?' . http_build_query(['event' => $eventName, 'vehicles' => $backVehicles]);
+            } else {
+                $backHref = route('kiosk.index', ['event' => $eventName]);
+            }
+        @endphp
+        <a href="{{ $backHref }}" class="back-btn">
             <i class="fas fa-arrow-left"></i>
         </a>
         @if($settings->logo)
@@ -504,9 +513,9 @@
                 <i class="fas fa-calculator"></i> Cotizar
             </button>
             @if($testDriveVideos->count() > 0)
-            <button class="btn-kiosk btn-kiosk-secondary" onclick="openTestDrive()">
+            <a href="/admin/test-drive/{{ $vehicle->id }}/preview?from=kiosk" class="btn-kiosk btn-kiosk-secondary" style="text-decoration:none;" target="_blank">
                 <i class="fas fa-car"></i> Test Drive Virtual
-            </button>
+            </a>
             @endif
         </div>
     </div>
