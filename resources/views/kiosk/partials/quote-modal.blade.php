@@ -202,10 +202,10 @@
         <!-- Interest Rate -->
         <div class="range-container">
             <div class="range-header">
-                <span>Tasa de interés anual</span>
-                <span class="value"><span id="interestRateDisplay">12</span>%</span>
+                <span>Tasa de interés mensual</span>
+                <span class="value"><span id="interestRateDisplay">1</span>%</span>
             </div>
-            <input type="range" id="interestRateSlider" min="0" max="25" value="12" step="0.5">
+            <input type="range" id="interestRateSlider" min="0" max="5" value="1" step="0.1">
         </div>
 
         <!-- Result -->
@@ -290,23 +290,28 @@ function updateQuoteCalculation() {
     const downPercent = parseFloat(document.getElementById('downPaymentSlider').value) || 20;
     const downPayment = price * (downPercent / 100);
     const termMonths = parseInt(document.getElementById('termMonths').value) || 36;
-    const interestRate = parseFloat(document.getElementById('interestRateSlider').value) || 12;
+    const monthlyInterestRate = parseFloat(document.getElementById('interestRateSlider').value) || 1;
     const frequency = document.getElementById('paymentFrequency').value || 'monthly';
 
     const principal = price - downPayment;
 
     let payment, totalAmount, totalInterest, numPayments;
 
+    // Calculo usando tasa mensual directa (mismo metodo que RevenueController)
+    // interes_mensual = saldo * (tasa / 100)
+    // amortiza = cuota - interes
+    // nuevo_saldo = saldo - amortiza
+
     if (frequency === 'annual') {
-        // Calculo anual - metodo frances con tasa anual y periodos anuales
-        const annualRate = interestRate / 100;
-        const years = Math.ceil(termMonths / 12); // Convertir meses a años
+        // Calculo anual - convertir tasa mensual a anual (interes simple)
+        const annualRate = (monthlyInterestRate * 12) / 100;
+        const years = Math.ceil(termMonths / 12);
         numPayments = years;
 
-        if (interestRate === 0) {
+        if (monthlyInterestRate === 0) {
             payment = principal / years;
         } else {
-            // Formula francesa: C = P * (i * (1 + i)^n) / ((1 + i)^n - 1)
+            // Formula: C = P * (i * (1 + i)^n) / ((1 + i)^n - 1)
             payment = principal * (annualRate * Math.pow(1 + annualRate, years))
                 / (Math.pow(1 + annualRate, years) - 1);
         }
@@ -314,14 +319,14 @@ function updateQuoteCalculation() {
         totalAmount = payment * years;
         totalInterest = totalAmount - principal;
     } else {
-        // Calculo mensual - metodo frances con tasa mensual
-        const monthlyRate = (interestRate / 100) / 12;
+        // Calculo mensual - usando tasa mensual directa
+        const monthlyRate = monthlyInterestRate / 100;
         numPayments = termMonths;
 
-        if (interestRate === 0) {
+        if (monthlyInterestRate === 0) {
             payment = principal / termMonths;
         } else {
-            // Formula francesa: C = P * (i * (1 + i)^n) / ((1 + i)^n - 1)
+            // Formula: C = P * (i * (1 + i)^n) / ((1 + i)^n - 1)
             payment = principal * (monthlyRate * Math.pow(1 + monthlyRate, termMonths))
                 / (Math.pow(1 + monthlyRate, termMonths) - 1);
         }
@@ -333,7 +338,7 @@ function updateQuoteCalculation() {
     // Update displays
     document.getElementById('downPaymentPercent').textContent = downPercent;
     document.getElementById('downPaymentDisplay').textContent = '₡' + Math.round(downPayment).toLocaleString('es-CR');
-    document.getElementById('interestRateDisplay').textContent = interestRate;
+    document.getElementById('interestRateDisplay').textContent = monthlyInterestRate;
     document.getElementById('monthlyPaymentDisplay').textContent = '₡' + Math.round(payment).toLocaleString('es-CR');
     document.getElementById('totalInterestDisplay').textContent = '₡' + Math.round(totalInterest).toLocaleString('es-CR');
     document.getElementById('financedAmountDisplay').textContent = '₡' + Math.round(principal).toLocaleString('es-CR');

@@ -345,7 +345,7 @@
                     <td class="value">{{ ($quote->payment_frequency ?? 'monthly') === 'annual' ? 'Anual' : 'Mensual' }}</td>
                 </tr>
                 <tr>
-                    <td class="label">Tasa de interes anual</td>
+                    <td class="label">Tasa de interes mensual</td>
                     <td class="value">{{ number_format($quote->interest_rate, 2) }}%</td>
                 </tr>
                 <tr class="highlight">

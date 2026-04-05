@@ -45,32 +45,41 @@ class VehicleQuote extends Model
 
     /**
      * Calcular cuota mensual usando formula de amortizacion francesa
+     * @param float $principal Monto a financiar
+     * @param float $monthlyRate Tasa de interes MENSUAL (ej: 1 para 1% mensual)
+     * @param int $months Numero de meses
      */
-    public static function calculateMonthlyPayment($principal, $annualRate, $months)
+    public static function calculateMonthlyPayment($principal, $monthlyRate, $months)
     {
-        if ($annualRate == 0) {
+        if ($monthlyRate == 0) {
             return $principal / $months;
         }
 
-        $monthlyRate = ($annualRate / 100) / 12;
-        $payment = $principal * ($monthlyRate * pow(1 + $monthlyRate, $months))
-                   / (pow(1 + $monthlyRate, $months) - 1);
+        // Usa tasa mensual directamente (mismo calculo que RevenueController)
+        // interes_mensual = saldo * (tasa / 100)
+        $rate = $monthlyRate / 100;
+        $payment = $principal * ($rate * pow(1 + $rate, $months))
+                   / (pow(1 + $rate, $months) - 1);
 
         return round($payment, 2);
     }
 
     /**
      * Calcular cuota anual usando formula de amortizacion francesa
+     * @param float $principal Monto a financiar
+     * @param float $monthlyRate Tasa de interes MENSUAL (se convierte a anual)
+     * @param int $years Numero de años
      */
-    public static function calculateAnnualPayment($principal, $annualRate, $years)
+    public static function calculateAnnualPayment($principal, $monthlyRate, $years)
     {
-        if ($annualRate == 0) {
+        if ($monthlyRate == 0) {
             return $principal / $years;
         }
 
-        $rate = $annualRate / 100;
-        $payment = $principal * ($rate * pow(1 + $rate, $years))
-                   / (pow(1 + $rate, $years) - 1);
+        // Convertir tasa mensual a anual (interes simple: mensual * 12)
+        $annualRate = ($monthlyRate * 12) / 100;
+        $payment = $principal * ($annualRate * pow(1 + $annualRate, $years))
+                   / (pow(1 + $annualRate, $years) - 1);
 
         return round($payment, 2);
     }
@@ -88,7 +97,7 @@ class VehicleQuote extends Model
      * @param float $vehiclePrice Precio del vehiculo
      * @param float $downPayment Prima o enganche
      * @param int $termMonths Plazo en meses
-     * @param float $interestRate Tasa de interes anual
+     * @param float $interestRate Tasa de interes MENSUAL (ej: 1 para 1% mensual)
      * @param string $frequency Frecuencia de pago: 'monthly' o 'annual'
      */
     public static function generateQuote($vehiclePrice, $downPayment, $termMonths, $interestRate, $frequency = 'monthly')
