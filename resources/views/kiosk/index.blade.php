@@ -893,8 +893,8 @@
                 </div>
 
                 <div class="form-group-kiosk">
-                    <label>Prima (enganche) - <span id="downPaymentPercent">20</span>%</label>
-                    <input type="range" id="downPaymentSlider" min="10" max="50" value="20" style="width: 100%;">
+                    <label>Prima (enganche) - <span id="downPaymentPercent">50</span>%</label>
+                    <input type="range" id="downPaymentSlider" min="10" max="50" value="50" style="width: 100%;">
                     <input type="text" class="form-control-kiosk" id="downPaymentDisplay" readonly style="margin-top: 10px;">
                 </div>
 
@@ -921,7 +921,7 @@
                         <p style="color: rgba(255,255,255,0.6); font-size: 13px;">Cuota mensual estimada</p>
                         <p style="font-size: 36px; font-weight: 700; color: var(--kiosk-accent);" id="monthlyPaymentDisplay">₡0</p>
                     </div>
-                    <div style="display: flex; justify-content: space-between; margin-top: 15px; font-size: 13px; color: rgba(255,255,255,0.7);">
+                    <div style="display: none; justify-content: space-between; margin-top: 15px; font-size: 13px; color: rgba(255,255,255,0.7);">
                         <span>Total intereses: <strong id="totalInterestDisplay">₡0</strong></span>
                         <span>Monto total: <strong id="totalAmountDisplay">₡0</strong></span>
                     </div>
@@ -1123,7 +1123,7 @@
 
             let specsHtml = '';
             if (vehicle.year) specsHtml += `<div class="spec-item"><i class="fas fa-calendar"></i> ${vehicle.year}</div>`;
-            if (vehicle.mileage_km) specsHtml += `<div class="spec-item"><i class="fas fa-tachometer-alt"></i> ${Number(vehicle.mileage_km).toLocaleString()} km</div>`;
+            /* if (vehicle.mileage_km) specsHtml += `<div class="spec-item"><i class="fas fa-tachometer-alt"></i> ${Number(vehicle.mileage_km).toLocaleString()} km</div>`; */
             if (vehicle.fuel_type) specsHtml += `<div class="spec-item"><i class="fas fa-gas-pump"></i> ${vehicle.fuel_type}</div>`;
             if (vehicle.transmission) specsHtml += `<div class="spec-item"><i class="fas fa-cogs"></i> ${vehicle.transmission}</div>`;
             if (vehicle.engine_cc) specsHtml += `<div class="spec-item"><i class="fas fa-bolt"></i> ${vehicle.engine_cc} CC</div>`;
