@@ -44,7 +44,9 @@
                         <div class="col-md-6 d-flex align-items-end">
                             <div class="alert alert-info mb-0 w-100" style="font-size: 13px;">
                                 <i class="fa fa-info-circle mr-1"></i>
-                                Haz clic en la imagen para posicionar hotspots. Puedes agregar varios antes de guardar.
+                                Haz clic en la imagen para posicionar hotspots. Puedes <strong>cambiar de escena</strong> sin perder los puntos agregados.
+                                Los marcadores <span style="display:inline-block;width:10px;height:10px;background:#007bff;border-radius:50;"></span><span style="color:#007bff;font-weight:bold;"> azules</span> son hotspots ya guardados;
+                                los <span style="display:inline-block;width:10px;height:10px;background:#28a745;border-radius:50;"></span><span style="color:#28a745;font-weight:bold;"> verdes</span> son nuevos pendientes.
                             </div>
                         </div>
                     </div>
@@ -434,11 +436,30 @@
 
         // ====== Variables globales para creación múltiple ======
         var viewerMulti = null;
-        var pendingHotspots = []; // Cada item: { ...datos, imageFile: File|null, imagePreviewUrl: string|null }
+        // Dict por escena: { sceneId: [{...datos}] }
+        var pendingHotspotsByScene = {};
         var currentSceneId = null;
         var isVideoScene = false;
         var isSpinScene = false;
         var defaultHotspotImage = '{{ url("virtualtour/images/hotspot.png") }}';
+
+        // ---- Helpers de acceso al dict ----
+        function getCurrentPending() {
+            return pendingHotspotsByScene[currentSceneId] || [];
+        }
+        function setCurrentPending(arr) {
+            pendingHotspotsByScene[currentSceneId] = arr;
+        }
+        function getAllPendingFlat() {
+            var all = [];
+            Object.keys(pendingHotspotsByScene).forEach(function (sid) {
+                pendingHotspotsByScene[sid].forEach(function (h) { all.push(h); });
+            });
+            return all;
+        }
+        function getAllPendingCount() {
+            return getAllPendingFlat().length;
+        }
 
         // ====== Variables para visor spin ======
         var spinCache = {
@@ -834,7 +855,11 @@
             var $tbody = $('#pendingTableBody');
             $tbody.empty();
 
-            if (pendingHotspots.length === 0) {
+            var scenePending = getCurrentPending();
+            var totalCount   = getAllPendingCount();
+
+            // El botón refleja TODOS los pendientes de todas las escenas
+            if (totalCount === 0) {
                 $('#pendingHotspotsSection').hide();
                 $('#saveAllHotspots').prop('disabled', true);
                 $('#saveCount').text('0');
@@ -842,12 +867,18 @@
                 return;
             }
 
-            $('#pendingHotspotsSection').show();
+            // Mostrar solo los de la escena actual en la tabla
+            if (scenePending.length > 0) {
+                $('#pendingHotspotsSection').show();
+            } else {
+                $('#pendingHotspotsSection').hide();
+            }
+            // El badge muestra el total (incluye otras escenas)
             $('#saveAllHotspots').prop('disabled', false);
-            $('#saveCount').text(pendingHotspots.length);
-            $('#pendingCount').text(pendingHotspots.length);
+            $('#saveCount').text(totalCount);
+            $('#pendingCount').text(scenePending.length);
 
-            pendingHotspots.forEach(function(h, idx) {
+            scenePending.forEach(function(h, idx) {
                 var typeLabel = h.type === 'scene' ? '<span class="badge badge-success">Enlace</span>' : '<span class="badge badge-info">Info</span>';
                 var targetLabel = h.type === 'scene' && h.targetScene ? sceneTitleMap[h.targetScene] || '-' : '-';
                 var infoShort = h.info.length > 30 ? h.info.substring(0, 30) + '...' : h.info;
@@ -872,40 +903,64 @@
         }
 
         // ====== Actualizar marcadores en el visor ======
+        // savedHotspotsForScene: hotspots ya en DB para la escena actual
+        var savedHotspotsForScene = [];
+
         function updateViewerMarkers() {
-            if (isVideoScene) {
-                // Para video, actualizar el marcador del último punto
-                // (Los videos solo muestran un marcador a la vez, en el tiempo actual)
-            } else {
-                // Para panorama 360, necesitamos agregar los hotspots pendientes al viewer
-                if (viewerMulti && pendingHotspots.length > 0) {
-                    // Remover hotspots previos si existen
+            if (isVideoScene || isSpinScene || !viewerMulti) return;
+
+            // Limpiar todos los marcadores del visor primero
+            try {
+                var existing = viewerMulti.getConfig().hotSpots || [];
+                existing.forEach(function(hs) {
+                    try { viewerMulti.removeHotSpot(hs.id); } catch(e) {}
+                });
+            } catch(e) {}
+
+            // Marcadores azules = ya guardados en DB (solo lectura)
+            savedHotspotsForScene.forEach(function(h, idx) {
+                if (h.yaw !== undefined && h.pitch !== undefined) {
                     try {
-                        var existingHotspots = viewerMulti.getConfig().hotSpots || [];
-                        existingHotspots.forEach(function(hs, i) {
-                            viewerMulti.removeHotSpot(hs.id || 'pending-' + i);
+                        viewerMulti.addHotSpot({
+                            id: 'saved-' + h.id,
+                            pitch: parseFloat(h.pitch),
+                            yaw: parseFloat(h.yaw),
+                            type: 'info',
+                            text: '✓ ' + (h.info ? h.info.substring(0, 25) : 'Guardado'),
+                            cssClass: 'saved-hotspot-marker'
                         });
                     } catch(e) {}
-
-                    // Agregar marcadores para cada hotspot pendiente
-                    pendingHotspots.forEach(function(h, idx) {
-                        if (h.yaw !== undefined && h.pitch !== undefined) {
-                            try {
-                                viewerMulti.addHotSpot({
-                                    id: 'pending-' + idx,
-                                    pitch: parseFloat(h.pitch),
-                                    yaw: parseFloat(h.yaw),
-                                    type: 'info',
-                                    text: (idx + 1) + '. ' + (h.info.substring(0, 20) || 'Hotspot'),
-                                    cssClass: 'pending-hotspot-marker'
-                                });
-                            } catch(e) {
-                                console.log('Error adding hotspot marker:', e);
-                            }
-                        }
-                    });
                 }
-            }
+            });
+
+            // Marcadores amarillos = pendientes de guardar en esta sesión
+            var scenePending = getCurrentPending();
+            scenePending.forEach(function(h, idx) {
+                if (h.yaw !== undefined && h.pitch !== undefined) {
+                    try {
+                        viewerMulti.addHotSpot({
+                            id: 'pending-' + idx,
+                            pitch: parseFloat(h.pitch),
+                            yaw: parseFloat(h.yaw),
+                            type: 'info',
+                            text: (idx + 1) + '. ' + (h.info ? h.info.substring(0, 20) : 'Hotspot'),
+                            cssClass: 'pending-hotspot-marker'
+                        });
+                    } catch(e) {}
+                }
+            });
+        }
+
+        // Cargar hotspots guardados del DB para la escena actual y pintarlos en el visor
+        function loadSavedHotspotsForScene(sceneId) {
+            savedHotspotsForScene = [];
+            if (!sceneId) return;
+            $.get('{{ route("getHotspotsByScene") }}', { scene_id: sceneId }, function(res) {
+                if (res.success) {
+                    savedHotspotsForScene = res.hotspots || [];
+                    updateViewerMarkers();
+                }
+            });
         }
 
         // ====== Inicializar modal de creación múltiple ======
@@ -926,7 +981,8 @@
 
         // Al abrir el modal
         $('#addHotspotMulti').on('shown.bs.modal', function() {
-            pendingHotspots = [];
+            pendingHotspotsByScene = {};
+            savedHotspotsForScene = [];
             currentSceneId = null;
             isVideoScene = false;
             isSpinScene = false;
@@ -944,7 +1000,8 @@
         $('#addHotspotMulti').on('hidden.bs.modal', function() {
             destroyViewer(viewerMulti);
             viewerMulti = null;
-            pendingHotspots = [];
+            pendingHotspotsByScene = {};
+            savedHotspotsForScene = [];
             hideHotspotCard();
             if (videoMultiPlayer) {
                 videoMultiPlayer.pause();
@@ -965,8 +1022,9 @@
             $('#viewerWrapper').show();
             hideHotspotCard();
 
-            // Limpiar hotspots pendientes al cambiar de escena
-            pendingHotspots = [];
+            // Ya NO se borran los pendientes al cambiar de escena.
+            // Se restauran los de esta escena (pueden ser [] si es primera vez).
+            savedHotspotsForScene = [];
             updatePendingList();
 
             // Ocultar todos los visores primero
@@ -985,6 +1043,7 @@
 
                 document.getElementById('spin-multi').style.display = 'block';
                 loadSpinFrames(currentSceneId);
+                loadSavedHotspotsForScene(currentSceneId);
             } else if (isVideoScene) {
                 // Escena de video
                 destroyViewer(viewerMulti);
@@ -998,6 +1057,7 @@
                     videoMultiPlayer.load();
                 }
                 videoMultiMarker.style.display = 'none';
+                loadSavedHotspotsForScene(currentSceneId);
             } else {
                 // Escena panorama 360
                 if (videoMultiPlayer) {
@@ -1017,6 +1077,12 @@
                     autoLoad: true,
                     showControls: true,
                     hotSpotDebug: false
+                });
+
+                // Una vez cargada la imagen, pintar los marcadores guardados y pendientes
+                viewerMulti.on('load', function() {
+                    loadSavedHotspotsForScene(currentSceneId);
+                    updateViewerMarkers();
                 });
 
                 // Click en panorama → detectar si es click o drag
@@ -1168,16 +1234,17 @@
                 imagePreviewUrl: imagePreviewUrl
             };
 
+            var arr = getCurrentPending();
             var editIndex = parseInt($('#cardEditIndex').val());
             if (editIndex >= 0) {
-                // Editar existente
-                pendingHotspots[editIndex] = hotspotData;
+                arr[editIndex] = hotspotData;
             } else {
-                // Agregar nuevo
-                pendingHotspots.push(hotspotData);
+                arr.push(hotspotData);
             }
+            setCurrentPending(arr);
 
             updatePendingList();
+            updateViewerMarkers();
             hideHotspotCard();
             videoMultiMarker.style.display = 'none';
         });
@@ -1185,7 +1252,7 @@
         // Editar hotspot pendiente
         $(document).on('click', '.edit-pending', function() {
             var idx = $(this).data('index');
-            var h = pendingHotspots[idx];
+            var h = getCurrentPending()[idx];
             if (!h) return;
 
             // Rellenar card con datos existentes
@@ -1233,13 +1300,17 @@
         // Eliminar hotspot pendiente
         $(document).on('click', '.delete-pending', function() {
             var idx = $(this).data('index');
-            pendingHotspots.splice(idx, 1);
+            var arr = getCurrentPending();
+            arr.splice(idx, 1);
+            setCurrentPending(arr);
             updatePendingList();
+            updateViewerMarkers();
         });
 
-        // Guardar todos los hotspots
+        // Guardar todos los hotspots (de todas las escenas)
         $('#saveAllHotspots').on('click', function() {
-            if (pendingHotspots.length === 0) {
+            var allPending = getAllPendingFlat();
+            if (allPending.length === 0) {
                 alert('No hay hotspots pendientes para guardar');
                 return;
             }
@@ -1252,7 +1323,7 @@
             formData.append('_token', '{{ csrf_token() }}');
             formData.append('property_id', $('#propertyIdBatch').val());
 
-            pendingHotspots.forEach(function(h, idx) {
+            allPending.forEach(function(h, idx) {
                 formData.append('hotspots[' + idx + '][sourceScene]', h.sourceScene);
                 formData.append('hotspots[' + idx + '][type]', h.type);
                 formData.append('hotspots[' + idx + '][info]', h.info);
@@ -1264,7 +1335,6 @@
                 if (h.video_time) formData.append('hotspots[' + idx + '][video_time]', h.video_time);
                 if (h.pos_x) formData.append('hotspots[' + idx + '][pos_x]', h.pos_x);
                 if (h.pos_y) formData.append('hotspots[' + idx + '][pos_y]', h.pos_y);
-                // Adjuntar imagen si existe
                 if (h.imageFile) {
                     formData.append('images_' + idx, h.imageFile);
                 }
@@ -1282,7 +1352,7 @@
                         window.location.href = response.redirect;
                     } else {
                         alert('Error: ' + response.message);
-                        $btn.prop('disabled', false).html('<i class="fa fa-save mr-1"></i> Guardar Todos (<span id="saveCount">' + pendingHotspots.length + '</span>)');
+                        $btn.prop('disabled', false).html('<i class="fa fa-save mr-1"></i> Guardar Todos (<span id="saveCount">' + getAllPendingCount() + '</span>)');
                     }
                 },
                 error: function(xhr) {
@@ -1291,7 +1361,7 @@
                         msg = xhr.responseJSON.message;
                     }
                     alert(msg);
-                    $btn.prop('disabled', false).html('<i class="fa fa-save mr-1"></i> Guardar Todos (<span id="saveCount">' + pendingHotspots.length + '</span>)');
+                    $btn.prop('disabled', false).html('<i class="fa fa-save mr-1"></i> Guardar Todos (<span id="saveCount">' + getAllPendingCount() + '</span>)');
                 }
             });
         });
@@ -1731,9 +1801,9 @@
 </script>
 
 <style>
-/* Estilos para marcadores de hotspots pendientes */
+/* Hotspots pendientes de guardar (verde) */
 .pending-hotspot-marker {
-    background: rgba(40, 167, 69, 0.8) !important;
+    background: rgba(40, 167, 69, 0.85) !important;
     border: 2px solid #fff !important;
     border-radius: 50% !important;
     width: 24px !important;
@@ -1745,7 +1815,22 @@
     justify-content: center !important;
     cursor: pointer !important;
 }
-.pending-hotspot-marker span {
-    display: none;
+.pending-hotspot-marker span { display: none; }
+
+/* Hotspots ya guardados en DB (azul) */
+.saved-hotspot-marker {
+    background: rgba(0, 123, 255, 0.80) !important;
+    border: 2px solid #fff !important;
+    border-radius: 50% !important;
+    width: 20px !important;
+    height: 20px !important;
+    font-size: 11px !important;
+    color: #fff !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: default !important;
+    opacity: 0.75;
 }
+.saved-hotspot-marker span { display: none; }
 </style>

@@ -617,7 +617,7 @@
             @php
                 $povExt = strtolower(pathinfo($povVideo, PATHINFO_EXTENSION));
                 $povMime = match($povExt) {
-                    'mov' => 'video/quicktime',
+                    'mov' => 'video/mp4',   // MOV (H.264) usa mismos codecs que MP4; quicktime no soportado en Chrome/Firefox
                     'webm' => 'video/webm',
                     'ogg', 'ogv' => 'video/ogg',
                     default => 'video/mp4'
@@ -630,7 +630,7 @@
             @php
                 $videoExt = strtolower(pathinfo($mainVideo->video_path, PATHINFO_EXTENSION));
                 $videoMime = match($videoExt) {
-                    'mov' => 'video/quicktime',
+                    'mov' => 'video/mp4',   // MOV (H.264) usa mismos codecs que MP4; quicktime no soportado en Chrome/Firefox
                     'webm' => 'video/webm',
                     'ogg', 'ogv' => 'video/ogg',
                     default => 'video/mp4'
@@ -639,6 +639,21 @@
             <video class="immersive-video" id="immersiveVideo" loop muted playsinline autoplay>
                 <source src="{{ route('file', $mainVideo->video_path) }}" type="{{ $videoMime }}">
             </video>
+        {{-- Aviso visible cuando el codec del video no es compatible con el browser --}}
+        <div id="tdCodecWarning" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,0.85);
+             z-index:5;flex-direction:column;align-items:center;justify-content:center;
+             color:#fff;text-align:center;padding:30px;">
+            <i class="fas fa-exclamation-triangle" style="font-size:48px;color:#ffc107;margin-bottom:16px;"></i>
+            <h4 style="margin-bottom:8px;">Codec de video no compatible</h4>
+            <p style="max-width:380px;color:rgba(255,255,255,0.75);font-size:14px;margin-bottom:20px;">
+                El video usa HEVC (H.265), que no es soportado por Chrome/Firefox.<br>
+                Elimina este video y sube uno nuevo en <strong>H.264 MP4</strong>.
+            </p>
+            <p style="font-size:12px;color:rgba(255,255,255,0.45);">
+                Conversor gratuito: <strong>HandBrake</strong> → preset "Fast 1080p30"
+            </p>
+        </div>
+
         @else
             {{-- Imagen de fondo si no hay video --}}
             @if($vehicle->featured_image)
@@ -1122,10 +1137,10 @@ class ImmersiveTestDrive {
             if (engineLight) engineLight.classList.add('active');
             if (fuelLight) fuelLight.classList.add('active');
 
-            // Reproducir video
+            // El video lo controla updateDisplay(); aquí solo nos aseguramos
+            // de que esté listo para reproducir en cuanto se pise el acelerador.
             if (video) {
                 video.muted = true;
-                video.play().catch(() => {});
             }
 
             // Sonido de arranque
@@ -1154,8 +1169,8 @@ class ImmersiveTestDrive {
 
             if (engineLight) engineLight.classList.remove('active');
 
-            // Parar video
-            if (video) {
+            // Pausar video al apagar el motor
+            if (video && !video.paused) {
                 video.pause();
             }
 
@@ -1242,6 +1257,25 @@ class ImmersiveTestDrive {
         } else if (modal) {
             modal.classList.remove('vibrating');
         }
+
+        // Sincronizar video con el acelerador:
+        // - Motor apagado o sin acelerar → video pausado
+        // - Acelerando → video reproduce a velocidad proporcional al throttle
+        const video = document.getElementById('immersiveVideo');
+        if (video) {
+            const shouldPlay = this.isRunning && this.throttle > 0.01;
+            if (shouldPlay) {
+                // Velocidad: 0.1x con poco gas → 2.5x a fondo
+                video.playbackRate = 0.1 + this.throttle * 2.4;
+                if (video.paused) {
+                    video.play().catch(() => {});
+                }
+            } else {
+                if (!video.paused) {
+                    video.pause();
+                }
+            }
+        }
     }
 }
 
@@ -1253,7 +1287,7 @@ function launchTestDrive() {
     if (modal) {
         modal.classList.add('active');
 
-        // Inicializar si no existe
+        // Inicializar instancia si no existe
         if (!testDriveInstance) {
             testDriveInstance = new ImmersiveTestDrive();
         }
@@ -1261,6 +1295,33 @@ function launchTestDrive() {
         // Marcar boton como listo
         const btn = document.getElementById('ignitionBtn');
         if (btn) btn.classList.add('ready');
+
+        // El video estaba en display:none desde que cargó la página, así que el
+        // navegador no cargó su buffer. Forzar carga y reproducción en bucle lento
+        // en cuanto el modal sea visible (estamos dentro de un gesto del usuario).
+        const video = document.getElementById('immersiveVideo');
+        if (video) {
+            video.muted = true;
+            video.loop  = true;
+
+            video.addEventListener('error', function() {
+                console.error('[TD] error — código:', video.error?.code, '| src:', video.currentSrc);
+            }, { once: true });
+
+            video.addEventListener('playing', function() {
+                if (video.videoWidth === 0) {
+                    var warn = document.getElementById('tdCodecWarning');
+                    if (warn) warn.style.display = 'flex';
+                    console.warn('[TD] videoWidth=0 — codec incompatible. Usa H.264 MP4.');
+                }
+            }, { once: true });
+
+            // Solo cargar el recurso; la reproducción la controla updateDisplay()
+            // según el acelerador. El video NO inicia solo.
+            video.load();
+        } else {
+            console.warn('[TD] #immersiveVideo no encontrado — asigna al menos un video activo.');
+        }
 
         // Fullscreen en moviles
         if (document.documentElement.requestFullscreen && window.innerWidth < 768) {
