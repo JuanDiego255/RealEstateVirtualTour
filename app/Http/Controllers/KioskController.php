@@ -28,15 +28,29 @@ class KioskController extends Controller
      */
     public function index(Request $request)
     {
-        $companyId = $request->get('company_id', 1);
+        $user = Auth::user();
+        // Super admin puede filtrar por company_id en query string; los demás usan su propia empresa
+        $companyId = $user->isSuperAdmin()
+            ? $request->get('company_id', $user->company_id ?? 1)
+            : $user->company_id;
+
         $eventName = $request->get('event');
 
         $settings = KioskSetting::getActiveForCompany($companyId)
             ?? new KioskSetting(KioskSetting::defaults());
 
-        // Obtener todos los vehiculos para el kiosko (con o sin spin)
+        // Obtener IDs de categorías de la empresa del usuario
+        $companyCategoryIds = \App\Category::where('company_id', $companyId)->pluck('id');
+
+        // Obtener todos los vehiculos para el kiosko (con o sin spin), filtrados por sucursal
         $query = Properties::vehicles()
-            ->whereIn('status', ['available', 'reserved', 'negotiating']);
+            ->whereIn('status', ['available', 'reserved', 'negotiating'])
+            ->where(function ($q) use ($companyCategoryIds) {
+                $q->whereIn('category_id', $companyCategoryIds)
+                  ->orWhereHas('subcategory', function ($sq) use ($companyCategoryIds) {
+                      $sq->whereIn('category_id', $companyCategoryIds);
+                  });
+            });
 
         // Filtrar por vehiculos destacados si estan configurados
         if (!empty($settings->featured_vehicle_ids)) {

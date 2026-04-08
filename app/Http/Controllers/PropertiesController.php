@@ -31,8 +31,31 @@ class PropertiesController extends Controller
      */
     public function indexAdmin()
     {
-        $properties = Properties::with(['subcategory.category.sector', 'category', 'images'])->get();
-        $subcategories = Subcategory::with('category.sector')->where('is_active', true)->orderBy('name')->get();
+        $user = \Illuminate\Support\Facades\Auth::user();
+
+        if ($user->isSuperAdmin()) {
+            // Super admin ve todas las publicaciones
+            $properties = Properties::with(['subcategory.category.sector', 'category', 'images'])->get();
+            $subcategories = Subcategory::with('category.sector')->where('is_active', true)->orderBy('name')->get();
+        } else {
+            // company_admin y agents ven solo las publicaciones de su empresa
+            $categoriesOfCompany = \App\Category::where('company_id', $user->company_id)->pluck('id');
+            $subcategoryIds = Subcategory::whereIn('category_id', $categoriesOfCompany)->pluck('id');
+
+            $properties = Properties::with(['subcategory.category.sector', 'category', 'images'])
+                ->where(function ($q) use ($categoriesOfCompany, $subcategoryIds) {
+                    $q->whereIn('category_id', $categoriesOfCompany)
+                      ->orWhereIn('subcategory_id', $subcategoryIds);
+                })
+                ->get();
+
+            $subcategories = Subcategory::with('category.sector')
+                ->whereIn('category_id', $categoriesOfCompany)
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get();
+        }
+
         return view('admin.properties.property', compact('properties', 'subcategories'));
     }
 

@@ -18,21 +18,26 @@
     <div class="container-fluid">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h4 class="text-dark"><i class="fa fa-folder-open mr-2"></i>Gestión de Publicaciones</h4>
+            @if(Auth::user()->canAccessModule('properties', 'create'))
             <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addProperty">
                 <i class="fa fa-plus mr-1"></i> Nueva Publicación
             </button>
+            @endif
         </div>
 
         <div class="row mt-5">
 
             @foreach ($properties as $property)
-                @include('admin.properties.edit')
+                @if(Auth::user()->canAccessModule('properties', 'edit'))
+                    @include('admin.properties.edit')
+                @endif
                 <div class="col-md-3 col-sm-6">
                     <div class="item">
                         <div class="product-grid product_data">
                             <div class="product-image">
                                 <img
                                     src="{{ isset($property->image) ? route('file', $property->image) : url('images/producto-sin-imagen.PNG') }}">
+                                @if(Auth::user()->canAccessModule('properties', 'delete'))
                                 <a onclick="if (confirm('¿Deseas borrar esta publicación?')) {
                                     document.getElementById('deleteProperty' + {{ $property->id }}).submit();
                                 }"
@@ -43,6 +48,7 @@
                                     {{ csrf_field() }}
                                     {{ method_field('DELETE') }}
                                 </form>
+                                @endif
                                 {{-- Status badge --}}
                                 @if ($property->status && $property->status !== 'available')
                                     <span
@@ -76,8 +82,10 @@
                                     </ul>
                                 @endif
 
+                                @if(Auth::user()->canAccessModule('properties', 'edit'))
                                 <a href="#" data-toggle="modal" data-target="#editProperty{{ $property['id'] }}"
                                     class="add-to-cart">Editar</a>
+                                @endif
                             </div>
                             <div class="product-content">
 

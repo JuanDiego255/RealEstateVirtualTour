@@ -12,10 +12,14 @@
 
     <div class="container-fluid">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h4><i class="fa fa-map-marker"></i> Sucursales</h4>
-            <a href="{{ route('admin.categories.create') }}" class="btn btn-primary">
-                <i class="fa fa-plus"></i> Nueva Sucursal
-            </a>
+            @if(Auth::user()->isSuperAdmin())
+                <h4><i class="fa fa-map-marker"></i> Sucursales</h4>
+                <a href="{{ route('admin.categories.create') }}" class="btn btn-primary">
+                    <i class="fa fa-plus"></i> Nueva Sucursal
+                </a>
+            @else
+                <h4><i class="fa fa-map-marker"></i> Mi Sucursal</h4>
+            @endif
         </div>
 
         <div class="row">
@@ -66,14 +70,17 @@
                             </div>
                         </div>
                         <div class="card-footer bg-white d-flex justify-content-between">
-                            <div class="btn-group ">
-                                <a href="{{ route('admin.categories.show', $cat) }}" class="btn btn-info" title="Ver"><i
-                                        class="fa fa-eye"></i></a>
-                                <a href="{{ route('admin.categories.edit', $cat) }}" class="btn btn-primary"
-                                    title="Editar"><i class="fa fa-edit"></i></a>
-
+                            <div class="btn-group">
+                                <a href="{{ route('admin.categories.show', $cat) }}" class="btn btn-info" title="Ver">
+                                    <i class="fa fa-eye"></i>
+                                </a>
+                                <a href="{{ route('admin.categories.edit', $cat) }}" class="btn btn-primary" title="Editar">
+                                    <i class="fa fa-edit"></i>
+                                </a>
                             </div>
                             <div>
+                                {{-- Toggle estado: solo super_admin --}}
+                                @if(Auth::user()->isSuperAdmin())
                                 <form action="{{ route('admin.categories.toggle-status', $cat) }}" method="POST"
                                     class="d-inline">
                                     @csrf
@@ -82,6 +89,7 @@
                                         <i class="fa fa-{{ $cat->is_active ? 'eye-slash' : 'eye' }}"></i>
                                     </button>
                                 </form>
+                                @endif
                                 <a href="{{ route('admin.subcategories.index', $cat) }}"
                                     class="btn btn-secondary" title="Categorías">
                                     <i class="fa fa-tags"></i>
@@ -101,11 +109,13 @@
                     <div class="card">
                         <div class="card-body text-center py-5">
                             <i class="fa fa-map-marker fa-3x text-muted mb-3"></i>
-                            <h5>No tienes sucursales aún</h5>
+                            <h5>No hay sucursales registradas</h5>
+                            @if(Auth::user()->isSuperAdmin())
                             <p class="text-muted">Crea tu primera sucursal para empezar a publicar</p>
                             <a href="{{ route('admin.categories.create') }}" class="btn btn-primary">
                                 <i class="fa fa-plus"></i> Crear Sucursal
                             </a>
+                            @endif
                         </div>
                     </div>
                 </div>

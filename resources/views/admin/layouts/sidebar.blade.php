@@ -12,19 +12,36 @@
                         <a href="{{ route('home') }}"><i class="fa fa-home"></i><span>Inicio</span></a>
                     </li>
 
-
-
                     @auth
-                        @php $u = Auth::user(); @endphp
+                        @php
+                            $u = Auth::user();
+                            // company_admin y super_admin siempre tienen acceso a los módulos de su empresa
+                            $hasAccess = $u->isSuperAdmin() || $u->isCompanyAdmin() || $u->hasActiveSubscription();
+                        @endphp
 
-                        {{-- Sucursales --}}
-                        @if ($u->canAccessModule('branches') &&
-                            (method_exists($u, 'hasActiveSubscription') &&
-                                ($u->hasActiveSubscription() || $u->isSuperAdmin())))
+                        {{-- ============================================= --}}
+                        {{-- Sucursales: super_admin ve todas; company_admin ve "Mi Sucursal" + "Mis Categorías" --}}
+                        {{-- ============================================= --}}
+                        @if ($u->isSuperAdmin())
                             <li class="{{ Request::routeIs('admin.categories.*') ? 'active' : '' }}">
-                                <a href="{{ route('admin.categories.index') }}"><i
-                                        class="fa fa-map-marker"></i><span>Sucursales</span></a>
+                                <a href="{{ route('admin.categories.index') }}">
+                                    <i class="fa fa-map-marker"></i><span>Sucursales</span>
+                                </a>
                             </li>
+                        @elseif ($u->isCompanyAdmin())
+                            @php $myCat = \App\Category::where('company_id', $u->company_id)->first(); @endphp
+                            <li class="{{ Request::routeIs('admin.categories.*') ? 'active' : '' }}">
+                                <a href="{{ route('admin.categories.index') }}">
+                                    <i class="fa fa-map-marker"></i><span>Mi Sucursal</span>
+                                </a>
+                            </li>
+                            @if ($myCat)
+                            <li class="{{ Request::routeIs('admin.subcategories.*') ? 'active' : '' }}">
+                                <a href="{{ route('admin.subcategories.index', $myCat->id) }}">
+                                    <i class="fa fa-tags"></i><span>Mis Categorías</span>
+                                </a>
+                            </li>
+                            @endif
                         @endif
 
                         {{-- Publicaciones --}}
@@ -49,7 +66,7 @@
                         @endif
 
                         {{-- Bolsa Inmobiliaria --}}
-                        @if ($u->canAccessModule('bolsa'))
+                        @if ($u->canAccessModule('bolsa') && $hasAccess)
                         <li class="{{ Request::routeIs('admin.bolsa.*') ? 'active' : '' }}">
                             <a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
                                 <i class="fa fa-exchange"></i><span>Bolsa Inmobiliaria</span>
@@ -64,37 +81,33 @@
                         @endif
 
                         {{-- Ventas --}}
-                        @if ($u->canAccessModule('sales') &&
-                            (method_exists($u, 'hasActiveSubscription') &&
-                                ($u->hasActiveSubscription() || $u->isSuperAdmin())))
+                        @if ($u->canAccessModule('sales') && $hasAccess)
                             <li class="{{ Request::routeIs('admin.sales.*') ? 'active' : '' }}">
                                 <a href="{{ route('admin.sales.index') }}"><i
                                         class="fa fa-money"></i><span>Ventas</span></a>
                             </li>
                         @endif
 
-                        {{-- Dashboard de Eventos --}}
-                        @if ($u->canAccessModule('event_dashboard') &&
-                            (method_exists($u, 'hasActiveSubscription') &&
-                                ($u->hasActiveSubscription() || $u->isSuperAdmin())))
+                        {{-- Dashboard de Eventos:
+                             super_admin y company_admin: siempre visible
+                             agent: visible si tiene permiso y suscripción activa --}}
+                        @if ($u->canAccessModule('event_dashboard') && $hasAccess)
                             <li class="{{ Request::routeIs('kiosk.dashboard') ? 'active' : '' }}">
                                 <a href="{{ route('kiosk.dashboard') }}"><i class="fa fa-desktop"></i><span>Dashboard Eventos</span></a>
                             </li>
                         @endif
 
-                        {{-- Kiosko --}}
-                        @if ($u->canAccessModule('kiosk') &&
-                            (method_exists($u, 'hasActiveSubscription') &&
-                                ($u->hasActiveSubscription() || $u->isSuperAdmin())))
+                        {{-- Kiosko:
+                             super_admin y company_admin: siempre visible
+                             agent: visible si tiene permiso y suscripción activa --}}
+                        @if ($u->canAccessModule('kiosk') && $hasAccess)
                             <li class="{{ Request::routeIs('kiosk.index') ? 'active' : '' }}">
                                 <a href="{{ route('kiosk.index') }}" target="_blank"><i class="fa fa-tablet"></i><span>Kiosko</span></a>
                             </li>
                         @endif
 
                         {{-- CRM + Agenda --}}
-                        @if ($u->canAccessModule('crm') &&
-                            (method_exists($u, 'hasActiveSubscription') &&
-                                ($u->hasActiveSubscription() || $u->isSuperAdmin())))
+                        @if ($u->canAccessModule('crm') && $hasAccess)
                             <li class="{{ Request::routeIs('admin.crm.*') ? 'active' : '' }}">
                                 <a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
                                     <i class="fa fa-address-book"></i><span>CRM + Agenda</span>
@@ -143,50 +156,43 @@
                             </li>
                         @endif
 
-                        {{-- Mi Suscripción (para usuarios normales) --}}
-                        @if (method_exists(Auth::user(), 'isSuperAdmin') && !Auth::user()->isSuperAdmin())
+                        {{-- Mi Suscripción (para usuarios no super_admin) --}}
+                        @if (!$u->isSuperAdmin())
                             <li class="{{ Request::routeIs('admin.subscriptions.my') ? 'active' : '' }}">
-                                <a href="{{ route('admin.subscriptions.my') }}"><i class="fa fa-credit-card"></i><span>Mi
-                                        Suscripción</span></a>
+                                <a href="{{ route('admin.subscriptions.my') }}"><i class="fa fa-credit-card"></i><span>Mi Suscripción</span></a>
                             </li>
                         @endif
 
                         {{-- ============================================= --}}
                         {{-- SECCIÓN SUPER ADMIN --}}
                         {{-- ============================================= --}}
-                        @if (method_exists(Auth::user(), 'isSuperAdmin') && Auth::user()->isSuperAdmin())
+                        @if ($u->isSuperAdmin())
                             <li class="menu-title mt-3">
                                 <span style="color: #ffc107; font-size: 11px; text-transform: uppercase;">
                                     <i class="fa fa-cog"></i> Administración
                                 </span>
                             </li>
 
-                            {{-- Sectores --}}
                             <li class="{{ Request::routeIs('sectors') ? 'active' : '' }}">
                                 <a href="{{ route('sectors') }}"><i class="fa fa-th-large"></i><span>Sectores</span></a>
                             </li>
 
-                            {{-- Empresas --}}
                             <li class="{{ Request::routeIs('admin.companies.*') ? 'active' : '' }}">
                                 <a href="{{ route('admin.companies.index') }}"><i
                                         class="fa fa-building"></i><span>Empresas</span></a>
                             </li>
 
-                            {{-- Usuarios --}}
                             <li class="{{ Request::routeIs('admin.users.*') ? 'active' : '' }}">
                                 <a href="{{ route('admin.users.index') }}"><i
                                         class="fa fa-users"></i><span>Usuarios</span></a>
                             </li>
 
-                            {{-- Paquetes --}}
                             <li class="{{ Request::routeIs('admin.packages.*') ? 'active' : '' }}">
                                 <a href="{{ route('admin.packages.index') }}"><i
                                         class="fa fa-cube"></i><span>Paquetes</span></a>
                             </li>
 
-                            {{-- Suscripciones --}}
-                            <li
-                                class="{{ Request::routeIs('admin.subscriptions.*') && !Request::routeIs('admin.subscriptions.my') ? 'active' : '' }}">
+                            <li class="{{ Request::routeIs('admin.subscriptions.*') && !Request::routeIs('admin.subscriptions.my') ? 'active' : '' }}">
                                 <a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
                                     <i class="fa fa-id-card"></i><span>Suscripciones</span>
                                     @php
@@ -207,8 +213,7 @@
                                         </a>
                                     </li>
                                     <li><a href="{{ route('admin.subscriptions.expiring') }}">Por vencer</a></li>
-                                    <li><a href="{{ route('admin.subscriptions.pending-payments') }}">Pagos pendientes</a>
-                                    </li>
+                                    <li><a href="{{ route('admin.subscriptions.pending-payments') }}">Pagos pendientes</a></li>
                                     <li><a href="{{ route('admin.subscriptions.create') }}">Nueva suscripción</a></li>
                                 </ul>
                             </li>

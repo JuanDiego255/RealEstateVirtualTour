@@ -19,16 +19,6 @@ class UserPermission extends Model
     public static function modules(): array
     {
         return [
-            'branches' => [
-                'label'   => 'Sucursales',
-                'icon'    => 'fa-map-marker',
-                'actions' => [
-                    'view'   => 'Ver',
-                    'create' => 'Agregar',
-                    'edit'   => 'Editar',
-                    'delete' => 'Eliminar',
-                ],
-            ],
             'properties' => [
                 'label'   => 'Publicaciones',
                 'icon'    => 'fa-th-list',
