@@ -425,6 +425,7 @@
                                 <th>Vehículo de Interés</th>
                                 <th>Origen</th>
                                 <th>Interés</th>
+                                <th>Agente</th>
                                 <th>Hora</th>
                                 <th>Acciones</th>
                             </tr>
@@ -486,6 +487,13 @@
                                     </span>
                                 </td>
                                 <td>
+                                    @if($lead->capturedBy)
+                                        <small><i class="fa fa-user"></i> {{ $lead->capturedBy->name }}</small>
+                                    @else
+                                        <small style="color:#999;">—</small>
+                                    @endif
+                                </td>
+                                <td>
                                     <div>{{ $lead->created_at->format('H:i') }}</div>
                                     <small style="color: #999;">{{ $lead->created_at->format('d/m') }}</small>
                                 </td>
@@ -517,7 +525,7 @@
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="7" style="text-align: center; padding: 40px; color: #666;">
+                                <td colspan="8" style="text-align: center; padding: 40px; color: #666;">
                                     <i class="fa fa-heart" style="font-size: 32px; color: #ddd; margin-bottom: 10px; display: block;"></i>
                                     No hay clientes interesados registrados aún
                                 </td>
@@ -544,6 +552,7 @@
                                 <th>Prima</th>
                                 <th>Plazo</th>
                                 <th>Cuota Mensual</th>
+                                <th>Agente</th>
                                 <th>Hora</th>
                                 <th>Acciones</th>
                             </tr>
@@ -584,6 +593,13 @@
                                     <br><small class="quote-monthly">Tasa: {{ $quote->interest_rate }}%</small>
                                 </td>
                                 <td>
+                                    @if($quote->capturedBy)
+                                        <small><i class="fa fa-user"></i> {{ $quote->capturedBy->name }}</small>
+                                    @else
+                                        <small style="color:#999;">—</small>
+                                    @endif
+                                </td>
+                                <td>
                                     <div>{{ $quote->created_at->format('H:i') }}</div>
                                     <small style="color: #999;">{{ $quote->created_at->format('d/m') }}</small>
                                 </td>
@@ -606,7 +622,7 @@
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="8" style="text-align: center; padding: 40px; color: #666;">
+                                <td colspan="9" style="text-align: center; padding: 40px; color: #666;">
                                     <i class="fa fa-calculator" style="font-size: 32px; color: #ddd; margin-bottom: 10px; display: block;"></i>
                                     No hay cotizaciones realizadas aún
                                 </td>

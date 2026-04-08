@@ -9,7 +9,8 @@ use App\Company;
 class EventLead extends Model
 {
     protected $fillable = [
-        'property_id', 'vehicle_id', 'company_id', 'name', 'email', 'phone', 'notes',
+        'property_id', 'vehicle_id', 'company_id', 'captured_by_user_id',
+        'name', 'email', 'phone', 'notes',
         'source', 'event_name', 'interest_level', 'contacted', 'contacted_at',
         'contacted_by', 'vehicles_viewed', 'vehicles_compared', 'quotes_requested',
         'follow_up_status', 'follow_up_date'
@@ -43,6 +44,11 @@ class EventLead extends Model
     public function company()
     {
         return $this->belongsTo(Company::class);
+    }
+
+    public function capturedBy()
+    {
+        return $this->belongsTo(\App\User::class, 'captured_by_user_id');
     }
 
     /**

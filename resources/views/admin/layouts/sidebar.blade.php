@@ -15,31 +15,41 @@
 
 
                     @auth
-                        {{-- Sucursales (para usuarios con suscripción) --}}
-                        @if (method_exists(Auth::user(), 'hasActiveSubscription') &&
-                                (Auth::user()->hasActiveSubscription() ||
-                                    (method_exists(Auth::user(), 'isSuperAdmin') && Auth::user()->isSuperAdmin())))
+                        @php $u = Auth::user(); @endphp
+
+                        {{-- Sucursales --}}
+                        @if ($u->canAccessModule('branches') &&
+                            (method_exists($u, 'hasActiveSubscription') &&
+                                ($u->hasActiveSubscription() || $u->isSuperAdmin())))
                             <li class="{{ Request::routeIs('admin.categories.*') ? 'active' : '' }}">
                                 <a href="{{ route('admin.categories.index') }}"><i
                                         class="fa fa-map-marker"></i><span>Sucursales</span></a>
                             </li>
                         @endif
 
+                        {{-- Publicaciones --}}
+                        @if ($u->canAccessModule('properties'))
                         <li class="{{ Request::routeIs('config') || Request::routeIs('property') ? 'active' : '' }}">
                             <a href="{{ route('property') }}"><i class="fa fa-th-list"></i><span>Publicaciones</span></a>
                         </li>
+                        @endif
 
                         {{-- Favoritos --}}
+                        @if ($u->canAccessModule('favorites'))
                         <li class="{{ Request::routeIs('favorites.*') ? 'active' : '' }}">
                             <a href="{{ route('favorites.index') }}"><i class="fa fa-heart"></i><span>Mis Favoritos</span></a>
                         </li>
+                        @endif
 
                         {{-- Mis Calificaciones --}}
+                        @if ($u->canAccessModule('ratings'))
                         <li class="{{ Request::routeIs('reviews.my-reviews') ? 'active' : '' }}">
                             <a href="{{ route('reviews.my-reviews') }}"><i class="fa fa-star"></i><span>Mis Calificaciones</span></a>
                         </li>
+                        @endif
 
-                        {{-- Bolsa Inmobiliaria (solo si el paquete lo permite) --}}
+                        {{-- Bolsa Inmobiliaria --}}
+                        @if ($u->canAccessModule('bolsa'))
                         <li class="{{ Request::routeIs('admin.bolsa.*') ? 'active' : '' }}">
                             <a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
                                 <i class="fa fa-exchange"></i><span>Bolsa Inmobiliaria</span>
@@ -51,30 +61,40 @@
                                 <li><a href="{{ route('admin.bolsa.incoming') }}">Recibidas</a></li>
                             </ul>
                         </li>
+                        @endif
 
                         {{-- Ventas --}}
-                        @if (method_exists(Auth::user(), 'hasActiveSubscription') &&
-                                (Auth::user()->hasActiveSubscription() ||
-                                    (method_exists(Auth::user(), 'isSuperAdmin') && Auth::user()->isSuperAdmin())))
+                        @if ($u->canAccessModule('sales') &&
+                            (method_exists($u, 'hasActiveSubscription') &&
+                                ($u->hasActiveSubscription() || $u->isSuperAdmin())))
                             <li class="{{ Request::routeIs('admin.sales.*') ? 'active' : '' }}">
                                 <a href="{{ route('admin.sales.index') }}"><i
                                         class="fa fa-money"></i><span>Ventas</span></a>
                             </li>
                         @endif
 
-                        {{-- Dashboard de Eventos (Kiosk) --}}
-                        @if (method_exists(Auth::user(), 'hasActiveSubscription') &&
-                                (Auth::user()->hasActiveSubscription() ||
-                                    (method_exists(Auth::user(), 'isSuperAdmin') && Auth::user()->isSuperAdmin())))
+                        {{-- Dashboard de Eventos --}}
+                        @if ($u->canAccessModule('event_dashboard') &&
+                            (method_exists($u, 'hasActiveSubscription') &&
+                                ($u->hasActiveSubscription() || $u->isSuperAdmin())))
                             <li class="{{ Request::routeIs('kiosk.dashboard') ? 'active' : '' }}">
                                 <a href="{{ route('kiosk.dashboard') }}"><i class="fa fa-desktop"></i><span>Dashboard Eventos</span></a>
                             </li>
                         @endif
 
+                        {{-- Kiosko --}}
+                        @if ($u->canAccessModule('kiosk') &&
+                            (method_exists($u, 'hasActiveSubscription') &&
+                                ($u->hasActiveSubscription() || $u->isSuperAdmin())))
+                            <li class="{{ Request::routeIs('kiosk.index') ? 'active' : '' }}">
+                                <a href="{{ route('kiosk.index') }}" target="_blank"><i class="fa fa-tablet"></i><span>Kiosko</span></a>
+                            </li>
+                        @endif
+
                         {{-- CRM + Agenda --}}
-                        @if (method_exists(Auth::user(), 'hasActiveSubscription') &&
-                                (Auth::user()->hasActiveSubscription() ||
-                                    (method_exists(Auth::user(), 'isSuperAdmin') && Auth::user()->isSuperAdmin())))
+                        @if ($u->canAccessModule('crm') &&
+                            (method_exists($u, 'hasActiveSubscription') &&
+                                ($u->hasActiveSubscription() || $u->isSuperAdmin())))
                             <li class="{{ Request::routeIs('admin.crm.*') ? 'active' : '' }}">
                                 <a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
                                     <i class="fa fa-address-book"></i><span>CRM + Agenda</span>
@@ -113,11 +133,13 @@
                             </li>
                         @endif
 
-                        {{-- Gestión de Usuarios (para company_admin) --}}
-                        @if (Auth::user()->role === 'company_admin')
+                        {{-- Gestión de Usuarios y Roles (para company_admin) --}}
+                        @if ($u->role === 'company_admin')
                             <li class="{{ Request::routeIs('admin.users.*') ? 'active' : '' }}">
-                                <a href="{{ route('admin.users.index') }}"><i class="fa fa-users"></i><span>Mi
-                                        Equipo</span></a>
+                                <a href="{{ route('admin.users.index') }}"><i class="fa fa-users"></i><span>Mi Equipo</span></a>
+                            </li>
+                            <li class="{{ Request::routeIs('admin.roles.*') ? 'active' : '' }}">
+                                <a href="{{ route('admin.roles.index') }}"><i class="fa fa-shield"></i><span>Roles y Permisos</span></a>
                             </li>
                         @endif
 

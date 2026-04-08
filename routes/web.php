@@ -447,9 +447,9 @@ Route::get('/file/{filename}', function ($filename) {
 })->where('filename', '.*')->name('file');
 
 // =====================================================
-// MODO KIOSKO / EVENTO (Públicas - para tablets en eventos)
+// MODO KIOSKO / EVENTO (Requiere autenticación)
 // =====================================================
-Route::prefix('kiosk')->group(function () {
+Route::middleware('auth')->prefix('kiosk')->group(function () {
     // Vista principal del kiosko
     Route::get('/', [KioskController::class, 'index'])->name('kiosk.index');
 
@@ -482,7 +482,7 @@ Route::prefix('kiosk')->group(function () {
 // Wishlist pública (acceso por token)
 Route::get('/wishlist/{token}', [KioskController::class, 'viewWishlist'])->name('wishlist.view');
 
-// Dashboard de estadísticas del evento (requiere autenticación)
+// Dashboard de estadísticas del evento y acciones (requiere autenticación)
 Route::middleware('auth')->group(function () {
     Route::get('/admin/event-dashboard', [KioskController::class, 'dashboard'])->name('kiosk.dashboard');
     Route::get('/admin/event-dashboard/stats', [KioskController::class, 'statsRealtime'])->name('kiosk.stats.realtime');
@@ -491,4 +491,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/admin/event-leads/{id}/contacted', [KioskController::class, 'markLeadContacted'])->name('event-leads.contacted');
     Route::post('/admin/event-leads/{id}/add-to-crm', [KioskController::class, 'addEventLeadToCRM'])->name('event-leads.add-to-crm');
     Route::post('/admin/quotes/{id}/add-to-crm', [KioskController::class, 'addQuoteToCRM'])->name('quotes.add-to-crm');
+
+    // Gestión de roles de agentes (solo company_admin)
+    Route::get('/admin/roles', [\App\Http\Controllers\Admin\RolePermissionsController::class, 'index'])
+        ->middleware('role:company_admin')
+        ->name('admin.roles.index');
+    Route::post('/admin/roles/{user}', [\App\Http\Controllers\Admin\RolePermissionsController::class, 'update'])
+        ->middleware('role:company_admin')
+        ->name('admin.roles.update');
 });

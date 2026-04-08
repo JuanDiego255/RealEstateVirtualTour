@@ -12,7 +12,7 @@ class VehicleQuote extends Model
         'vehicle_price', 'down_payment', 'down_payment_percent', 'term_months',
         'interest_rate', 'monthly_payment', 'total_interest', 'total_amount',
         'currency', 'email_sent', 'pdf_generated', 'pdf_path', 'event_name',
-        'payment_frequency'
+        'payment_frequency', 'captured_by_user_id'
     ];
 
     protected $casts = [
@@ -41,6 +41,11 @@ class VehicleQuote extends Model
     public function vehicle()
     {
         return $this->property();
+    }
+
+    public function capturedBy()
+    {
+        return $this->belongsTo(\App\User::class, 'captured_by_user_id');
     }
 
     /**

@@ -203,6 +203,31 @@ class User extends Authenticatable
     }
 
     /**
+     * Permisos granulares de módulos (solo aplica para agents).
+     */
+    public function modulePermissions()
+    {
+        return $this->hasOne(\App\Models\UserPermission::class);
+    }
+
+    /**
+     * Verificar acceso a un módulo/acción.
+     * - super_admin y company_admin: acceso total.
+     * - agent: según configuración en user_permissions.
+     */
+    public function canAccessModule(string $module, string $action = 'view'): bool
+    {
+        if ($this->isSuperAdmin() || $this->isCompanyAdmin()) {
+            return true;
+        }
+        $perm = $this->modulePermissions;
+        if (! $perm) {
+            return false;
+        }
+        return $perm->can($module, $action);
+    }
+
+    /**
      * Propiedades favoritas del usuario
      */
     public function favoriteProperties()

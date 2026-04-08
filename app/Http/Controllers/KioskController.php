@@ -17,6 +17,7 @@ use App\Models\Spin;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Auth;
 
 class KioskController extends Controller
 {
@@ -224,6 +225,7 @@ class KioskController extends Controller
             'currency' => $request->get('currency', 'CRC'),
             'event_name' => $request->get('event_name'),
             'payment_frequency' => $paymentFrequency,
+            'captured_by_user_id' => Auth::id(),
         ]);
 
         // Actualizar estadisticas
@@ -299,6 +301,7 @@ class KioskController extends Controller
             'interest_level' => $request->get('interest_level', 'medium'),
             'notes' => $request->get('notes'),
             'vehicles_viewed' => $request->get('vehicles_viewed', []),
+            'captured_by_user_id' => Auth::id(),
         ]);
 
         // Actualizar estadisticas
@@ -456,14 +459,14 @@ class KioskController extends Controller
             ->get();
 
         // Leads recientes con vehículo de interés
-        $recentLeads = EventLead::with('property')
+        $recentLeads = EventLead::with(['property', 'capturedBy'])
             ->when($eventName, fn($q) => $q->where('event_name', $eventName))
             ->latest()
             ->limit(20)
             ->get();
 
         // Cotizaciones recientes con vehículo
-        $recentQuotes = VehicleQuote::with('property')
+        $recentQuotes = VehicleQuote::with(['property', 'capturedBy'])
             ->when($eventName, fn($q) => $q->where('event_name', $eventName))
             ->latest()
             ->limit(15)
