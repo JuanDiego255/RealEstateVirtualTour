@@ -45,6 +45,7 @@ class SubcategoryController extends Controller
      */
     public function store(Request $request, Category $category)
     {
+        abort_if(auth()->user()->isAgent(), 403, 'Los agentes no pueden gestionar categorías.');
         $this->authorizeCategory($category);
 
         if (!$this->canCreateSubcategory($category)) {
@@ -89,6 +90,7 @@ class SubcategoryController extends Controller
      */
     public function update(Request $request, Category $category, Subcategory $subcategory)
     {
+        abort_if(auth()->user()->isAgent(), 403, 'Los agentes no pueden gestionar categorías.');
         $this->authorizeCategory($category);
         $this->ensureBelongs($subcategory, $category);
 
@@ -120,6 +122,7 @@ class SubcategoryController extends Controller
      */
     public function destroy(Category $category, Subcategory $subcategory)
     {
+        abort_if(auth()->user()->isAgent(), 403, 'Los agentes no pueden gestionar categorías.');
         $this->authorizeCategory($category);
         $this->ensureBelongs($subcategory, $category);
 
@@ -138,6 +141,7 @@ class SubcategoryController extends Controller
      */
     public function toggleStatus(Category $category, Subcategory $subcategory)
     {
+        abort_if(auth()->user()->isAgent(), 403, 'Los agentes no pueden gestionar categorías.');
         $this->authorizeCategory($category);
         $this->ensureBelongs($subcategory, $category);
 

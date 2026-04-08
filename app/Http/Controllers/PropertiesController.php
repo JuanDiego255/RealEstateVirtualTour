@@ -65,6 +65,7 @@ class PropertiesController extends Controller
      */
     public function store(Request $request)
     {
+        abort_unless(auth()->user()->canAccessModule('properties', 'create'), 403, 'Sin permiso para crear publicaciones.');
         DB::beginTransaction();
         try {
             $isVehicle = ($request->property_type === 'vehicle');
@@ -193,6 +194,7 @@ class PropertiesController extends Controller
      */
     public function update(Request $request, $id)
     {
+        abort_unless(auth()->user()->canAccessModule('properties', 'edit'), 403, 'Sin permiso para editar publicaciones.');
         DB::beginTransaction();
         try {
             $isVehicle = ($request->property_type === 'vehicle');
@@ -308,6 +310,7 @@ class PropertiesController extends Controller
      */
     public function destroy($id)
     {
+        abort_unless(auth()->user()->canAccessModule('properties', 'delete'), 403, 'Sin permiso para eliminar publicaciones.');
         DB::beginTransaction();
         try {
             $property = Properties::findOrFail($id);

@@ -16,6 +16,7 @@ class HotspotController extends Controller
      */
     public function store(Request $request)
     {
+        abort_unless(auth()->user()->canAccessModule('properties', 'hotspots'), 403, 'Sin permiso para gestionar hotspots.');
         $image = null;
         $property_id = $request['property_id'];
 
@@ -72,6 +73,7 @@ class HotspotController extends Controller
      */
     public function update(Request $request)
     {
+        abort_unless(auth()->user()->canAccessModule('properties', 'hotspots'), 403, 'Sin permiso para gestionar hotspots.');
         $id = $request->id;
         $hotspot = Hotspot::find($id);
 
@@ -145,6 +147,7 @@ class HotspotController extends Controller
      */
     public function destroy($id, Request $request)
     {
+        abort_unless(auth()->user()->canAccessModule('properties', 'hotspots'), 403, 'Sin permiso para gestionar hotspots.');
         $property_id = $request['property_id'];
         Hotspot::destroy($id);
         return redirect()->route('config', $property_id)->with('success', '
@@ -156,6 +159,7 @@ class HotspotController extends Controller
      */
     public function storeBatch(Request $request)
     {
+        abort_unless(auth()->user()->canAccessModule('properties', 'hotspots'), 403, 'Sin permiso para gestionar hotspots.');
         $property_id = $request->input('property_id');
         $hotspots = $request->input('hotspots', []);
         $createdCount = 0;
@@ -252,6 +256,7 @@ class HotspotController extends Controller
      */
     public function updateBatch(Request $request)
     {
+        abort_unless(auth()->user()->canAccessModule('properties', 'hotspots'), 403, 'Sin permiso para gestionar hotspots.');
         $property_id = $request->input('property_id');
         $hotspots = $request->input('hotspots', []);
         $updatedCount = 0;
@@ -317,6 +322,7 @@ class HotspotController extends Controller
      */
     public function destroyAjax($id)
     {
+        abort_unless(auth()->user()->canAccessModule('properties', 'hotspots'), 403, 'Sin permiso para gestionar hotspots.');
         $hotspot = Hotspot::find($id);
         if (!$hotspot) {
             return response()->json(['success' => false, 'message' => 'No encontrado'], 404);

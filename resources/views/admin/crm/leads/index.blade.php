@@ -73,9 +73,12 @@
                 <a href="{{ route('admin.crm.leads.follow-ups') }}" class="btn btn-warning mr-2">
                     <i class="fa fa-clock-o"></i> Seguimientos
                 </a>
+                {{-- Solo usuarios con acceso al módulo CRM pueden crear leads --}}
+                @if(Auth::user()->canAccessModule('crm', 'view'))
                 <a href="{{ route('admin.crm.leads.create') }}" class="btn btn-primary">
                     <i class="fa fa-plus"></i> Nuevo Lead
                 </a>
+                @endif
             </div>
         </div>
 

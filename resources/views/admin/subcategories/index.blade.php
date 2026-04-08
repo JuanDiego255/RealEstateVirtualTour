@@ -23,10 +23,13 @@
                 </small>
             </div>
             <div>
+                @if(!Auth::user()->isAgent())
                 <a href="{{ route('admin.subcategories.create', $category) }}" class="btn btn-success btn-sm"><i
                         class="fa fa-plus"></i> Nueva Categoría</a>
+                @endif
                 <a href="{{ route('admin.categories.index') }}" class="btn btn-secondary btn-sm"><i
-                        class="fa fa-arrow-left"></i> Sucursales</a>
+                        class="fa fa-arrow-left"></i>
+                    {{ Auth::user()->isCompanyAdmin() ? 'Mi Sucursal' : 'Sucursales' }}</a>
             </div>
         </div>
 
@@ -69,6 +72,7 @@
                             <div class="card-footer bg-white d-flex justify-content-between">
 
                                 <div>
+                                    @if(!Auth::user()->isAgent())
                                     <a href="{{ route('admin.subcategories.edit', [$category, $sub]) }}"
                                         class="btn btn-primary" title="Editar"><i class="fa fa-edit"></i></a>
                                     <form action="{{ route('admin.subcategories.toggle-status', [$category, $sub]) }}"
@@ -85,6 +89,7 @@
                                         @csrf @method('DELETE')
                                         <button class="btn btn-danger" title="Eliminar"><i class="fa fa-trash"></i></button>
                                     </form>
+                                    @endif
                                 </div>
                                 <div>
                                     <a href="{{ route('admin.subcategories.inmuebles', [$category, $sub]) }}"
@@ -103,9 +108,11 @@
             <div class="text-center py-5">
                 <i class="fa fa-tags fa-3x text-muted mb-3"></i>
                 <h5 class="text-muted">No hay categorías en esta sucursal</h5>
+                @if(!Auth::user()->isAgent())
                 <p class="text-muted">Cree categorías para organizar sus publicaciones (Ej: SUV, Sedán, Apartamentos)</p>
                 <a href="{{ route('admin.subcategories.create', $category) }}" class="btn btn-success"><i
                         class="fa fa-plus"></i> Crear Categoría</a>
+                @endif
             </div>
         @endif
     </div>

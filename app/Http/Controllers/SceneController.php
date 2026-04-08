@@ -285,6 +285,7 @@ class SceneController extends Controller
      */
     public function store(Request $request, CloudConvertSpinService $cc)
     {
+        abort_unless(auth()->user()->canAccessModule('properties', 'scenes'), 403, 'Sin permiso para gestionar escenas.');
         $isVideo = $request->type === 'video';
         $hasChunkedVideo = $isVideo && $request->filled('video_path');
         $type = $request->input('item_type', 'property');
@@ -368,6 +369,7 @@ class SceneController extends Controller
      */
     public function storeBatch(Request $request)
     {
+        abort_unless(auth()->user()->canAccessModule('properties', 'scenes'), 403, 'Sin permiso para gestionar escenas.');
         $type    = $request->input('item_type', 'property');
         $itemId  = $request->input('property_id');
         $titles  = $request->input('titles', []);
@@ -459,6 +461,7 @@ class SceneController extends Controller
 
     public function update(Request $request, $id)
     {
+        abort_unless(auth()->user()->canAccessModule('properties', 'scenes'), 403, 'Sin permiso para gestionar escenas.');
         $scene = Scene::find($id);
         $isVideo = $request->type === 'video';
         $type = $request->input('item_type', 'property');
@@ -542,6 +545,7 @@ class SceneController extends Controller
      */
     public function destroy($id, Request $request)
     {
+        abort_unless(auth()->user()->canAccessModule('properties', 'scenes'), 403, 'Sin permiso para gestionar escenas.');
         $scene = Scene::findOrfail($id);
         if (
             Storage::delete('public/' . $scene->image)

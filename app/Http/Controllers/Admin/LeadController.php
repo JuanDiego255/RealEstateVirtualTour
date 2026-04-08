@@ -120,6 +120,7 @@ class LeadController extends Controller
      */
     public function store(Request $request)
     {
+        abort_unless(auth()->user()->canAccessModule('crm', 'view'), 403, 'Sin permiso para gestionar leads.');
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'nullable|email|max:255',
@@ -222,6 +223,7 @@ class LeadController extends Controller
      */
     public function update(Request $request, Lead $lead)
     {
+        abort_unless(auth()->user()->canAccessModule('crm', 'view'), 403, 'Sin permiso para gestionar leads.');
         $this->authorizeCompanyAccess($lead);
 
         $request->validate([
@@ -307,6 +309,7 @@ class LeadController extends Controller
      */
     public function destroy(Lead $lead)
     {
+        abort_unless(auth()->user()->canAccessModule('crm', 'view'), 403, 'Sin permiso para gestionar leads.');
         $this->authorizeCompanyAccess($lead);
 
         $lead->delete();
