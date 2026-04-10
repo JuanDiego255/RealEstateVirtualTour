@@ -17,6 +17,10 @@ use App\Http\Controllers\Admin\LeadController;
 use App\Http\Controllers\Admin\AppointmentController;
 use App\Http\Controllers\Admin\ReminderController;
 use App\Http\Controllers\Admin\TestDriveController;
+use App\Http\Controllers\Admin\AgentMetricsController;
+use App\Http\Controllers\Admin\AgentGoalController;
+use App\Http\Controllers\Admin\AgentRewardController;
+use App\Http\Controllers\Admin\LeadFollowupController;
 use App\Http\Controllers\CloudConvertWebhookController;
 use App\Http\Controllers\RegisterCompanyController;
 use App\Http\Controllers\SpinController;
@@ -363,6 +367,49 @@ Route::group(['middleware' => 'auth'], function () {
         Route::delete('/{vehicleId}/engine-audio/{field}', [TestDriveController::class, 'deleteEngineAudio'])->name('admin.test-drive.delete-engine-audio');
     });
 });
+
+    // =====================================================
+    // MÉTRICAS DE AGENTES
+    // =====================================================
+    Route::group(['prefix' => 'admin/metrics', 'middleware' => ['auth', 'role:company_admin,super_admin']], function () {
+        Route::get('/', [AgentMetricsController::class, 'index'])->name('admin.metrics.index');
+        Route::get('/agent/{user}', [AgentMetricsController::class, 'agentDetail'])->name('admin.metrics.agent');
+        Route::post('/grant-reward', [AgentMetricsController::class, 'grantReward'])->name('admin.metrics.grant-reward');
+    });
+
+    // =====================================================
+    // METAS DE AGENTES
+    // =====================================================
+    Route::group(['prefix' => 'admin/metrics/goals', 'middleware' => ['auth', 'role:company_admin,super_admin']], function () {
+        Route::get('/', [AgentGoalController::class, 'index'])->name('admin.metrics.goals.index');
+        Route::post('/', [AgentGoalController::class, 'store'])->name('admin.metrics.goals.store');
+        Route::post('/bulk', [AgentGoalController::class, 'bulkStore'])->name('admin.metrics.goals.bulk-store');
+    });
+
+    // =====================================================
+    // RECOMPENSAS (CRUD: super_admin; Grants: company_admin+)
+    // =====================================================
+    Route::group(['prefix' => 'admin/rewards', 'middleware' => ['auth']], function () {
+        Route::get('/', [AgentRewardController::class, 'index'])->name('admin.rewards.index');
+        Route::get('/create', [AgentRewardController::class, 'create'])->name('admin.rewards.create');
+        Route::post('/', [AgentRewardController::class, 'store'])->name('admin.rewards.store');
+        Route::get('/{reward}/edit', [AgentRewardController::class, 'edit'])->name('admin.rewards.edit');
+        Route::put('/{reward}', [AgentRewardController::class, 'update'])->name('admin.rewards.update');
+        Route::delete('/{reward}', [AgentRewardController::class, 'destroy'])->name('admin.rewards.destroy');
+        Route::post('/{reward}/toggle', [AgentRewardController::class, 'toggleActive'])->name('admin.rewards.toggle');
+
+        Route::get('/grants', [AgentRewardController::class, 'grantIndex'])->name('admin.rewards.grants.index');
+        Route::post('/grants', [AgentRewardController::class, 'grant'])->name('admin.rewards.grants.store');
+        Route::delete('/grants/{grant}', [AgentRewardController::class, 'revokeGrant'])->name('admin.rewards.grants.destroy');
+    });
+
+    // =====================================================
+    // SEGUIMIENTOS DE LEADS DE EVENTO
+    // =====================================================
+    Route::group(['prefix' => 'admin/event-leads', 'middleware' => ['auth']], function () {
+        Route::get('/{eventLead}/followups', [LeadFollowupController::class, 'index'])->name('admin.event-leads.followups.index');
+        Route::post('/{eventLead}/followups', [LeadFollowupController::class, 'store'])->name('admin.event-leads.followups.store');
+    });
 
 // =====================================================
 // RUTAS PÚBLICAS

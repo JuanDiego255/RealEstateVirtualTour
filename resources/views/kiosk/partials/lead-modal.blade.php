@@ -108,6 +108,35 @@
         font-size: 20px;
         margin-bottom: 5px;
     }
+    .category-btns {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 8px;
+        margin-bottom: 20px;
+    }
+    .category-btn {
+        padding: 10px 6px;
+        background: rgba(255,255,255,0.08);
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 10px;
+        color: #fff;
+        cursor: pointer;
+        text-align: center;
+        font-size: 12px;
+        transition: all 0.2s;
+        line-height: 1.3;
+    }
+    .category-btn.active {
+        background: var(--accent, #c2ac1f);
+        color: #000;
+        border-color: var(--accent, #c2ac1f);
+        font-weight: 600;
+    }
+    .category-btn i {
+        display: block;
+        font-size: 16px;
+        margin-bottom: 4px;
+    }
 </style>
 
 <div class="modal-kiosk" id="leadModal">
@@ -161,6 +190,37 @@
             </div>
             <input type="hidden" name="interest_level" id="interestLevel" value="medium">
 
+            <label style="font-size: 13px; color: rgba(255,255,255,0.7); margin-bottom: 10px; display: block;">
+                ¿Cómo nos conociste?
+            </label>
+            <div class="category-btns">
+                <button type="button" class="category-btn active" data-cat="prospect" onclick="selectCategory(this)">
+                    <i class="fas fa-user-plus"></i>
+                    Prospecto
+                </button>
+                <button type="button" class="category-btn" data-cat="exploring" onclick="selectCategory(this)">
+                    <i class="fas fa-search"></i>
+                    Explorando
+                </button>
+                <button type="button" class="category-btn" data-cat="comparing" onclick="selectCategory(this)">
+                    <i class="fas fa-balance-scale"></i>
+                    Comparando
+                </button>
+                <button type="button" class="category-btn" data-cat="future_interest" onclick="selectCategory(this)">
+                    <i class="fas fa-clock"></i>
+                    A Futuro
+                </button>
+                <button type="button" class="category-btn" data-cat="referral" onclick="selectCategory(this)">
+                    <i class="fas fa-user-friends"></i>
+                    Referido
+                </button>
+                <button type="button" class="category-btn" data-cat="returning" onclick="selectCategory(this)">
+                    <i class="fas fa-redo"></i>
+                    Frecuente
+                </button>
+            </div>
+            <input type="hidden" name="lead_category" id="leadCategory" value="prospect">
+
             <div class="form-group-kiosk">
                 <label>Notas adicionales</label>
                 <textarea name="notes" class="form-control-kiosk" rows="2" placeholder="Algo que debamos saber..."></textarea>
@@ -179,6 +239,12 @@ function selectInterest(btn) {
     document.querySelectorAll('.interest-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('interestLevel').value = btn.dataset.level;
+}
+
+function selectCategory(btn) {
+    document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('leadCategory').value = btn.dataset.cat;
 }
 
 async function submitLeadForm(e) {

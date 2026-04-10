@@ -313,6 +313,7 @@ class KioskController extends Controller
             'source' => $request->get('source', 'event'),
             'event_name' => $request->get('event_name'),
             'interest_level' => $request->get('interest_level', 'medium'),
+            'lead_category'  => $request->get('lead_category', 'prospect'),
             'notes' => $request->get('notes'),
             'vehicles_viewed' => $request->get('vehicles_viewed', []),
             'captured_by_user_id' => Auth::id(),

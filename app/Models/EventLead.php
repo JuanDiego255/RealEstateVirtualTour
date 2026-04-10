@@ -11,18 +11,20 @@ class EventLead extends Model
     protected $fillable = [
         'property_id', 'vehicle_id', 'company_id', 'captured_by_user_id',
         'name', 'email', 'phone', 'notes',
-        'source', 'event_name', 'interest_level', 'contacted', 'contacted_at',
-        'contacted_by', 'vehicles_viewed', 'vehicles_compared', 'quotes_requested',
-        'follow_up_status', 'follow_up_date'
+        'source', 'event_name', 'interest_level', 'lead_category', 'sale_status',
+        'contacted', 'contacted_at', 'contacted_by', 'converted_at',
+        'vehicles_viewed', 'vehicles_compared', 'quotes_requested',
+        'follow_up_status', 'follow_up_date',
     ];
 
     protected $casts = [
-        'contacted' => 'boolean',
+        'contacted'    => 'boolean',
         'contacted_at' => 'datetime',
+        'converted_at' => 'datetime',
         'follow_up_date' => 'datetime',
-        'vehicles_viewed' => 'array',
+        'vehicles_viewed'   => 'array',
         'vehicles_compared' => 'array',
-        'quotes_requested' => 'array',
+        'quotes_requested'  => 'array',
     ];
 
     /**
@@ -49,6 +51,77 @@ class EventLead extends Model
     public function capturedBy()
     {
         return $this->belongsTo(\App\User::class, 'captured_by_user_id');
+    }
+
+    public function followups()
+    {
+        return $this->hasMany(LeadFollowup::class)->latest();
+    }
+
+    /**
+     * Categorías de prospecto
+     */
+    public static function leadCategories(): array
+    {
+        return [
+            'prospect'        => ['label' => 'Prospecto',         'color' => 'success',  'icon' => 'fa-star',         'desc' => 'Posible venta activa'],
+            'exploring'       => ['label' => 'Explorando',        'color' => 'info',     'icon' => 'fa-search',       'desc' => 'Solo revisando opciones'],
+            'comparing'       => ['label' => 'Comparando',        'color' => 'primary',  'icon' => 'fa-balance-scale','desc' => 'Comparando precios/modelos'],
+            'future_interest' => ['label' => 'Interés a futuro',  'color' => 'warning',  'icon' => 'fa-clock-o',      'desc' => 'Interesado pero no ahora'],
+            'referral'        => ['label' => 'Referido',          'color' => 'purple',   'icon' => 'fa-share-alt',    'desc' => 'Fue referido por otro cliente'],
+            'returning'       => ['label' => 'Cliente frecuente', 'color' => 'dark',     'icon' => 'fa-repeat',       'desc' => 'Ya ha comprado antes'],
+        ];
+    }
+
+    /**
+     * Estados de la venta
+     */
+    public static function saleStatuses(): array
+    {
+        return [
+            'open'        => ['label' => 'Abierto',       'color' => 'secondary', 'icon' => 'fa-circle-o'],
+            'in_progress' => ['label' => 'En proceso',    'color' => 'info',      'icon' => 'fa-spinner'],
+            'converted'   => ['label' => 'Convertido',    'color' => 'success',   'icon' => 'fa-check-circle'],
+            'lost'        => ['label' => 'Perdido',        'color' => 'danger',    'icon' => 'fa-times-circle'],
+            'dormant'     => ['label' => 'Dormido',        'color' => 'warning',   'icon' => 'fa-moon-o'],
+        ];
+    }
+
+    /**
+     * Marcar lead como convertido (venta concretada)
+     */
+    public function markAsConverted(?string $notes = null): self
+    {
+        $this->update([
+            'sale_status'  => 'converted',
+            'converted_at' => now(),
+        ]);
+        if ($notes) {
+            $this->followups()->create([
+                'user_id'  => auth()->id(),
+                'action'   => 'other',
+                'outcome'  => 'converted',
+                'notes'    => $notes,
+            ]);
+        }
+        return $this;
+    }
+
+    /**
+     * Marcar lead como perdido
+     */
+    public function markAsLost(?string $notes = null): self
+    {
+        $this->update(['sale_status' => 'lost']);
+        if ($notes) {
+            $this->followups()->create([
+                'user_id'  => auth()->id(),
+                'action'   => 'other',
+                'outcome'  => 'lost',
+                'notes'    => $notes,
+            ]);
+        }
+        return $this;
     }
 
     /**

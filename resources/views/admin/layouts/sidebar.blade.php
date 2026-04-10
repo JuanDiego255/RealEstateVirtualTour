@@ -146,6 +146,31 @@
                             </li>
                         @endif
 
+                        {{-- Métricas de Agentes (company_admin y super_admin) --}}
+                        @if ($u->isCompanyAdmin() || $u->isSuperAdmin())
+                            <li class="{{ Request::routeIs('admin.metrics.*') || Request::routeIs('admin.rewards.*') ? 'active' : '' }}">
+                                <a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
+                                    <i class="fa fa-bar-chart"></i><span>Métricas</span>
+                                </a>
+                                <ul>
+                                    <li class="{{ Request::routeIs('admin.metrics.index') ? 'active' : '' }}">
+                                        <a href="{{ route('admin.metrics.index') }}"><i class="fa fa-tachometer"></i> Dashboard</a>
+                                    </li>
+                                    <li class="{{ Request::routeIs('admin.metrics.goals.*') ? 'active' : '' }}">
+                                        <a href="{{ route('admin.metrics.goals.index') }}"><i class="fa fa-bullseye"></i> Metas</a>
+                                    </li>
+                                    <li class="{{ Request::routeIs('admin.rewards.grants.*') ? 'active' : '' }}">
+                                        <a href="{{ route('admin.rewards.grants.index') }}"><i class="fa fa-gift"></i> Recompensas</a>
+                                    </li>
+                                    @if($u->isSuperAdmin())
+                                    <li class="{{ Request::routeIs('admin.rewards.index') || Request::routeIs('admin.rewards.create') || Request::routeIs('admin.rewards.edit') ? 'active' : '' }}">
+                                        <a href="{{ route('admin.rewards.index') }}"><i class="fa fa-trophy"></i> Reglas</a>
+                                    </li>
+                                    @endif
+                                </ul>
+                            </li>
+                        @endif
+
                         {{-- Gestión de Usuarios y Roles (para company_admin) --}}
                         @if ($u->role === 'company_admin')
                             <li class="{{ Request::routeIs('admin.users.*') ? 'active' : '' }}">
