@@ -38,7 +38,7 @@ class CreateAgentRewardsTables extends Migration
             $table->unsignedInteger('leads_count');
             $table->text('notes')->nullable();
             $table->unsignedBigInteger('granted_by');
-            $table->foreign('granted_by')->references('id')->on('users')->nullOnDelete();
+            $table->foreign('granted_by')->references('id')->on('users')->cascadeOnDelete();
             $table->timestamp('granted_at');
             $table->timestamps();
 

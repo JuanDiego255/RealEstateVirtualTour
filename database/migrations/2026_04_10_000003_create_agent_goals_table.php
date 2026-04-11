@@ -10,7 +10,7 @@ class CreateAgentGoalsTable extends Migration
     {
         Schema::create('agent_goals', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('user_id'); // agente
+            $table->unsignedBigInteger('user_id'); //agente
             $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
             $table->unsignedBigInteger('company_id');
             $table->foreign('company_id')->references('id')->on('companies')->cascadeOnDelete();
@@ -22,7 +22,7 @@ class CreateAgentGoalsTable extends Migration
             $table->unsignedInteger('conversions_goal')->default(0);
 
             $table->unsignedBigInteger('set_by'); // admin que configuró las metas
-            $table->foreign('set_by')->references('id')->on('users')->nullOnDelete();
+            $table->foreign('set_by')->references('id')->on('users')->cascadeOnDelete();
 
             $table->timestamps();
 
