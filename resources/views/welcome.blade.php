@@ -72,6 +72,65 @@
             transform: scale(1.1);
         }
 
+        /* ── Floor-projection hotspot (sin imagen personalizada) ── */
+        .floor-hotspot {
+            width: 58px;
+            height: 58px;
+            position: relative;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        /* Outer glow ring */
+        .floor-hotspot::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            border: 2.5px solid rgba(255, 255, 255, 0.95);
+            box-shadow:
+                0 0 10px  rgba(255, 255, 255, 0.8),
+                0 0 22px  rgba(255, 255, 255, 0.45),
+                0 0 38px  rgba(255, 255, 255, 0.2),
+                inset 0 0 8px rgba(255, 255, 255, 0.08);
+            animation: floor-ring-pulse 2.2s ease-in-out infinite;
+        }
+
+        /* Inner bright dot */
+        .floor-hotspot::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 14px;
+            height: 14px;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            background: radial-gradient(circle, #fff 30%, rgba(255,255,255,0.4) 100%);
+            box-shadow:
+                0 0 6px  rgba(255, 255, 255, 1),
+                0 0 14px rgba(255, 255, 255, 0.6);
+            animation: floor-inner-pulse 2.2s ease-in-out infinite;
+        }
+
+        @keyframes floor-ring-pulse {
+            0%, 100% { transform: scale(1);    opacity: 0.85; }
+            50%       { transform: scale(1.09); opacity: 1;    }
+        }
+
+        @keyframes floor-inner-pulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1);   }
+            50%       { transform: translate(-50%, -50%) scale(1.25); }
+        }
+
+        .floor-hotspot:hover::before {
+            box-shadow:
+                0 0 16px rgba(255, 255, 255, 0.95),
+                0 0 32px rgba(255, 255, 255, 0.55),
+                0 0 50px rgba(255, 255, 255, 0.25),
+                inset 0 0 12px rgba(255, 255, 255, 0.12);
+        }
+
         .pnlm-hotspot.circular-hotspot {
             background: transparent !important;
             border: none !important;
@@ -1207,7 +1266,7 @@
                     'createTooltipArgs' => [
                         'imageUrl' => !empty($hotspot->image)
                             ? route('file', $hotspot->image)
-                            : url('virtualtour/images/hotspot.png'),
+                            : null,
                         'displayText' => $displayText,
                         'hotspotType' => $hotspot->type,
                         'videoTime' => $hotspot->video_time !== null ? (float) $hotspot->video_time : null,
@@ -1282,7 +1341,7 @@
             // --- Tooltip: función real (global) ---
             function hotspotTooltipFunction(hotSpotDiv, args) {
                 // args contiene: { imageUrl, displayText, hotspotType }
-                var imageUrl = args.imageUrl || args;
+                var imageUrl    = args.imageUrl || null;
                 var displayText = args.displayText || '';
                 var hotspotType = args.hotspotType || 'scene';
 
@@ -1290,26 +1349,28 @@
                 const container = document.createElement('div');
                 container.classList.add('hotspot-tooltip-container');
 
-                // Crear etiqueta de texto arriba de la imagen
+                // Crear etiqueta de texto arriba del ícono (solo si hay texto)
                 if (displayText) {
                     const label = document.createElement('div');
                     label.classList.add('hotspot-label');
                     label.textContent = displayText;
-                    // Agregar clase adicional según el tipo
-                    if (hotspotType === 'info') {
-                        label.classList.add('hotspot-label-info');
-                    } else {
-                        label.classList.add('hotspot-label-scene');
-                    }
+                    label.classList.add(hotspotType === 'info' ? 'hotspot-label-info' : 'hotspot-label-scene');
                     container.appendChild(label);
                 }
 
-                // Crear imagen
-                const img = document.createElement('img');
-                img.classList.add('circular-hotspot-img');
-                img.src = imageUrl;
-                img.alt = displayText || 'hotspot';
-                container.appendChild(img);
+                if (imageUrl) {
+                    // Imagen personalizada — círculo con foto
+                    const img = document.createElement('img');
+                    img.classList.add('circular-hotspot-img');
+                    img.src = imageUrl;
+                    img.alt = displayText || 'hotspot';
+                    container.appendChild(img);
+                } else {
+                    // Sin imagen → círculo proyectado tipo "suelo"
+                    const floor = document.createElement('div');
+                    floor.classList.add('floor-hotspot');
+                    container.appendChild(floor);
+                }
 
                 hotSpotDiv.appendChild(container);
             }
@@ -1409,6 +1470,97 @@
                 return;
             }
             window.viewer = viewer;
+
+            // ===== Inercia / momentum al arrastrar el visor =====
+            (function() {
+                var pnlmEl = document.getElementById('pannellum');
+                if (!pnlmEl) return;
+
+                var dragging   = false;
+                var lastYaw    = 0, lastPitch = 0, lastTime = 0;
+                var velYaw     = 0, velPitch  = 0;
+                var rafId      = null;
+                var FRICTION   = 0.88;   // cuánto se desacelera por frame (0=para ya, 1=nunca para)
+                var MIN_VEL    = 0.04;   // velocidad mínima antes de parar
+                var MAX_VEL    = 6;      // cap para evitar lanzadas extremas
+
+                function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+
+                function applyMomentum() {
+                    velYaw   *= FRICTION;
+                    velPitch *= FRICTION;
+
+                    if (Math.abs(velYaw) < MIN_VEL && Math.abs(velPitch) < MIN_VEL) return;
+
+                    try {
+                        viewer.setYaw(viewer.getYaw()     - velYaw);
+                        viewer.setPitch(viewer.getPitch() + velPitch);
+                    } catch(e) { return; }
+
+                    rafId = requestAnimationFrame(applyMomentum);
+                }
+
+                function stopMomentum() {
+                    velYaw = velPitch = 0;
+                    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+                }
+
+                function onDragStart(cx, cy) {
+                    stopMomentum();
+                    dragging  = true;
+                    lastTime  = performance.now();
+                    try {
+                        lastYaw   = viewer.getYaw();
+                        lastPitch = viewer.getPitch();
+                    } catch(e) {}
+                }
+
+                function onDragMove(cx, cy) {
+                    if (!dragging) return;
+                    var now = performance.now();
+                    var dt  = now - lastTime;
+                    if (dt < 1) return;
+
+                    try {
+                        var curYaw   = viewer.getYaw();
+                        var curPitch = viewer.getPitch();
+                        var dYaw     = lastYaw   - curYaw;
+                        var dPitch   = curPitch  - lastPitch;
+                        // Exponential moving average — suaviza picos bruscos
+                        velYaw   = velYaw   * 0.55 + clamp(dYaw   / dt * 16, -MAX_VEL, MAX_VEL) * 0.45;
+                        velPitch = velPitch * 0.55 + clamp(dPitch / dt * 16, -MAX_VEL, MAX_VEL) * 0.45;
+                        lastYaw   = curYaw;
+                        lastPitch = curPitch;
+                    } catch(e) {}
+
+                    lastTime = now;
+                }
+
+                function onDragEnd() {
+                    if (!dragging) return;
+                    dragging = false;
+                    if (Math.abs(velYaw) > MIN_VEL || Math.abs(velPitch) > MIN_VEL) {
+                        rafId = requestAnimationFrame(applyMomentum);
+                    }
+                }
+
+                // Mouse
+                pnlmEl.addEventListener('mousedown', function(e) { onDragStart(e.clientX, e.clientY); });
+                window.addEventListener('mousemove', function(e) { onDragMove(e.clientX,  e.clientY); });
+                window.addEventListener('mouseup',   onDragEnd);
+
+                // Touch
+                pnlmEl.addEventListener('touchstart', function(e) {
+                    if (e.touches[0]) onDragStart(e.touches[0].clientX, e.touches[0].clientY);
+                }, { passive: true });
+                window.addEventListener('touchmove', function(e) {
+                    if (e.touches[0]) onDragMove(e.touches[0].clientX, e.touches[0].clientY);
+                }, { passive: true });
+                window.addEventListener('touchend',  onDragEnd);
+
+                // Cancelar inercia si el usuario empieza a rotar automático
+                viewer.on('autorotatechange', stopMomentum);
+            })();
 
             // ===== Auto-rotate solo tras inactividad (incluye inicio del tour) =====
             const IDLE_ROTATE = (function() {
