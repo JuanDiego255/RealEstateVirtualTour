@@ -73,63 +73,50 @@
         }
 
         /* ── Floor-projection hotspot (sin imagen personalizada) ── */
+
+        /* Contenedor: aplica la perspectiva para dar el efecto 3D de suelo.
+           rotateX aplana el círculo en el eje vertical de pantalla,
+           haciendo que parezca un óvalo acostado sobre la cerámica.
+           Esto funciona igual en cualquier orientación horizontal. */
         .floor-hotspot {
-            width: 58px;
-            height: 58px;
+            width: 96px;
+            height: 96px;
             position: relative;
             cursor: pointer;
-            flex-shrink: 0;
+            /* Perspectiva que aplana el elemento como si estuviera en el suelo */
+            transform: perspective(90px) rotateX(64deg);
         }
 
-        /* Outer glow ring */
-        .floor-hotspot::before {
-            content: '';
+        /* Capa visual: gradiente radial que reproduce centro oscuro + anillo blanco + halo azul */
+        .floor-hotspot-inner {
             position: absolute;
             inset: 0;
             border-radius: 50%;
-            border: 2.5px solid rgba(255, 255, 255, 0.95);
-            box-shadow:
-                0 0 10px  rgba(255, 255, 255, 0.8),
-                0 0 22px  rgba(255, 255, 255, 0.45),
-                0 0 38px  rgba(255, 255, 255, 0.2),
-                inset 0 0 8px rgba(255, 255, 255, 0.08);
-            animation: floor-ring-pulse 2.2s ease-in-out infinite;
+            background: radial-gradient(
+                ellipse at center,
+                #0b1a4a  0%,       /* núcleo azul marino oscuro */
+                #152570  30%,
+                #1e2f90  42%,
+                #ffffff  54%,      /* anillo blanco */
+                #ffffff  61%,
+                #9aa8d8  70%,      /* halo azul/periwinkle */
+                rgba(150, 168, 220, 0.28) 84%,
+                transparent 100%
+            );
+            animation: floor-pulse 2.6s ease-in-out infinite;
         }
 
-        /* Inner bright dot */
-        .floor-hotspot::after {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 14px;
-            height: 14px;
-            transform: translate(-50%, -50%);
-            border-radius: 50%;
-            background: radial-gradient(circle, #fff 30%, rgba(255,255,255,0.4) 100%);
-            box-shadow:
-                0 0 6px  rgba(255, 255, 255, 1),
-                0 0 14px rgba(255, 255, 255, 0.6);
-            animation: floor-inner-pulse 2.2s ease-in-out infinite;
+        @keyframes floor-pulse {
+            0%, 100% { transform: scale(1);    opacity: 0.88; }
+            50%       { transform: scale(1.07); opacity: 1;    }
         }
 
-        @keyframes floor-ring-pulse {
-            0%, 100% { transform: scale(1);    opacity: 0.85; }
-            50%       { transform: scale(1.09); opacity: 1;    }
+        .floor-hotspot:hover .floor-hotspot-inner {
+            animation: none;
+            transform: scale(1.1);
+            opacity: 1;
         }
 
-        @keyframes floor-inner-pulse {
-            0%, 100% { transform: translate(-50%, -50%) scale(1);   }
-            50%       { transform: translate(-50%, -50%) scale(1.25); }
-        }
-
-        .floor-hotspot:hover::before {
-            box-shadow:
-                0 0 16px rgba(255, 255, 255, 0.95),
-                0 0 32px rgba(255, 255, 255, 0.55),
-                0 0 50px rgba(255, 255, 255, 0.25),
-                inset 0 0 12px rgba(255, 255, 255, 0.12);
-        }
 
         .pnlm-hotspot.circular-hotspot {
             background: transparent !important;
@@ -1366,9 +1353,14 @@
                     img.alt = displayText || 'hotspot';
                     container.appendChild(img);
                 } else {
-                    // Sin imagen → círculo proyectado tipo "suelo"
+                    // Sin imagen → óvalo proyectado sobre el suelo
+                    // .floor-hotspot aplica perspective+rotateX (estático)
+                    // .floor-hotspot-inner contiene el gradiente y la animación de pulso
                     const floor = document.createElement('div');
                     floor.classList.add('floor-hotspot');
+                    const inner = document.createElement('div');
+                    inner.classList.add('floor-hotspot-inner');
+                    floor.appendChild(inner);
                     container.appendChild(floor);
                 }
 
