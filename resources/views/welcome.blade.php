@@ -799,6 +799,38 @@
             text-overflow: ellipsis;
         }
 
+        .scene-no-image {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #1e3a5f 0%, #2d6a9f 100%);
+        }
+
+        .scene-no-image .scene-initials {
+            font-size: 24px;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            line-height: 1;
+            text-shadow: 0 1px 4px rgba(0,0,0,0.4);
+        }
+
+        .scene-no-image .scene-name-text {
+            font-size: 9px;
+            color: rgba(255,255,255,0.8);
+            text-align: center;
+            padding: 0 6px;
+            margin-top: 5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+        }
+
         /* Toggle para mostrar/ocultar carrusel */
         .matterport-carousel-toggle {
             position: fixed;
@@ -1091,11 +1123,28 @@
     <div class="matterport-scenes-carousel" id="matterport-scenes-carousel">
         <div class="matterport-scenes-wrapper">
             @foreach ($scenes as $index => $scene)
+                @php
+                    $hasSceneImage = !empty($scene->image_ref) || !empty($scene->image);
+                    if (!$hasSceneImage) {
+                        $sceneWords = preg_split('/\s+/', trim($scene->title));
+                        $sceneInitials = mb_strtoupper(mb_substr($sceneWords[0], 0, 1, 'UTF-8'));
+                        if (count($sceneWords) > 1) {
+                            $sceneInitials .= mb_strtoupper(mb_substr($sceneWords[1], 0, 1, 'UTF-8'));
+                        }
+                    }
+                @endphp
                 <div class="matterport-scene-item {{ $scene->type === 'video' ? 'video-scene' : '' }} {{ $index === 0 ? 'active' : '' }}"
                      data-scene-id="{{ $scene->id }}"
                      data-scene-type="{{ $scene->type }}">
-                    <img src="{{ isset($scene->image_ref) ? route('file', $scene->image_ref) : (isset($scene->image) ? route('file', $scene->image) : url('images/producto-sin-imagen.PNG')) }}"
-                         alt="{{ $scene->title }}">
+                    @if($hasSceneImage)
+                        <img src="{{ !empty($scene->image_ref) ? route('file', $scene->image_ref) : route('file', $scene->image) }}"
+                             alt="{{ $scene->title }}">
+                    @else
+                        <div class="scene-no-image">
+                            <span class="scene-initials">{{ $sceneInitials }}</span>
+                            <span class="scene-name-text">{{ $scene->title }}</span>
+                        </div>
+                    @endif
                     @if($scene->type === 'video')
                         <div class="scene-badge">
                             <i class="fa fa-video-camera"></i>
