@@ -1352,9 +1352,9 @@
                 var pitchScale = 1;
                 if (!imageUrl && args.pitch !== undefined) {
                     var absPitch = Math.abs(args.pitch);
-                    var tan60    = Math.tan(60 * Math.PI / 180); // ≈ 1.732
-                    pitchScale   = Math.min(1.0, Math.max(0.22,
-                        Math.tan(absPitch * Math.PI / 180) / tan60
+                    var tanRef   = Math.tan(50 * Math.PI / 180); // referencia: pitch -50° = escala 1.0
+                    pitchScale   = Math.min(1.0, Math.max(0.42,
+                        Math.tan(absPitch * Math.PI / 180) / tanRef
                     ));
                 }
 
