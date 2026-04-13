@@ -87,27 +87,21 @@
             transform: perspective(90px) rotateX(64deg);
         }
 
-        /* Capa visual: gradiente radial que reproduce centro oscuro + anillo blanco + halo azul */
+        /* Capa visual: anillo blanco delgado, centro transparente, sombra suave */
         .floor-hotspot-inner {
             position: absolute;
             inset: 0;
             border-radius: 50%;
-            background: radial-gradient(
-                ellipse at center,
-                #0b1a4a  0%,       /* núcleo azul marino oscuro */
-                #152570  30%,
-                #1e2f90  42%,
-                #ffffff  54%,      /* anillo blanco */
-                #ffffff  61%,
-                #9aa8d8  70%,      /* halo azul/periwinkle */
-                rgba(150, 168, 220, 0.28) 84%,
-                transparent 100%
-            );
+            border: 2.5px solid rgba(255, 255, 255, 0.92);
+            box-shadow:
+                0 0 10px rgba(255, 255, 255, 0.65),
+                0 0 22px rgba(255, 255, 255, 0.25),
+                inset 0 0 6px rgba(255, 255, 255, 0.08);
             animation: floor-pulse 2.6s ease-in-out infinite;
         }
 
         @keyframes floor-pulse {
-            0%, 100% { transform: scale(1);    opacity: 0.88; }
+            0%, 100% { transform: scale(1);    opacity: 0.82; }
             50%       { transform: scale(1.07); opacity: 1;    }
         }
 
@@ -115,6 +109,10 @@
             animation: none;
             transform: scale(1.1);
             opacity: 1;
+            box-shadow:
+                0 0 16px rgba(255, 255, 255, 0.9),
+                0 0 32px rgba(255, 255, 255, 0.4),
+                inset 0 0 8px rgba(255, 255, 255, 0.12);
         }
 
 
