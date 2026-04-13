@@ -1268,6 +1268,7 @@
                             : null,
                         'displayText' => $displayText,
                         'hotspotType' => $hotspot->type,
+                        'pitch'       => (float) $hotspot->pitch,
                         'videoTime' => $hotspot->video_time !== null ? (float) $hotspot->video_time : null,
                         'posX' => $hotspot->pos_x !== null ? (float) $hotspot->pos_x : null,
                         'posY' => $hotspot->pos_y !== null ? (float) $hotspot->pos_y : null,
@@ -1339,10 +1340,23 @@
 
             // --- Tooltip: función real (global) ---
             function hotspotTooltipFunction(hotSpotDiv, args) {
-                // args contiene: { imageUrl, displayText, hotspotType }
+                // args contiene: { imageUrl, displayText, hotspotType, pitch }
                 var imageUrl    = args.imageUrl || null;
                 var displayText = args.displayText || '';
                 var hotspotType = args.hotspotType || 'scene';
+
+                // ── Escala por distancia (solo floor hotspots sin imagen) ──
+                // pitch negativo = suelo; más cercano a 0 = más lejos = más pequeño.
+                // Usamos tan(|pitch|) normalizado: pitch=-60° → escala 1.0 (referencia).
+                // Rango: 0.22 (muy lejos, ~-10°) … 1.0 (cerca, -60° o más).
+                var pitchScale = 1;
+                if (!imageUrl && args.pitch !== undefined) {
+                    var absPitch = Math.abs(args.pitch);
+                    var tan60    = Math.tan(60 * Math.PI / 180); // ≈ 1.732
+                    pitchScale   = Math.min(1.0, Math.max(0.22,
+                        Math.tan(absPitch * Math.PI / 180) / tan60
+                    ));
+                }
 
                 // Crear contenedor principal
                 const container = document.createElement('div');
@@ -1365,15 +1379,24 @@
                     img.alt = displayText || 'hotspot';
                     container.appendChild(img);
                 } else {
-                    // Sin imagen → óvalo proyectado sobre el suelo
-                    // .floor-hotspot aplica perspective+rotateX (estático)
-                    // .floor-hotspot-inner contiene el gradiente y la animación de pulso
+                    // Sin imagen → óvalo proyectado sobre el suelo.
+                    // Un wrapper aplica la escala por distancia (pitchScale) de forma
+                    // independiente al perspective+rotateX del floor-hotspot, para que
+                    // los hotspots lejanos (pitch cerca de 0) se vean proporcionalmente
+                    // más pequeños y los cercanos (pitch -60° o más) se vean a tamaño completo.
+                    const scaleWrapper = document.createElement('div');
+                    scaleWrapper.style.cssText =
+                        'display:inline-block;' +
+                        'transform:scale(' + pitchScale.toFixed(3) + ');' +
+                        'transform-origin:center bottom;';
+
                     const floor = document.createElement('div');
                     floor.classList.add('floor-hotspot');
                     const inner = document.createElement('div');
                     inner.classList.add('floor-hotspot-inner');
                     floor.appendChild(inner);
-                    container.appendChild(floor);
+                    scaleWrapper.appendChild(floor);
+                    container.appendChild(scaleWrapper);
                 }
 
                 hotSpotDiv.appendChild(container);
