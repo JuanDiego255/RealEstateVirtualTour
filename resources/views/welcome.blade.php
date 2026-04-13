@@ -60,10 +60,7 @@
         .circular-hotspot-img {
             width: 50px;
             height: 50px;
-            border-radius: 50%;
-            border: 2px solid #fff;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-            object-fit: cover;
+            object-fit: contain;
             cursor: pointer;
             transition: transform 0.2s ease;
         }
