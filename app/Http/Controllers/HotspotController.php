@@ -26,7 +26,7 @@ class HotspotController extends Controller
             'type' => 'required',
             'yaw' => 'required',
             'pitch' => 'required',
-            'text' => 'required',
+            'text' => 'nullable|string|max:1000',
             'image' => 'nullable|image'
         ];
 
@@ -51,7 +51,7 @@ class HotspotController extends Controller
             'video_time' => $request['video_time'] !== null ? (float) $request['video_time'] : null,
             'pos_x' => $request['pos_x'] !== null ? (float) $request['pos_x'] : null,
             'pos_y' => $request['pos_y'] !== null ? (float) $request['pos_y'] : null,
-            'info' => $request['text'],
+            'info' => $request->filled('text') ? $request['text'] : null,
             'sourceScene' => $request['sourceScene'],
             'targetScene' => $targetScene,
             'target_yaw' => $request->filled('target_yaw') ? (float) $request['target_yaw'] : null,
@@ -85,7 +85,7 @@ class HotspotController extends Controller
             'type' => 'required',
             'yaw' => 'required',
             'pitch' => 'required',
-            'text' => 'required',
+            'text' => 'nullable|string|max:1000',
             'image' => 'nullable|image'
         ];
 
@@ -115,7 +115,7 @@ class HotspotController extends Controller
             'video_time' => $request['video_time'] !== null ? (float) $request['video_time'] : null,
             'pos_x' => $request['pos_x'] !== null ? (float) $request['pos_x'] : null,
             'pos_y' => $request['pos_y'] !== null ? (float) $request['pos_y'] : null,
-            'info' => $request['text'],
+            'info' => $request->filled('text') ? $request['text'] : null,
             'sourceScene' => $request['sourceScene'],
             'targetScene' => $targetScene,
             'target_yaw' => $request->filled('target_yaw') ? (float) $request['target_yaw'] : null,
@@ -167,7 +167,7 @@ class HotspotController extends Controller
 
         foreach ($hotspots as $index => $hotspotData) {
             try {
-                if (empty($hotspotData['sourceScene']) || empty($hotspotData['type']) || empty($hotspotData['info'])) {
+                if (empty($hotspotData['sourceScene']) || empty($hotspotData['type'])) {
                     $errors[] = "Hotspot #" . ($index + 1) . ": Datos incompletos";
                     continue;
                 }

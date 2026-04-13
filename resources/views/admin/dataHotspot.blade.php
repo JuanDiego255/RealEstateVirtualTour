@@ -881,7 +881,8 @@
             scenePending.forEach(function(h, idx) {
                 var typeLabel = h.type === 'scene' ? '<span class="badge badge-success">Enlace</span>' : '<span class="badge badge-info">Info</span>';
                 var targetLabel = h.type === 'scene' && h.targetScene ? sceneTitleMap[h.targetScene] || '-' : '-';
-                var infoShort = h.info.length > 30 ? h.info.substring(0, 30) + '...' : h.info;
+                var infoText = h.info || '';
+                var infoShort = infoText.length > 30 ? infoText.substring(0, 30) + '...' : infoText;
                 var imgSrc = h.imagePreviewUrl || defaultHotspotImage;
 
                 var row = '<tr data-index="' + idx + '">' +
@@ -889,7 +890,7 @@
                     '<td><img src="' + imgSrc + '" style="width:32px; height:32px; object-fit:cover; border-radius:50%; border:1px solid #ddd;"></td>' +
                     '<td>' + typeLabel + '</td>' +
                     '<td>' + targetLabel + '</td>' +
-                    '<td title="' + h.info.replace(/"/g, '&quot;') + '">' + infoShort + '</td>' +
+                    '<td title="' + infoText.replace(/"/g, '&quot;') + '">' + infoShort + '</td>' +
                     '<td>' +
                         '<button type="button" class="btn btn-sm btn-outline-primary edit-pending mr-1" data-index="' + idx + '" title="Editar"><i class="fa fa-pencil"></i></button>' +
                         '<button type="button" class="btn btn-sm btn-outline-danger delete-pending" data-index="' + idx + '" title="Eliminar"><i class="fa fa-trash"></i></button>' +
@@ -1200,10 +1201,6 @@
             var info = $('#cardInfo').val().trim();
 
             // Validaciones
-            if (!info) {
-                alert('Por favor ingresa la información del hotspot');
-                return;
-            }
             if (type === 'scene' && !targetScene) {
                 alert('Por favor selecciona la escena destino');
                 return;
@@ -1663,7 +1660,6 @@
 
             var type = $('#editCardType').val();
             var info = $('#editCardInfo').val();
-            if (!info) { alert('Ingrese información del hotspot'); return; }
             if (type === 'scene' && !$('#editCardTargetScene').val()) { alert('Seleccione escena destino'); return; }
 
             var changes = {
