@@ -79,12 +79,29 @@
            haciendo que parezca un óvalo acostado sobre la cerámica.
            Esto funciona igual en cualquier orientación horizontal. */
         .floor-hotspot {
-            width: 96px;
-            height: 96px;
+            width: 58px;
+            height: 58px;
             position: relative;
             cursor: pointer;
-            /* Perspectiva que aplana el elemento como si estuviera en el suelo */
-            transform: perspective(90px) rotateX(64deg);
+            transform: perspective(60px) rotateX(64deg);
+        }
+
+        /* Tablet */
+        @media (max-width: 1024px) {
+            .floor-hotspot {
+                width: 46px;
+                height: 46px;
+                transform: perspective(48px) rotateX(64deg);
+            }
+        }
+
+        /* Móvil */
+        @media (max-width: 600px) {
+            .floor-hotspot {
+                width: 36px;
+                height: 36px;
+                transform: perspective(38px) rotateX(64deg);
+            }
         }
 
         /* Capa visual: anillo blanco delgado, centro transparente, sombra suave */
