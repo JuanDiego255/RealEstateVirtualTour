@@ -799,6 +799,7 @@
             text-overflow: ellipsis;
         }
 
+        /* Bottom carousel — no thumbnail */
         .scene-no-image {
             width: 100%;
             height: 100%;
@@ -829,6 +830,23 @@
             overflow: hidden;
             text-overflow: ellipsis;
             max-width: 100%;
+        }
+
+        /* Sidebar nav — no thumbnail (50×50 .circular) */
+        .scene-no-image-sm {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #1e3a5f 0%, #2d6a9f 100%);
+        }
+
+        .scene-initials-sm {
+            font-size: 16px;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.4);
         }
 
         /* Toggle para mostrar/ocultar carrusel */
@@ -1045,13 +1063,27 @@
             <h3>Virtual Tour</h3>
             <ul class="nav-list">
                 @foreach ($scenes as $scene)
+                    @php
+                        $sidebarHasImg = !empty($scene->image_ref);
+                        if (!$sidebarHasImg) {
+                            $sw = preg_split('/\s+/', trim($scene->title));
+                            $si = mb_strtoupper(mb_substr($sw[0], 0, 1, 'UTF-8'));
+                            if (count($sw) > 1) $si .= mb_strtoupper(mb_substr($sw[1], 0, 1, 'UTF-8'));
+                        }
+                    @endphp
                     <li>
                         <a class="smoothscroll js-load-scene" href="#" data-scene-id="{{ $scene->id }}">
                             {{ $scene->title }}
                             <center>
-                                <img class="circular text-center"
-                                    src="{{ isset($scene->image_ref) ? route('file', $scene->image_ref) : url('images/producto-sin-imagen.PNG') }}"
-                                    alt="{{ $scene->title }}">
+                                @if($sidebarHasImg)
+                                    <img class="circular text-center"
+                                        src="{{ route('file', $scene->image_ref) }}"
+                                        alt="{{ $scene->title }}">
+                                @else
+                                    <div class="circular scene-no-image-sm">
+                                        <span class="scene-initials-sm">{{ $si }}</span>
+                                    </div>
+                                @endif
                             </center>
                         </a>
                     </li>
@@ -1124,7 +1156,7 @@
         <div class="matterport-scenes-wrapper">
             @foreach ($scenes as $index => $scene)
                 @php
-                    $hasSceneImage = !empty($scene->image_ref) || !empty($scene->image);
+                    $hasSceneImage = !empty($scene->image_ref);
                     if (!$hasSceneImage) {
                         $sceneWords = preg_split('/\s+/', trim($scene->title));
                         $sceneInitials = mb_strtoupper(mb_substr($sceneWords[0], 0, 1, 'UTF-8'));
@@ -1137,7 +1169,7 @@
                      data-scene-id="{{ $scene->id }}"
                      data-scene-type="{{ $scene->type }}">
                     @if($hasSceneImage)
-                        <img src="{{ !empty($scene->image_ref) ? route('file', $scene->image_ref) : route('file', $scene->image) }}"
+                        <img src="{{ route('file', $scene->image_ref) }}"
                              alt="{{ $scene->title }}">
                     @else
                         <div class="scene-no-image">
