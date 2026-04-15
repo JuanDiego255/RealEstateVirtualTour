@@ -113,6 +113,75 @@
 
 @section('content')
 <div class="sv-page">
-{{-- SECTIONS COMING --}}
+
+{{-- ===== S1: HERO ===== --}}
+<section class="sv-hero">
+  <div id="svHero" class="carousel slide carousel-fade h-100" data-ride="carousel" data-interval="5000">
+    <div class="carousel-inner h-100">
+      <div class="carousel-item h-100 active">
+        <div class="sv-hero-slide" style="background-image:url('{{ asset('virtualtour/images/bg_2.jpg') }}')"></div>
+      </div>
+      <div class="carousel-item h-100">
+        <div class="sv-hero-slide" style="background-image:url('{{ asset('virtualtour/images/bg_1.jpeg') }}')"></div>
+      </div>
+      <div class="carousel-item h-100">
+        <div class="sv-hero-slide" style="background-image:url('{{ asset('virtualtour/images/bg_3.jpeg') }}')"></div>
+      </div>
+    </div>
+  </div>
+  <div class="sv-hero-overlay"></div>
+  <div class="sv-hero-content">
+    <div class="container">
+      <div class="row">
+        <div class="col-lg-7" data-aos="fade-right" data-aos-duration="800">
+          <div class="sv-live-badge">
+            <span class="sv-live-dot"></span> Tour Virtual 360°
+          </div>
+          <h1>¿Tienes un vehículo<br>que <span>vender</span>?</h1>
+          <p class="lead mt-3 mb-4">
+            Te ayudamos a potenciarlo con un Tour Virtual 360° que captura compradores reales — desde cualquier lugar, a cualquier hora.
+          </p>
+          <a href="#formulario" class="sv-btn-gold mr-3">
+            <i class="fas fa-car mr-2"></i>Quiero vender mi vehículo
+          </a>
+          <a href="#demo-tour" class="sv-btn-outline mt-3 mt-sm-0">
+            <i class="fas fa-vr-cardboard mr-2"></i>Ver demo del Tour
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+  <a href="#stats" style="position:absolute;bottom:30px;left:50%;transform:translateX(-50%);z-index:3;color:rgba(255,255,255,.5);font-size:1.6rem;animation:sv-bounce 2s infinite">
+    <i class="ion-ios-arrow-round-down"></i>
+  </a>
+</section>
+
+{{-- ===== S2: STATS BAR ===== --}}
+<section class="sv-stats" id="stats">
+  <div class="container">
+    <div class="row align-items-center text-center">
+      <div class="col-12 col-md-4 mb-4 mb-md-0" data-aos="fade-up">
+        <div class="sv-stat-num"><span data-count="360">0</span>°</div>
+        <div class="sv-stat-label">Experiencia inmersiva total</div>
+      </div>
+      <div class="col-1 d-none d-md-flex justify-content-center">
+        <div class="sv-stat-divider"></div>
+      </div>
+      <div class="col-12 col-md-3 mb-4 mb-md-0" data-aos="fade-up" data-aos-delay="100">
+        <div class="sv-stat-num"><span data-count="3">0</span><span style="color:#fff;font-size:2.5rem">×</span></div>
+        <div class="sv-stat-label">Más interés de compradores</div>
+      </div>
+      <div class="col-1 d-none d-md-flex justify-content-center">
+        <div class="sv-stat-divider"></div>
+      </div>
+      <div class="col-12 col-md-3" data-aos="fade-up" data-aos-delay="200">
+        <div class="sv-stat-num" style="font-size:3rem">24/7</div>
+        <div class="sv-stat-label">Disponible siempre</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{{-- RESTO COMING --}}
 </div>
 @endsection
