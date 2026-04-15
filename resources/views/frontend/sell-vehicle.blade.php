@@ -279,6 +279,125 @@
   </div>
 </section>
 
+
+{{-- ===== S5: DEMO TOUR ===== --}}
+<section class="sv-demo" id="demo-tour">
+  <div class="container">
+    <div class="row justify-content-center mb-5">
+      <div class="col-lg-7 text-center" data-aos="fade-up">
+        <div class="sv-section-tag">Demo en vivo</div>
+        <h2 class="sv-section-title light">Probá el Tour Virtual ahora</h2>
+        <p style="color:rgba(255,255,255,.55);font-size:.95rem;margin-top:12px">Arrastrá, hacé zoom y explorá el espacio 360° — así experimenta tu comprador</p>
+      </div>
+    </div>
+    <div class="row align-items-center">
+      <div class="col-lg-8 mb-5 mb-lg-0" data-aos="fade-right">
+        <div class="sv-laptop-frame">
+          <div class="sv-laptop-bar">
+            <div class="sv-laptop-dot" style="background:#ff5f57"></div>
+            <div class="sv-laptop-dot" style="background:#ffbd2e"></div>
+            <div class="sv-laptop-dot" style="background:#28ca42"></div>
+            <div style="flex:1;background:#333;border-radius:4px;height:14px;margin-left:8px;padding:0 8px;display:flex;align-items:center;">
+              <span style="color:rgba(255,255,255,.3);font-size:.65rem">space360.cr/tour/vehiculo</span>
+            </div>
+          </div>
+          <div class="sv-laptop-screen">
+            @if($demoImageUrl)
+              <div id="sv-pannellum" style="width:100%;height:100%;"></div>
+            @else
+              <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;background:linear-gradient(135deg,#111,#1e1e1e);">
+                <i class="fas fa-vr-cardboard" style="font-size:4rem;color:#c2ac1f;"></i>
+                <div style="text-align:center;">
+                  <p style="color:#fff;font-weight:600;margin-bottom:4px;">Tour Virtual 360°</p>
+                  <p style="color:rgba(255,255,255,.4);font-size:.82rem;">Vista interactiva — arrastrar para explorar</p>
+                </div>
+              </div>
+            @endif
+          </div>
+          <div class="sv-laptop-base"></div>
+        </div>
+      </div>
+      <div class="col-lg-4" data-aos="fade-left" data-aos-delay="100">
+        <div class="sv-demo-badge">
+          <div class="sv-demo-badge-icon"><i class="fas fa-hand-point-up"></i></div>
+          <div class="sv-demo-badge-text"><strong>Arrastrá para explorar</strong><span>Vista 360° interactiva</span></div>
+        </div>
+        <div class="sv-demo-badge">
+          <div class="sv-demo-badge-icon"><i class="fas fa-search-plus"></i></div>
+          <div class="sv-demo-badge-text"><strong>Zoom de precisión</strong><span>Detalle en cada rincón</span></div>
+        </div>
+        <div class="sv-demo-badge">
+          <div class="sv-demo-badge-icon"><i class="fas fa-map-marker-alt"></i></div>
+          <div class="sv-demo-badge-text"><strong>Hotspots informativos</strong><span>Puntos de interés clicables</span></div>
+        </div>
+        <div class="sv-demo-badge">
+          <div class="sv-demo-badge-icon"><i class="fas fa-mobile-alt"></i></div>
+          <div class="sv-demo-badge-text"><strong>100% móvil</strong><span>Funciona en cualquier dispositivo</span></div>
+        </div>
+        <div class="mt-4">
+          <a href="#formulario" class="sv-btn-gold d-block text-center">Quiero mi Tour Virtual</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{{-- ===== S6: FEATURE CARDS ===== --}}
+<section style="background:#fff;padding:96px 0;" id="ventajas">
+  <div class="container">
+    <div class="row justify-content-center mb-5">
+      <div class="col-lg-7 text-center" data-aos="fade-up">
+        <div class="sv-section-tag">Por qué elegirnos</div>
+        <h2 class="sv-section-title">Todo lo que incluye tu Tour</h2>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-md-4 col-sm-6 mb-4" data-aos="fade-up" data-aos-delay="0">
+        <div class="sv-feat-card">
+          <div class="sv-feat-icon"><i class="fas fa-clock"></i></div>
+          <div class="sv-feat-title">Disponible 24/7</div>
+          <div class="sv-feat-desc">Tu vehículo se muestra solo, a cualquier hora, sin que tengas que estar presente.</div>
+        </div>
+      </div>
+      <div class="col-md-4 col-sm-6 mb-4" data-aos="fade-up" data-aos-delay="80">
+        <div class="sv-feat-card">
+          <div class="sv-feat-icon"><i class="fab fa-whatsapp"></i></div>
+          <div class="sv-feat-title">Compartir por QR / WhatsApp</div>
+          <div class="sv-feat-desc">Un link y un QR únicos para compartir en WhatsApp, Instagram o donde quieras.</div>
+        </div>
+      </div>
+      <div class="col-md-4 col-sm-6 mb-4" data-aos="fade-up" data-aos-delay="160">
+        <div class="sv-feat-card">
+          <div class="sv-feat-icon"><i class="fas fa-ban"></i></div>
+          <div class="sv-feat-title">Sin visitas inútiles</div>
+          <div class="sv-feat-desc">Quien contacta ya exploró el Tour y está genuinamente interesado. Ahorrás tiempo.</div>
+        </div>
+      </div>
+      <div class="col-md-4 col-sm-6 mb-4" data-aos="fade-up" data-aos-delay="0">
+        <div class="sv-feat-card">
+          <div class="sv-feat-icon"><i class="fas fa-star"></i></div>
+          <div class="sv-feat-title">Presentación profesional</div>
+          <div class="sv-feat-desc">Tu vehículo luce premium. Una presentación de calidad genera mayor confianza y mejor precio.</div>
+        </div>
+      </div>
+      <div class="col-md-4 col-sm-6 mb-4" data-aos="fade-up" data-aos-delay="80">
+        <div class="sv-feat-card">
+          <div class="sv-feat-icon"><i class="fas fa-globe"></i></div>
+          <div class="sv-feat-title">Alcance ilimitado</div>
+          <div class="sv-feat-desc">Llegá a compradores de cualquier zona o país. Tu vitrina virtual no tiene fronteras.</div>
+        </div>
+      </div>
+      <div class="col-md-4 col-sm-6 mb-4" data-aos="fade-up" data-aos-delay="160">
+        <div class="sv-feat-card">
+          <div class="sv-feat-icon"><i class="fas fa-mobile-alt"></i></div>
+          <div class="sv-feat-title">Cualquier dispositivo</div>
+          <div class="sv-feat-desc">Celular, tablet o PC — el Tour se adapta perfectamente a cualquier pantalla.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 {{-- RESTO COMING --}}
 </div>
 @endsection
