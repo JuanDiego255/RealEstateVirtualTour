@@ -481,6 +481,26 @@ Route::get('/api/search-properties', function (\Illuminate\Http\Request $request
     return response()->json($results);
 })->name('api.search-properties');
 
+// =====================================================
+// LANDING PAGE: VENDE TU VEHÍCULO
+// =====================================================
+Route::get('/vende-tu-vehiculo', function () {
+    $demoScene = \App\Scene::first();
+    $demoImageUrl = $demoScene ? route('file', $demoScene->image) : null;
+    return view('frontend.sell-vehicle', compact('demoImageUrl'));
+})->name('sell-vehicle');
+
+Route::post('/vende-tu-vehiculo/contacto', function (\Illuminate\Http\Request $request) {
+    $validated = $request->validate([
+        'name'                => 'required|string|max:100',
+        'phone'               => 'required|string|max:20',
+        'email'               => 'required|email|max:100',
+        'vehicle_description' => 'required|string|max:1000',
+    ]);
+    \App\Models\VehicleInquiry::create($validated);
+    return response()->json(['success' => true, 'message' => '¡Listo! Nos pondremos en contacto contigo pronto.']);
+})->name('sell-vehicle.contact');
+
 // Archivo desde storage
 Route::get('/file/{filename}', function ($filename) {
     $path = storage_path('app/public/' . $filename);
