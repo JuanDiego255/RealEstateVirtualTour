@@ -182,6 +182,103 @@
   </div>
 </section>
 
+
+{{-- ===== S3: PROBLEMA / OPORTUNIDAD ===== --}}
+<section class="ftco-section bg-white" id="problema" style="padding:96px 0;">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-lg-6 mb-5 mb-lg-0" data-aos="fade-right">
+        <div class="sv-section-tag">El problema real</div>
+        <h2 class="sv-section-title mb-4">Los compradores modernos<br>deciden <span class="sv-gold">con los ojos</span></h2>
+        <p class="text-muted mb-4" style="font-size:.97rem;line-height:1.7">
+          Publicar fotos planas ya no es suficiente. El comprador de hoy quiere explorar, sentir el espacio y moverse dentro del vehículo — antes de siquiera llamarte.
+        </p>
+        <p style="font-size:.78rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#999;margin-bottom:14px">Sin Tour Virtual</p>
+        <div class="sv-pain-item">
+          <div class="sv-pain-icon bad"><i class="fas fa-times"></i></div>
+          <div><strong style="font-size:.92rem">Fotos estáticas</strong><br><span class="text-muted" style="font-size:.85rem">El comprador no puede explorar el interior real</span></div>
+        </div>
+        <div class="sv-pain-item">
+          <div class="sv-pain-icon bad"><i class="fas fa-times"></i></div>
+          <div><strong style="font-size:.92rem">Visitas innecesarias</strong><br><span class="text-muted" style="font-size:.85rem">Pierdes tiempo con curiosos que no van a comprar</span></div>
+        </div>
+        <div class="sv-pain-item mb-4">
+          <div class="sv-pain-icon bad"><i class="fas fa-times"></i></div>
+          <div><strong style="font-size:.92rem">Alcance limitado</strong><br><span class="text-muted" style="font-size:.85rem">Solo compradores cercanos en horario restringido</span></div>
+        </div>
+        <p style="font-size:.78rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#c2ac1f;margin-bottom:14px">Con Tour Virtual 360°</p>
+        <div class="sv-pain-item">
+          <div class="sv-pain-icon good"><i class="fas fa-check"></i></div>
+          <div><strong style="font-size:.92rem">Experiencia inmersiva</strong><br><span class="text-muted" style="font-size:.85rem">El comprador explora cada ángulo desde su celular</span></div>
+        </div>
+        <div class="sv-pain-item">
+          <div class="sv-pain-icon good"><i class="fas fa-check"></i></div>
+          <div><strong style="font-size:.92rem">Solo visitas calificadas</strong><br><span class="text-muted" style="font-size:.85rem">Quien llama ya vio el Tour y está listo para negociar</span></div>
+        </div>
+        <div class="sv-pain-item">
+          <div class="sv-pain-icon good"><i class="fas fa-check"></i></div>
+          <div><strong style="font-size:.92rem">Disponible 24/7 en todo el mundo</strong><br><span class="text-muted" style="font-size:.85rem">Tu vehículo se muestra solo, sin que estés presente</span></div>
+        </div>
+      </div>
+      <div class="col-lg-6 text-center" data-aos="fade-left" data-aos-delay="100">
+        <div class="sv-phone-mockup">
+          <div class="sv-phone-frame">
+            <div class="sv-phone-screen">
+              <i class="fas fa-vr-cardboard" style="font-size:3rem;color:#c2ac1f"></i>
+              <span style="color:rgba(255,255,255,.5);font-size:.8rem;letter-spacing:1px">TOUR VIRTUAL 360°</span>
+              <div style="display:flex;gap:6px">
+                <span style="width:6px;height:6px;border-radius:50%;background:#c2ac1f;animation:sv-pulse 1.4s infinite"></span>
+                <span style="width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.3);animation:sv-pulse 1.4s infinite .3s"></span>
+                <span style="width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.3);animation:sv-pulse 1.4s infinite .6s"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="text-muted mt-4" style="font-size:.85rem">Vista del Tour Virtual en dispositivo móvil</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+{{-- ===== S4: CÓMO FUNCIONA ===== --}}
+<section style="background:#f8f8f8;padding:96px 0;" id="como-funciona">
+  <div class="container">
+    <div class="row justify-content-center mb-5">
+      <div class="col-lg-7 text-center" data-aos="fade-up">
+        <div class="sv-section-tag">Proceso simple</div>
+        <h2 class="sv-section-title">Cómo funciona</h2>
+        <p class="text-muted mt-3" style="font-size:.95rem">En 3 pasos tenés tu Tour Virtual publicado y listo para atraer compradores</p>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-md-4 mb-4" data-aos="fade-up" data-aos-delay="0">
+        <div class="sv-step-card">
+          <div class="sv-step-num">01</div>
+          <div class="sv-step-icon"><i class="fas fa-camera"></i></div>
+          <div class="sv-step-title">Registrá tu vehículo</div>
+          <div class="sv-step-desc">Completá el formulario con los datos de tu vehículo. Nos enviás fotos o las tomamos nosotros — vos decidís.</div>
+        </div>
+      </div>
+      <div class="col-md-4 mb-4" data-aos="fade-up" data-aos-delay="100">
+        <div class="sv-step-card">
+          <div class="sv-step-num">02</div>
+          <div class="sv-step-icon"><i class="fas fa-magic"></i></div>
+          <div class="sv-step-title">Creamos el Tour</div>
+          <div class="sv-step-desc">Nuestro equipo produce y publica tu Tour Virtual 360° profesional. Listo en menos de 48 horas.</div>
+        </div>
+      </div>
+      <div class="col-md-4 mb-4" data-aos="fade-up" data-aos-delay="200">
+        <div class="sv-step-card">
+          <div class="sv-step-num">03</div>
+          <div class="sv-step-icon"><i class="fas fa-handshake"></i></div>
+          <div class="sv-step-title">Vendés más rápido</div>
+          <div class="sv-step-desc">Compradores visitan tu Tour desde cualquier lugar. Vos solo atendés a quienes ya están convencidos.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 {{-- RESTO COMING --}}
 </div>
 @endsection
