@@ -497,6 +497,141 @@
   </div>
 </section>
 
-{{-- RESTO COMING --}}
+
+{{-- ===== S9: QR CODE ===== --}}
+<section class="sv-qr-section" id="qr-code">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-lg-6 mb-5 mb-lg-0" data-aos="fade-right">
+        <div class="sv-section-tag">Tu cartel digital</div>
+        <h2 class="sv-section-title light mb-4">Llevá tu Tour Virtual<br>al mundo físico</h2>
+        <p style="color:rgba(255,255,255,.55);font-size:.95rem;line-height:1.7;margin-bottom:32px;">
+          Generamos un código QR único para esta página. Imprimilo en un cartel y ponelo en el parabrisas de tu vehículo — cualquier interesado escanea y entra directo al Tour Virtual.
+        </p>
+        <ul class="list-unstyled mb-4">
+          <li class="d-flex align-items-center mb-3" style="color:rgba(255,255,255,.7);">
+            <i class="fas fa-check-circle mr-3" style="color:#c2ac1f;font-size:1.1rem;"></i>
+            Generado automáticamente para esta página
+          </li>
+          <li class="d-flex align-items-center mb-3" style="color:rgba(255,255,255,.7);">
+            <i class="fas fa-check-circle mr-3" style="color:#c2ac1f;font-size:1.1rem;"></i>
+            Descargable como PNG para imprimir
+          </li>
+          <li class="d-flex align-items-center" style="color:rgba(255,255,255,.7);">
+            <i class="fas fa-check-circle mr-3" style="color:#c2ac1f;font-size:1.1rem;"></i>
+            Vista previa de cartel incluida
+          </li>
+        </ul>
+        <button class="sv-qr-download-btn" onclick="downloadQR()">
+          <i class="fas fa-download"></i> Descargar QR como PNG
+        </button>
+      </div>
+      <div class="col-lg-6 text-center" data-aos="fade-left" data-aos-delay="100">
+        <div class="sv-poster-preview" id="sv-poster">
+          <div class="sv-poster-logo">Space 360 &middot; Tour Virtual</div>
+          <div class="sv-poster-title">¡Escanéame!</div>
+          <div class="sv-poster-sub">Mirá el Tour Virtual 360° de este vehículo</div>
+          <div class="sv-poster-qr-wrap">
+            <div id="sv-qr-canvas"></div>
+          </div>
+          <div class="sv-poster-tagline">Powered by Space 360</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</div>{{-- /sv-page --}}
+@endsection
+
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
+<script>
+// Counter animation
+(function(){
+  var done = false;
+  var obs = new IntersectionObserver(function(entries){
+    if(done) return;
+    entries.forEach(function(e){
+      if(e.isIntersecting){
+        done = true;
+        document.querySelectorAll('[data-count]').forEach(function(el){
+          var target = parseInt(el.getAttribute('data-count'));
+          var cur = 0;
+          var step = Math.ceil(target/60);
+          var t = setInterval(function(){
+            cur = Math.min(cur+step, target);
+            el.textContent = cur;
+            if(cur >= target) clearInterval(t);
+          }, 20);
+        });
+      }
+    });
+  }, {threshold:0.3});
+  var el = document.getElementById('stats');
+  if(el) obs.observe(el);
+})();
+
+// QR Code
+window.addEventListener('load', function(){
+  var el = document.getElementById('sv-qr-canvas');
+  if(el) new QRCode(el, {
+    text: window.location.href,
+    width: 180, height: 180,
+    colorDark: '#000000', colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.H
+  });
+});
+
+// Download QR poster
+function downloadQR(){
+  var poster = document.getElementById('sv-poster');
+  if(!poster) return;
+  html2canvas(poster, {backgroundColor:'#1a1a1a', scale:2}).then(function(canvas){
+    var a = document.createElement('a');
+    a.download = 'qr-tour-virtual.png';
+    a.href = canvas.toDataURL('image/png');
+    a.click();
+  });
+}
+
+// Pannellum demo
+@if($demoImageUrl)
+window.addEventListener('load', function(){
+  pannellum.viewer('sv-pannellum', {
+    type: 'equirectangular',
+    panorama: '{{ $demoImageUrl }}',
+    autoLoad: true,
+    autoRotate: -2,
+    showControls: false,
+    mouseZoom: true
+  });
+});
+@endif
+
+// Form AJAX
+document.getElementById('sv-contact-form').addEventListener('submit', function(e){
+  e.preventDefault();
+  var btn = this.querySelector('button[type=submit]');
+  var orig = btn.innerHTML;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Enviando...';
+  btn.disabled = true;
+  fetch('{{ route("sell-vehicle.contact") }}', {
+    method: 'POST',
+    headers: {'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content, 'Accept':'application/json'},
+    body: new FormData(this)
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(res){
+    if(res.success){ swal('¡Enviado!', res.message, 'success'); document.getElementById('sv-contact-form').reset(); }
+    else { swal('Error', 'Ocurrió un problema. Intentá nuevamente.', 'error'); }
+  })
+  .catch(function(){ swal('Error', 'No se pudo conectar. Intentá nuevamente.', 'error'); })
+  .finally(function(){ btn.innerHTML = orig; btn.disabled = false; });
+});
+</script>
+@endpush
 </div>
 @endsection
