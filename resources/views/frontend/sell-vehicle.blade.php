@@ -398,6 +398,105 @@
   </div>
 </section>
 
+
+{{-- ===== S7: TESTIMONIOS ===== --}}
+<section style="background:#f5f5f5;padding:96px 0;" id="testimonios">
+  <div class="container">
+    <div class="row justify-content-center mb-5">
+      <div class="col-lg-6 text-center" data-aos="fade-up">
+        <div class="sv-section-tag">Lo que dicen nuestros clientes</div>
+        <h2 class="sv-section-title">Resultados reales</h2>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-md-4 mb-4" data-aos="fade-up" data-aos-delay="0">
+        <div class="sv-testi-card">
+          <div class="sv-testi-stars">★★★★★</div>
+          <p class="sv-testi-quote">"Publiqué mi Corolla con el Tour Virtual y en menos de una semana tuve 3 compradores serios. Vendí al precio que pedía, sin rebajas."</p>
+          <div class="d-flex align-items-center" style="gap:12px;">
+            <div class="sv-testi-avatar">M</div>
+            <div>
+              <div class="sv-testi-name">Marcos V.</div>
+              <div class="sv-testi-city">San José, Costa Rica</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4 mb-4" data-aos="fade-up" data-aos-delay="100">
+        <div class="sv-testi-card">
+          <div class="sv-testi-stars">★★★★★</div>
+          <p class="sv-testi-quote">"La gente llegaba ya convencida de comprar. No tuve que perder tiempo explicando el estado del carro — el Tour lo mostraba todo."</p>
+          <div class="d-flex align-items-center" style="gap:12px;">
+            <div class="sv-testi-avatar">A</div>
+            <div>
+              <div class="sv-testi-name">Andrea L.</div>
+              <div class="sv-testi-city">Heredia, Costa Rica</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4 mb-4" data-aos="fade-up" data-aos-delay="200">
+        <div class="sv-testi-card">
+          <div class="sv-testi-stars">★★★★★</div>
+          <p class="sv-testi-quote">"Compartí el link en un grupo de WhatsApp y en 48 horas ya tenía el vehículo vendido. El QR en el parabrisas fue una idea genial."</p>
+          <div class="d-flex align-items-center" style="gap:12px;">
+            <div class="sv-testi-avatar">R</div>
+            <div>
+              <div class="sv-testi-name">Rodrigo S.</div>
+              <div class="sv-testi-city">Cartago, Costa Rica</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{{-- ===== S8: FORMULARIO ===== --}}
+<section class="sv-form-section" id="formulario">
+  <div class="sv-form-bg"></div>
+  <div class="sv-form-overlay"></div>
+  <div class="sv-form-wrap container">
+    <div class="row justify-content-center mb-5">
+      <div class="col-lg-7 text-center" data-aos="fade-up">
+        <div class="sv-section-tag">Empezá ahora</div>
+        <h2 class="sv-section-title light">¿Listo para vender tu vehículo?</h2>
+        <p style="color:rgba(255,255,255,.55);margin-top:12px;font-size:.95rem">Completá el formulario y te contactamos en menos de 24 horas</p>
+      </div>
+    </div>
+    <div class="row justify-content-center">
+      <div class="col-lg-7" data-aos="fade-up" data-aos-delay="100">
+        <div class="sv-form-card">
+          <form id="sv-contact-form">
+            @csrf
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label>Nombre completo</label>
+                <input type="text" name="name" class="form-control" placeholder="Tu nombre" required>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label>Teléfono / WhatsApp</label>
+                <input type="tel" name="phone" class="form-control" placeholder="+506 8888-0000" required>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label>Correo electrónico</label>
+              <input type="email" name="email" class="form-control" placeholder="correo@ejemplo.com" required>
+            </div>
+            <div class="mb-4">
+              <label>Descripción del vehículo</label>
+              <textarea name="vehicle_description" class="form-control" rows="4" placeholder="Marca, modelo, año, estado general..." required></textarea>
+            </div>
+            <button type="submit" class="sv-btn-gold w-100" style="font-size:1rem;padding:16px;">
+              <i class="fas fa-paper-plane mr-2"></i>Enviar solicitud
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 {{-- RESTO COMING --}}
 </div>
 @endsection
