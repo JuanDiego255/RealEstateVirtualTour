@@ -98,6 +98,18 @@ class SceneController extends Controller
     }
 
     /**
+     * Mark one property/vehicle tour as the global demo for /vende-tu-vehiculo.
+     * Clears is_demo_tour on all others first.
+     */
+    public function setDemoTour(Request $request, $id)
+    {
+        Properties::query()->update(['is_demo_tour' => false]);
+        Properties::where('id', $id)->update(['is_demo_tour' => true]);
+
+        return response()->json(['success' => true, 'message' => 'Tour de demo actualizado correctamente.']);
+    }
+
+    /**
      * Mark one scene as the global demo for /vende-tu-vehiculo.
      * Clears is_demo on all others first.
      */

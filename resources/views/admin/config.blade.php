@@ -83,6 +83,25 @@
                         <div class="tab-content" id="myTabContent">
                             <!-- Scene Tab -->
                             <div class="tab-pane fade show active" id="scene" role="tabpanel">
+                                {{-- Botón: marcar este tour como demo de /vende-tu-vehiculo --}}
+                                <div class="d-flex align-items-center mb-3 p-3"
+                                    style="background:#fffbea;border:1px solid #f0d050;border-radius:10px;">
+                                    <i class="fas fa-star mr-2" style="color:#c2ac1f;font-size:1.1rem;"></i>
+                                    <div class="mr-auto">
+                                        <strong style="font-size:.9rem;">Demo Landing Page</strong>
+                                        <p class="mb-0 text-muted" style="font-size:.8rem;">
+                                            Marca este tour para mostrarlo en la sección de demo de <em>/vende-tu-vehiculo</em>.
+                                            Solo un tour puede ser el demo activo a la vez.
+                                        </p>
+                                    </div>
+                                    <button type="button" id="setDemoTourBtn"
+                                        class="btn btn-sm {{ isset($property) && $property->is_demo_tour ? 'btn-warning' : 'btn-outline-warning' }} ml-3"
+                                        data-url="{{ route('setDemoTour', $id) }}"
+                                        data-token="{{ csrf_token() }}">
+                                        <i class="fas fa-star mr-1"></i>
+                                        {{ isset($property) && $property->is_demo_tour ? '⭐ Demo activo' : 'Usar como Demo' }}
+                                    </button>
+                                </div>
                                 @include('admin.dataScene')
                             </div>
 
@@ -265,6 +284,23 @@
                     }
                 ],
                 'order': []
+            });
+        });
+    </script>
+
+    {{-- Demo Tour button AJAX --}}
+    <script>
+        $(document).ready(function () {
+            $('#setDemoTourBtn').on('click', function () {
+                var btn = $(this);
+                var url = btn.data('url');
+                var token = btn.data('token');
+                $.post(url, { _token: token }, function (res) {
+                    if (res.success) {
+                        btn.removeClass('btn-outline-warning').addClass('btn-warning').html('<i class="fas fa-star mr-1"></i> ⭐ Demo activo');
+                        swal ? swal('Demo actualizado', res.message, 'success') : alert(res.message);
+                    }
+                }).fail(function () { alert('Error al actualizar demo.'); });
             });
         });
     </script>

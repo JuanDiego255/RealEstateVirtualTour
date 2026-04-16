@@ -36,11 +36,55 @@
         }
 
         .sv-hero-content {
-            position: relative;
+            position: absolute;
+            inset: 0;
             z-index: 2;
-            height: 100%;
             display: flex;
             align-items: center;
+        }
+
+        /* Per-slide text overlay */
+        .sv-slide-caption {
+            position: absolute;
+            bottom: 90px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            z-index: 3;
+            pointer-events: none;
+        }
+
+        .sv-slide-tag {
+            display: inline-block;
+            background: rgba(194, 172, 31, .18);
+            border: 1px solid rgba(194, 172, 31, .5);
+            color: #c2ac1f;
+            font-size: .72rem;
+            font-weight: 700;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            padding: 5px 16px;
+            border-radius: 50px;
+            margin-bottom: 10px;
+            opacity: 0;
+            transform: translateY(14px);
+            transition: opacity .6s ease .1s, transform .6s ease .1s;
+        }
+
+        .sv-slide-sub {
+            font-size: clamp(.85rem, 1.5vw, 1.05rem);
+            color: rgba(255, 255, 255, .75);
+            font-weight: 300;
+            letter-spacing: .5px;
+            opacity: 0;
+            transform: translateY(14px);
+            transition: opacity .6s ease .3s, transform .6s ease .3s;
+        }
+
+        .carousel-item.active .sv-slide-tag,
+        .carousel-item.active .sv-slide-sub {
+            opacity: 1;
+            transform: translateY(0);
         }
 
         .sv-hero h1 {
@@ -620,14 +664,26 @@
                     <div class="carousel-item h-100 active">
                         <div class="sv-hero-slide"
                             style="background-image:url('{{ asset('virtualtour/images/bg_2.jpg') }}')"></div>
+                        <div class="sv-slide-caption">
+                            <div class="sv-slide-tag">Tour Virtual · 360°</div>
+                            <div class="sv-slide-sub">Mostrá tu vehículo desde todos los ángulos, sin que el comprador tenga que moverse</div>
+                        </div>
                     </div>
                     <div class="carousel-item h-100">
                         <div class="sv-hero-slide"
                             style="background-image:url('{{ asset('virtualtour/images/bg_1.jpeg') }}')"></div>
+                        <div class="sv-slide-caption">
+                            <div class="sv-slide-tag">Vendé más rápido</div>
+                            <div class="sv-slide-sub">Los compradores deciden con los ojos — dales la experiencia inmersiva que convierte</div>
+                        </div>
                     </div>
                     <div class="carousel-item h-100">
                         <div class="sv-hero-slide"
                             style="background-image:url('{{ asset('virtualtour/images/bg_3.jpeg') }}')"></div>
+                        <div class="sv-slide-caption">
+                            <div class="sv-slide-tag">Disponible 24/7</div>
+                            <div class="sv-slide-sub">Tu vehículo se muestra solo, a cualquier hora, desde cualquier lugar del mundo</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1157,8 +1213,23 @@
             });
         }
 
-        // Pannellum demo (laptop S5 + phone S3)
-        @if ($demoImageUrl)
+        // Pannellum demo — laptop (S5) usa multi-scene, phone (S3) usa primera imagen
+        @if ($demoConfig)
+            window.addEventListener('load', function() {
+                pannellum.viewer('sv-pannellum', @json($demoConfig));
+                @if ($demoImageUrl)
+                pannellum.viewer('sv-phone-pannellum', {
+                    type: 'equirectangular',
+                    panorama: '{{ $demoImageUrl }}',
+                    autoLoad: true,
+                    autoRotate: -3,
+                    showControls: false,
+                    mouseZoom: false,
+                    pitch: -10
+                });
+                @endif
+            });
+        @elseif ($demoImageUrl)
             window.addEventListener('load', function() {
                 pannellum.viewer('sv-pannellum', {
                     type: 'equirectangular',

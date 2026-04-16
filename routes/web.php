@@ -98,6 +98,7 @@ Route::group(['middleware' => 'auth'], function () {
     Route::delete('/delUser/{id}', 'UserController@destroy')->name('delProfil');
     Route::delete('/delScene/{id}', 'SceneController@destroy')->name('delScene');
     Route::post('/setDemoScene/{id}', 'SceneController@setDemoScene')->name('setDemoScene');
+    Route::post('/setDemoTour/{id}', 'SceneController@setDemoTour')->name('setDemoTour');
     Route::delete('/delHotspot/{id}', 'HotspotController@destroy')->name('delHotspot');
 
     // Rutas para polígonos de escenas (marcadores de terreno)
@@ -486,9 +487,84 @@ Route::get('/api/search-properties', function (\Illuminate\Http\Request $request
 // LANDING PAGE: VENDE TU VEHÍCULO
 // =====================================================
 Route::get('/vende-tu-vehiculo', function () {
-    $demoScene = \App\Scene::where('is_demo', true)->first() ?? \App\Scene::first();
-    $demoImageUrl = $demoScene ? route('file', $demoScene->image) : null;
-    return view('frontend.sell-vehicle', compact('demoImageUrl'));
+    $demoProperty = \App\Properties::where('is_demo_tour', true)->first();
+
+    $demoConfig    = null;
+    $demoImageUrl  = null; // sigue siendo usado por el visor del teléfono
+
+    if ($demoProperty) {
+        $propertyId = $demoProperty->id;
+        $isVehicle  = $demoProperty->property_type === 'vehicle';
+
+        $scenes = \Illuminate\Support\Facades\DB::table('scenes')
+            ->where(function ($q) use ($propertyId) {
+                $q->where('scenes.property_id', $propertyId)
+                  ->orWhere('scenes.vehicle_id', $propertyId);
+            })
+            ->where('scenes.status', '1')
+            ->leftJoin('spins', function ($join) {
+                $join->on('scenes.spin_id', '=', 'spins.id')
+                     ->where('spins.status', '=', 'ready');
+            })
+            ->select('scenes.*')
+            ->get();
+
+        $sceneIds = $scenes->pluck('id')->toArray();
+        $hotspots = \Illuminate\Support\Facades\DB::table('hotspots')
+            ->whereIn('hotspots.sourceScene', $sceneIds)
+            ->leftJoin('scenes as sc2', 'sc2.id', '=', 'hotspots.targetScene')
+            ->select('hotspots.*', 'sc2.title as targetSceneName')
+            ->get()
+            ->groupBy('sourceScene');
+
+        $firstScene   = $scenes->firstWhere('type', '!=', 'video') ?? $scenes->first();
+        $demoImageUrl = $firstScene ? route('file', $firstScene->image) : null;
+
+        $scenesConfig = [];
+        foreach ($scenes as $scene) {
+            $hs = [];
+            $sceneHotspots = $hotspots->get($scene->id, collect());
+            foreach ($sceneHotspots as $h) {
+                $hs[] = [
+                    'pitch'  => (float) $h->pitch,
+                    'yaw'    => (float) $h->yaw,
+                    'type'   => $h->type === 'scene' ? 'scene' : 'info',
+                    'text'   => $h->info ?? ($h->targetSceneName ?? ''),
+                    'sceneId' => $h->type === 'scene' ? (string) $h->targetScene : null,
+                ];
+            }
+            $scenesConfig[(string) $scene->id] = [
+                'title'    => $scene->title,
+                'type'     => 'equirectangular',
+                'panorama' => $scene->image ? route('file', $scene->image) : url('images/producto-sin-imagen.PNG'),
+                'hfov'     => (float) $scene->hfov,
+                'pitch'    => (float) $scene->pitch,
+                'yaw'      => (float) $scene->yaw,
+                'hotSpots' => $hs,
+            ];
+        }
+
+        if (!empty($scenesConfig)) {
+            $demoConfig = [
+                'default' => [
+                    'firstScene'         => (string) ($firstScene->id ?? array_key_first($scenesConfig)),
+                    'sceneFadeDuration'  => 1000,
+                    'autoLoad'           => true,
+                    'autoRotate'         => -2,
+                    'showControls'       => true,
+                ],
+                'scenes' => $scenesConfig,
+            ];
+        }
+    }
+
+    // Fallback: si no hay demo tour configurado, usar primera escena disponible
+    if (!$demoConfig) {
+        $fallbackScene = \App\Scene::where('type', '!=', 'video')->first() ?? \App\Scene::first();
+        $demoImageUrl  = $fallbackScene ? route('file', $fallbackScene->image) : null;
+    }
+
+    return view('frontend.sell-vehicle', compact('demoConfig', 'demoImageUrl'));
 })->name('sell-vehicle');
 
 Route::post('/vende-tu-vehiculo/contacto', function (\Illuminate\Http\Request $request) {

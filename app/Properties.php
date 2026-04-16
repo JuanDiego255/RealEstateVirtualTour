@@ -44,6 +44,7 @@ class Properties extends Model
         'views_count',
         'published_at',
         'sold_at',
+        'is_demo_tour',
         // Campos de vehículo
         'brand',
         'model',
