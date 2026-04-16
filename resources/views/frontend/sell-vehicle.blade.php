@@ -1334,7 +1334,7 @@
         // Pannellum demo — laptop (S5) usa multi-scene, phone (S3) usa primera imagen
         @if ($demoConfig)
             window.addEventListener('load', function() {
-                // Reconnect string function references serialized by @json
+                // Reconnect string function references serialized by @@json
                 var cfg = @json($demoConfig);
                 Object.keys(cfg.scenes || {}).forEach(function(sid) {
                     (cfg.scenes[sid].hotSpots || []).forEach(function(h) {
