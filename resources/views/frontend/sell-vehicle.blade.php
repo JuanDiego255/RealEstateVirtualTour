@@ -1323,7 +1323,8 @@
         @php
             // Build Pannellum config in blade exactly like welcome.blade.php
             $jsonOptions = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE;
-            $fscene = $scenes->firstWhere('type', '!=', 'video') ?? $scenes->first();
+            // Primera escena: la marcada como principal (status=1), igual que SceneController
+            $fscene = $scenes->firstWhere('status', '1') ?? $scenes->firstWhere('type', '!=', 'video') ?? $scenes->first();
 
             $pannellumDefault = [
                 'firstScene'        => $fscene ? (string) $fscene->id : '',

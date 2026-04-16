@@ -500,8 +500,7 @@ Route::get('/vende-tu-vehiculo', function () {
                 $q->where('property_id', $propertyId)
                   ->orWhere('vehicle_id', $propertyId);
             })
-            ->where('status', '1')
-            ->get();
+            ->get(); // sin filtro de status: todas las escenas, igual que SceneController
 
         if ($scenes->isNotEmpty()) {
             $sceneIds = $scenes->pluck('id')->toArray();
@@ -509,7 +508,7 @@ Route::get('/vende-tu-vehiculo', function () {
                 ->whereIn('sourceScene', $sceneIds)
                 ->get();
 
-            $firstScene   = $scenes->firstWhere('type', '!=', 'video') ?? $scenes->first();
+            $firstScene   = $scenes->firstWhere('status', '1') ?? $scenes->firstWhere('type', '!=', 'video') ?? $scenes->first();
             $demoImageUrl = ($firstScene && $firstScene->image) ? route('file', $firstScene->image) : null;
         }
     }
