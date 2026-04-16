@@ -489,72 +489,60 @@ Route::get('/api/search-properties', function (\Illuminate\Http\Request $request
 Route::get('/vende-tu-vehiculo', function () {
     $demoProperty = \App\Properties::where('is_demo_tour', true)->first();
 
-    $demoConfig    = null;
-    $demoImageUrl  = null; // sigue siendo usado por el visor del teléfono
+    $demoConfig   = null;
+    $demoImageUrl = null;
 
     if ($demoProperty) {
         $propertyId = $demoProperty->id;
-        $isVehicle  = $demoProperty->property_type === 'vehicle';
 
-        $scenes = \Illuminate\Support\Facades\DB::table('scenes')
-            ->where(function ($q) use ($propertyId) {
-                $q->where('scenes.property_id', $propertyId)
-                  ->orWhere('scenes.vehicle_id', $propertyId);
+        // Use Eloquent to avoid JOIN column shadowing from DB::table + spins join
+        $scenes = \App\Scene::where(function ($q) use ($propertyId) {
+                $q->where('property_id', $propertyId)
+                  ->orWhere('vehicle_id', $propertyId);
             })
-            ->where('scenes.status', '1')
-            ->leftJoin('spins', function ($join) {
-                $join->on('scenes.spin_id', '=', 'spins.id')
-                     ->where('spins.status', '=', 'ready');
-            })
-            ->select('scenes.*')
+            ->where('status', '1')
+            ->with('hotspots')
             ->get();
 
-        $sceneIds = $scenes->pluck('id')->toArray();
-        $hotspots = \Illuminate\Support\Facades\DB::table('hotspots')
-            ->whereIn('hotspots.sourceScene', $sceneIds)
-            ->leftJoin('scenes as sc2', 'sc2.id', '=', 'hotspots.targetScene')
-            ->select('hotspots.*', 'sc2.title as targetSceneName')
-            ->get()
-            ->groupBy('sourceScene');
-
         $firstScene   = $scenes->firstWhere('type', '!=', 'video') ?? $scenes->first();
-        $demoImageUrl = $firstScene ? route('file', $firstScene->image) : null;
+        $demoImageUrl = ($firstScene && $firstScene->image) ? route('file', $firstScene->image) : null;
 
         $scenesConfig = [];
         foreach ($scenes as $scene) {
             $hs = [];
-            $sceneHotspots = $hotspots->get($scene->id, collect());
-            foreach ($sceneHotspots as $h) {
+            foreach ($scene->hotspots as $hotspot) {
                 $entry = [
-                    'pitch'              => (float) $h->pitch,
-                    'yaw'                => (float) $h->yaw,
-                    'cssClass'           => 'circular-hotspot',
-                    'type'               => 'custom',
-                    'createTooltipFunc'  => 'hotspotTooltipFunction',
-                    'createTooltipArgs'  => [
-                        'imageUrl'    => !empty($h->image) ? route('file', $h->image) : null,
-                        'displayText' => $h->info ?? ($h->targetSceneName ?? ''),
-                        'hotspotType' => $h->type,
-                        'pitch'       => (float) $h->pitch,
+                    'pitch'             => (float) $hotspot->pitch,
+                    'yaw'               => (float) $hotspot->yaw,
+                    'cssClass'          => 'circular-hotspot',
+                    'type'              => 'custom',
+                    'createTooltipFunc' => 'hotspotTooltipFunction',
+                    'createTooltipArgs' => [
+                        'imageUrl'    => !empty($hotspot->image) ? route('file', $hotspot->image) : null,
+                        'displayText' => null, // sin etiqueta de texto
+                        'hotspotType' => $hotspot->type,
+                        'pitch'       => (float) $hotspot->pitch,
                     ],
-                    'text' => $h->info,
+                    'text' => $hotspot->info,
                 ];
-                if ($h->type === 'scene' && $h->targetScene) {
+                // $hotspot->targetScene is the raw FK integer (Eloquent returns column value
+                // before relation since 'targetScene' exists in $attributes)
+                if ($hotspot->type === 'scene' && $hotspot->targetScene) {
                     $entry['clickHandlerFunc'] = 'onHotspotClick';
                     $clickArgs = [
-                        'targetSceneId' => (string) $h->targetScene,
-                        'yaw'           => (float) $h->yaw,
-                        'pitch'         => (float) $h->pitch,
+                        'targetSceneId' => (string) $hotspot->targetScene,
+                        'yaw'           => (float) $hotspot->yaw,
+                        'pitch'         => (float) $hotspot->pitch,
                     ];
-                    if (isset($h->target_yaw)   && $h->target_yaw   !== null) $clickArgs['targetYaw']   = (float) $h->target_yaw;
-                    if (isset($h->target_pitch) && $h->target_pitch !== null) $clickArgs['targetPitch'] = (float) $h->target_pitch;
+                    if ($hotspot->target_yaw   !== null) $clickArgs['targetYaw']   = (float) $hotspot->target_yaw;
+                    if ($hotspot->target_pitch !== null) $clickArgs['targetPitch'] = (float) $hotspot->target_pitch;
                     $entry['clickHandlerArgs'] = $clickArgs;
                 }
                 $hs[] = $entry;
             }
             $scenesConfig[(string) $scene->id] = [
                 'title'    => $scene->title,
-                'type'     => $scene->type ?? 'equirectangular',
+                'type'     => 'equirectangular',
                 'panorama' => $scene->image ? route('file', $scene->image) : url('images/producto-sin-imagen.PNG'),
                 'hfov'     => (float) ($scene->hfov ?? 100),
                 'pitch'    => (float) ($scene->pitch ?? 0),
@@ -566,13 +554,14 @@ Route::get('/vende-tu-vehiculo', function () {
         if (!empty($scenesConfig)) {
             $demoConfig = [
                 'default' => [
-                    'firstScene'         => (string) ($firstScene->id ?? array_key_first($scenesConfig)),
-                    'sceneFadeDuration'  => 1000,
-                    'autoLoad'           => true,
-                    'autoRotate'         => -2,
-                    'showControls'       => true,
+                    'firstScene'        => (string) ($firstScene ? $firstScene->id : array_key_first($scenesConfig)),
+                    'type'              => 'equirectangular',
+                    'sceneFadeDuration' => 1000,
+                    'autoLoad'          => true,
+                    'autoRotate'        => -2,
+                    'showControls'      => true,
                 ],
-                'scenes' => $scenesConfig,
+                'scenes'  => $scenesConfig,
             ];
         }
     }

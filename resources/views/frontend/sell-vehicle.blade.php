@@ -1282,10 +1282,8 @@
 
         // ── Hotspot tooltip function (same as welcome.blade) ──
         function hotspotTooltipFunction(hotSpotDiv, args) {
-            var imageUrl    = args.imageUrl || null;
-            var displayText = args.displayText || '';
-            var hotspotType = args.hotspotType || 'scene';
-            var pitchScale  = 1;
+            var imageUrl   = args.imageUrl || null;
+            var pitchScale = 1;
             if (!imageUrl && args.pitch !== undefined) {
                 var absPitch = Math.abs(args.pitch);
                 var tanRef   = Math.tan(50 * Math.PI / 180);
@@ -1293,13 +1291,7 @@
             }
             var container = document.createElement('div');
             container.classList.add('hotspot-tooltip-container');
-            if (displayText) {
-                var label = document.createElement('div');
-                label.classList.add('hotspot-label');
-                label.textContent = displayText;
-                label.classList.add(hotspotType === 'info' ? 'hotspot-label-info' : 'hotspot-label-scene');
-                container.appendChild(label);
-            }
+            // No label text — displayText is intentionally omitted in the demo viewer
             if (imageUrl) {
                 var img = document.createElement('img');
                 img.classList.add('circular-hotspot-img');
@@ -1323,10 +1315,7 @@
 
         function onHotspotClick(e, args) {
             if (args && args.targetSceneId && window._svViewer) {
-                window._svViewer.loadScene(args.targetSceneId,
-                    args.targetPitch !== undefined ? args.targetPitch : 'same',
-                    args.targetYaw   !== undefined ? args.targetYaw   : 'same',
-                    'same');
+                window._svViewer.loadScene(args.targetSceneId);
             }
         }
         window.onHotspotClick = onHotspotClick;
@@ -1335,7 +1324,7 @@
         @if ($demoConfig)
             window.addEventListener('load', function() {
                 // Reconnect string function references serialized by @@json
-                var cfg = @json($demoConfig);
+                var cfg = @json($demoConfig, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
                 Object.keys(cfg.scenes || {}).forEach(function(sid) {
                     (cfg.scenes[sid].hotSpots || []).forEach(function(h) {
                         if (h.createTooltipFunc === 'hotspotTooltipFunction') h.createTooltipFunc = hotspotTooltipFunction;
