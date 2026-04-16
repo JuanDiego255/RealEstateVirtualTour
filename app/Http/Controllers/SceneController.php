@@ -97,6 +97,18 @@ class SceneController extends Controller
         return view('frontend.index', compact('sectors', 'properties'));
     }
 
+    /**
+     * Mark one scene as the global demo for /vende-tu-vehiculo.
+     * Clears is_demo on all others first.
+     */
+    public function setDemoScene(Request $request, $id)
+    {
+        Scene::query()->update(['is_demo' => false]);
+        Scene::where('id', $id)->update(['is_demo' => true]);
+
+        return response()->json(['success' => true, 'message' => 'Escena de demo actualizada.']);
+    }
+
     public function dataScene(Request $request)
     {
         if ($request->ajax()) {
@@ -110,6 +122,16 @@ class SceneController extends Controller
             }
 
             return YajraDataTables::of($data)
+                ->addColumn('demo', function ($row) {
+                    $url   = route('setDemoScene', $row->id);
+                    $csrf  = csrf_token();
+                    $active = $row->is_demo ? 'btn-warning' : 'btn-outline-secondary';
+                    $icon   = $row->is_demo ? '⭐ Demo activo' : 'Marcar como demo';
+                    return '<button type="button"
+                                class="btn btn-sm ' . $active . ' set-demo-btn"
+                                data-url="' . $url . '"
+                                data-token="' . $csrf . '">' . $icon . '</button>';
+                })
                 ->addColumn('status', function ($row) use ($type) {
                     $sendData = route('changeFScene', $row->id);
                     $csrf = csrf_token();
@@ -139,7 +161,7 @@ class SceneController extends Controller
                             <a href="#" class="text-danger" data-toggle="modal"
                         data-target="#deleteModal' . $row->id . '"><i class="ti-trash"></i></a>';
                 })
-                ->rawColumns(['status', 'action'])
+                ->rawColumns(['status', 'action', 'demo'])
                 ->make(true);
         }
     }

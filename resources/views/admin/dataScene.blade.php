@@ -635,6 +635,24 @@ $(document).ready(function () {
     });
 
 });
+
+// Demo scene button
+$(document).on('click', '.set-demo-btn', function () {
+    var btn = $(this);
+    var url = btn.data('url');
+    var token = btn.data('token');
+    $.post(url, { _token: token }, function (res) {
+        if (res.success) {
+            // Reset all demo buttons
+            $('.set-demo-btn').removeClass('btn-warning').addClass('btn-outline-secondary').text('Marcar como demo');
+            // Mark this one
+            btn.removeClass('btn-outline-secondary').addClass('btn-warning').html('⭐ Demo activo');
+            swal ? swal('Demo actualizado', res.message, 'success') : alert(res.message);
+        }
+    }).fail(function () {
+        alert('Error al actualizar demo.');
+    });
+});
 </script>
 
 <div class="table-responsive" style="width:100%">
@@ -645,6 +663,7 @@ $(document).ready(function () {
                 <th scope="col">Nombre</th>
                 <th scope="col">Imagen</th>
                 <th scope="col">Escena Principal</th>
+                <th scope="col">Demo Landing</th>
                 <th scope="col">Acciones</th>
             </tr>
         </thead>

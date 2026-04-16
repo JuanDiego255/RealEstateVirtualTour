@@ -97,6 +97,7 @@ Route::group(['middleware' => 'auth'], function () {
 
     Route::delete('/delUser/{id}', 'UserController@destroy')->name('delProfil');
     Route::delete('/delScene/{id}', 'SceneController@destroy')->name('delScene');
+    Route::post('/setDemoScene/{id}', 'SceneController@setDemoScene')->name('setDemoScene');
     Route::delete('/delHotspot/{id}', 'HotspotController@destroy')->name('delHotspot');
 
     // Rutas para polígonos de escenas (marcadores de terreno)
@@ -485,7 +486,7 @@ Route::get('/api/search-properties', function (\Illuminate\Http\Request $request
 // LANDING PAGE: VENDE TU VEHÍCULO
 // =====================================================
 Route::get('/vende-tu-vehiculo', function () {
-    $demoScene = \App\Scene::first();
+    $demoScene = \App\Scene::where('is_demo', true)->first() ?? \App\Scene::first();
     $demoImageUrl = $demoScene ? route('file', $demoScene->image) : null;
     return view('frontend.sell-vehicle', compact('demoImageUrl'));
 })->name('sell-vehicle');

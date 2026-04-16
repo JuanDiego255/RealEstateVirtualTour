@@ -20,7 +20,8 @@ class Scene extends Model
         'property_id',
         'vehicle_id',
         'image_ref',
-        'spin_id'
+        'spin_id',
+        'is_demo',
     ];
 
     public function hotspots()

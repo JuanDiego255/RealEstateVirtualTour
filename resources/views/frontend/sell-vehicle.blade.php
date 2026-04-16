@@ -223,14 +223,18 @@
       <div class="col-lg-6 text-center" data-aos="fade-left" data-aos-delay="100">
         <div class="sv-phone-mockup">
           <div class="sv-phone-frame">
-            <div class="sv-phone-screen">
-              <i class="fas fa-vr-cardboard" style="font-size:3rem;color:#c2ac1f"></i>
-              <span style="color:rgba(255,255,255,.5);font-size:.8rem;letter-spacing:1px">TOUR VIRTUAL 360°</span>
-              <div style="display:flex;gap:6px">
-                <span style="width:6px;height:6px;border-radius:50%;background:#c2ac1f;animation:sv-pulse 1.4s infinite"></span>
-                <span style="width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.3);animation:sv-pulse 1.4s infinite .3s"></span>
-                <span style="width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.3);animation:sv-pulse 1.4s infinite .6s"></span>
-              </div>
+            <div class="sv-phone-screen" style="min-height:420px;">
+              @if($demoImageUrl)
+                <div id="sv-phone-pannellum" style="width:100%;height:100%;min-height:420px;"></div>
+              @else
+                <i class="fas fa-vr-cardboard" style="font-size:3rem;color:#c2ac1f"></i>
+                <span style="color:rgba(255,255,255,.5);font-size:.8rem;letter-spacing:1px">TOUR VIRTUAL 360°</span>
+                <div style="display:flex;gap:6px">
+                  <span style="width:6px;height:6px;border-radius:50%;background:#c2ac1f;"></span>
+                  <span style="width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.3);"></span>
+                  <span style="width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.3);"></span>
+                </div>
+              @endif
             </div>
           </div>
         </div>
@@ -597,7 +601,7 @@ function downloadQR(){
   });
 }
 
-// Pannellum demo
+// Pannellum demo (laptop S5 + phone S3)
 @if($demoImageUrl)
 window.addEventListener('load', function(){
   pannellum.viewer('sv-pannellum', {
@@ -607,6 +611,15 @@ window.addEventListener('load', function(){
     autoRotate: -2,
     showControls: false,
     mouseZoom: true
+  });
+  pannellum.viewer('sv-phone-pannellum', {
+    type: 'equirectangular',
+    panorama: '{{ $demoImageUrl }}',
+    autoLoad: true,
+    autoRotate: -3,
+    showControls: false,
+    mouseZoom: false,
+    pitch: -10
   });
 });
 @endif
