@@ -1296,7 +1296,7 @@
                 var img = document.createElement('img');
                 img.classList.add('circular-hotspot-img');
                 img.src = imageUrl;
-                img.alt = displayText || 'hotspot';
+                img.alt = 'hotspot';
                 container.appendChild(img);
             } else {
                 var scaleWrapper = document.createElement('div');
