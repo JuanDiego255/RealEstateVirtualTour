@@ -489,90 +489,41 @@ Route::get('/api/search-properties', function (\Illuminate\Http\Request $request
 Route::get('/vende-tu-vehiculo', function () {
     $demoProperty = \App\Properties::where('is_demo_tour', true)->first();
 
-    $demoConfig   = null;
+    $scenes       = collect();
+    $hotspots     = collect();
     $demoImageUrl = null;
 
     if ($demoProperty) {
         $propertyId = $demoProperty->id;
 
-        // Use Eloquent to avoid JOIN column shadowing from DB::table + spins join
         $scenes = \App\Scene::where(function ($q) use ($propertyId) {
                 $q->where('property_id', $propertyId)
                   ->orWhere('vehicle_id', $propertyId);
             })
             ->where('status', '1')
-            ->with('hotspots')
             ->get();
 
-        $firstScene   = $scenes->firstWhere('type', '!=', 'video') ?? $scenes->first();
-        $demoImageUrl = ($firstScene && $firstScene->image) ? route('file', $firstScene->image) : null;
+        if ($scenes->isNotEmpty()) {
+            $sceneIds = $scenes->pluck('id')->toArray();
+            $hotspots = \Illuminate\Support\Facades\DB::table('hotspots')
+                ->whereIn('sourceScene', $sceneIds)
+                ->get();
 
-        $scenesConfig = [];
-        foreach ($scenes as $scene) {
-            $hs = [];
-            foreach ($scene->hotspots as $hotspot) {
-                $entry = [
-                    'pitch'             => (float) $hotspot->pitch,
-                    'yaw'               => (float) $hotspot->yaw,
-                    'cssClass'          => 'circular-hotspot',
-                    'type'              => 'custom',
-                    'createTooltipFunc' => 'hotspotTooltipFunction',
-                    'createTooltipArgs' => [
-                        'imageUrl'    => !empty($hotspot->image) ? route('file', $hotspot->image) : null,
-                        'displayText' => null, // sin etiqueta de texto
-                        'hotspotType' => $hotspot->type,
-                        'pitch'       => (float) $hotspot->pitch,
-                    ],
-                    'text' => $hotspot->info,
-                ];
-                // $hotspot->targetScene is the raw FK integer (Eloquent returns column value
-                // before relation since 'targetScene' exists in $attributes)
-                if ($hotspot->type === 'scene' && $hotspot->targetScene) {
-                    $entry['clickHandlerFunc'] = 'onHotspotClick';
-                    $clickArgs = [
-                        'targetSceneId' => (string) $hotspot->targetScene,
-                        'yaw'           => (float) $hotspot->yaw,
-                        'pitch'         => (float) $hotspot->pitch,
-                    ];
-                    if ($hotspot->target_yaw   !== null) $clickArgs['targetYaw']   = (float) $hotspot->target_yaw;
-                    if ($hotspot->target_pitch !== null) $clickArgs['targetPitch'] = (float) $hotspot->target_pitch;
-                    $entry['clickHandlerArgs'] = $clickArgs;
-                }
-                $hs[] = $entry;
-            }
-            $scenesConfig[(string) $scene->id] = [
-                'title'    => $scene->title,
-                'type'     => 'equirectangular',
-                'panorama' => $scene->image ? route('file', $scene->image) : url('images/producto-sin-imagen.PNG'),
-                'hfov'     => (float) ($scene->hfov ?? 100),
-                'pitch'    => (float) ($scene->pitch ?? 0),
-                'yaw'      => (float) ($scene->yaw ?? 0),
-                'hotSpots' => $hs,
-            ];
-        }
-
-        if (!empty($scenesConfig)) {
-            $demoConfig = [
-                'default' => [
-                    'firstScene'        => (string) ($firstScene ? $firstScene->id : array_key_first($scenesConfig)),
-                    'type'              => 'equirectangular',
-                    'sceneFadeDuration' => 1000,
-                    'autoLoad'          => true,
-                    'autoRotate'        => -2,
-                    'showControls'      => true,
-                ],
-                'scenes'  => $scenesConfig,
-            ];
+            $firstScene   = $scenes->firstWhere('type', '!=', 'video') ?? $scenes->first();
+            $demoImageUrl = ($firstScene && $firstScene->image) ? route('file', $firstScene->image) : null;
         }
     }
 
     // Fallback: si no hay demo tour configurado, usar primera escena disponible
-    if (!$demoConfig) {
-        $fallbackScene = \App\Scene::where('type', '!=', 'video')->first() ?? \App\Scene::first();
-        $demoImageUrl  = $fallbackScene ? route('file', $fallbackScene->image) : null;
+    if ($scenes->isEmpty()) {
+        $fallback = \App\Scene::where('type', '!=', 'video')->first() ?? \App\Scene::first();
+        if ($fallback) {
+            $scenes       = collect([$fallback]);
+            $demoImageUrl = $fallback->image ? route('file', $fallback->image) : null;
+        }
     }
 
-    return view('frontend.sell-vehicle', compact('demoConfig', 'demoImageUrl'));
+    return view('frontend.sell-vehicle', compact('scenes', 'hotspots', 'demoImageUrl'));
 })->name('sell-vehicle');
 
 Route::post('/vende-tu-vehiculo/contacto', function (\Illuminate\Http\Request $request) {

@@ -957,7 +957,7 @@
                                 </div>
                             </div>
                             <div class="sv-laptop-screen">
-                                @if ($demoImageUrl)
+                                @if ($scenes->isNotEmpty())
                                     <div id="sv-pannellum" style="width:100%;height:100%;"></div>
                                 @else
                                     <div
@@ -1320,18 +1320,90 @@
         }
         window.onHotspotClick = onHotspotClick;
 
-        // Pannellum demo — laptop (S5) usa multi-scene, phone (S3) usa primera imagen
-        @if ($demoConfig)
+        @php
+            // Build Pannellum config in blade exactly like welcome.blade.php
+            $jsonOptions = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE;
+            $fscene = $scenes->firstWhere('type', '!=', 'video') ?? $scenes->first();
+
+            $pannellumDefault = [
+                'firstScene'        => $fscene ? (string) $fscene->id : '',
+                'hfov'              => 100,
+                'minHfov'           => 50,
+                'maxHfov'           => 120,
+                'autoLoad'          => true,
+                'sceneFadeDuration' => 1000,
+                'autoRotate'        => -2,
+                'showControls'      => true,
+                'mouseZoom'         => true,
+            ];
+
+            $scenesConfig = [];
+            foreach ($scenes as $scene) {
+                $hotspotsForScene = [];
+                foreach ($hotspots->where('sourceScene', $scene->id) as $hotspot) {
+                    $hs = [
+                        'pitch'             => (float) $hotspot->pitch,
+                        'yaw'               => (float) $hotspot->yaw,
+                        'cssClass'          => 'circular-hotspot',
+                        'type'              => 'custom',
+                        'createTooltipFunc' => 'hotspotTooltipFunction',
+                        'createTooltipArgs' => [
+                            'imageUrl'    => !empty($hotspot->image) ? route('file', $hotspot->image) : null,
+                            'displayText' => null,
+                            'hotspotType' => $hotspot->type,
+                            'pitch'       => (float) $hotspot->pitch,
+                        ],
+                        'text' => $hotspot->info,
+                    ];
+                    if ($hotspot->type === 'scene' && $hotspot->targetScene) {
+                        $hs['clickHandlerFunc'] = 'onHotspotClick';
+                        $clickArgs = [
+                            'targetSceneId' => (string) $hotspot->targetScene,
+                            'yaw'           => (float) $hotspot->yaw,
+                            'pitch'         => (float) $hotspot->pitch,
+                        ];
+                        if ($hotspot->target_yaw   !== null) $clickArgs['targetYaw']   = (float) $hotspot->target_yaw;
+                        if ($hotspot->target_pitch !== null) $clickArgs['targetPitch'] = (float) $hotspot->target_pitch;
+                        $hs['clickHandlerArgs'] = $clickArgs;
+                    }
+                    $hotspotsForScene[] = $hs;
+                }
+                $scenesConfig[(string) $scene->id] = [
+                    'title'    => $scene->title,
+                    'hfov'     => (float) ($scene->hfov ?? 100),
+                    'pitch'    => (float) ($scene->pitch ?? 0),
+                    'yaw'      => (float) ($scene->yaw ?? 0),
+                    'type'     => $scene->type ?? 'equirectangular',
+                    'panorama' => $scene->image
+                        ? route('file', $scene->image)
+                        : url('images/producto-sin-imagen.PNG'),
+                    'hotSpots' => $hotspotsForScene,
+                ];
+            }
+        @endphp
+
+        @if (!empty($scenesConfig))
             window.addEventListener('load', function() {
-                // Reconnect string function references serialized by @@json
-                var cfg = @json($demoConfig, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-                Object.keys(cfg.scenes || {}).forEach(function(sid) {
-                    (cfg.scenes[sid].hotSpots || []).forEach(function(h) {
-                        if (h.createTooltipFunc === 'hotspotTooltipFunction') h.createTooltipFunc = hotspotTooltipFunction;
-                        if (h.clickHandlerFunc  === 'onHotspotClick')         h.clickHandlerFunc  = onHotspotClick;
+                var pannellumConfig = {
+                    default: @json($pannellumDefault, $jsonOptions),
+                    scenes:  @json($scenesConfig,  $jsonOptions)
+                };
+                // Reconectar strings → funciones reales (igual que welcome.blade)
+                Object.keys(pannellumConfig.scenes || {}).forEach(function(sceneId) {
+                    (pannellumConfig.scenes[sceneId].hotSpots || []).forEach(function(h) {
+                        if (typeof h.createTooltipFunc === 'string') {
+                            var fn = window[h.createTooltipFunc];
+                            if (typeof fn === 'function') h.createTooltipFunc = fn;
+                            else delete h.createTooltipFunc;
+                        }
+                        if (typeof h.clickHandlerFunc === 'string') {
+                            var fn = window[h.clickHandlerFunc];
+                            if (typeof fn === 'function') h.clickHandlerFunc = fn;
+                            else delete h.clickHandlerFunc;
+                        }
                     });
                 });
-                window._svViewer = pannellum.viewer('sv-pannellum', cfg);
+                window._svViewer = pannellum.viewer('sv-pannellum', pannellumConfig);
                 @if ($demoImageUrl)
                 pannellum.viewer('sv-phone-pannellum', {
                     type: 'equirectangular',
@@ -1343,26 +1415,6 @@
                     pitch: -10
                 });
                 @endif
-            });
-        @elseif ($demoImageUrl)
-            window.addEventListener('load', function() {
-                pannellum.viewer('sv-pannellum', {
-                    type: 'equirectangular',
-                    panorama: '{{ $demoImageUrl }}',
-                    autoLoad: true,
-                    autoRotate: -2,
-                    showControls: false,
-                    mouseZoom: true
-                });
-                pannellum.viewer('sv-phone-pannellum', {
-                    type: 'equirectangular',
-                    panorama: '{{ $demoImageUrl }}',
-                    autoLoad: true,
-                    autoRotate: -3,
-                    showControls: false,
-                    mouseZoom: false,
-                    pitch: -10
-                });
             });
         @endif
 
