@@ -25,13 +25,19 @@
             @endif
         </div>
 
-        <div class="row mt-5">
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <input type="text" id="property-filter" class="form-control" placeholder="Buscar publicación..." oninput="filterProperties(this.value)">
+            </div>
+        </div>
+
+        <div class="row mt-5" id="properties-grid">
 
             @foreach ($properties as $property)
                 @if(Auth::user()->canAccessModule('properties', 'edit'))
                     @include('admin.properties.edit')
                 @endif
-                <div class="col-md-3 col-sm-6">
+                <div class="col-md-3 col-sm-6 property-card" data-name="{{ strtolower($property->name . ' ' . ($property->brand ?? '') . ' ' . ($property->model ?? '') . ' ' . ($property->year ?? '')) }}">
                     <div class="item">
                         <div class="product-grid product_data">
                             <div class="product-image">
@@ -92,6 +98,10 @@
                                 <h3 class="title"><a
                                         href="{{ route('config', $property->id) }}">{{ $property->name }}</a>
                                 </h3>
+
+                                <div class="mb-1">
+                                    <span class="badge badge-info" title="Hotspots"><i class="fa fa-street-view mr-1"></i>{{ $hotspotCounts->get($property->id, 0) }}h</span>
+                                </div>
 
                                 @if ($property->property_type)
                                     <div class="mb-1"><span
@@ -171,6 +181,13 @@
     </div>
 
     <script>
+    function filterProperties(val) {
+        var q = val.toLowerCase();
+        document.querySelectorAll('.property-card').forEach(function(card) {
+            card.style.display = (card.dataset.name.indexOf(q) !== -1) ? '' : 'none';
+        });
+    }
+
     function copyPropertyLink(url) {
         if (navigator.clipboard) {
             navigator.clipboard.writeText(url).then(function() {

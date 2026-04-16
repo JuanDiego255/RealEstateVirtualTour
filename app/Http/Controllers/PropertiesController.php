@@ -56,7 +56,13 @@ class PropertiesController extends Controller
                 ->get();
         }
 
-        return view('admin.properties.property', compact('properties', 'subcategories'));
+        $hotspotCounts = DB::table('hotspots')
+            ->join('scenes', 'hotspots.sourceScene', '=', 'scenes.id')
+            ->selectRaw('COALESCE(scenes.property_id, scenes.vehicle_id) as prop_id, COUNT(*) as total')
+            ->groupByRaw('COALESCE(scenes.property_id, scenes.vehicle_id)')
+            ->pluck('total', 'prop_id');
+
+        return view('admin.properties.property', compact('properties', 'subcategories', 'hotspotCounts'));
     }
 
     /**
