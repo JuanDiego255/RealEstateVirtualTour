@@ -651,6 +651,73 @@
                 margin-top: 40px;
             }
         }
+
+        /* ── Hotspot styles (identical to welcome.blade) ── */
+        .hotspot-tooltip-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+        .hotspot-label {
+            background-color: rgba(0,0,0,0.75);
+            color: #fff;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 5px;
+            white-space: nowrap;
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .hotspot-label-info  { background-color:rgba(52,152,219,.9); border:1px solid #2980b9; }
+        .hotspot-label-scene { background-color:rgba(46,204,113,.9); border:1px solid #27ae60; }
+        .circular-hotspot-img {
+            width: 50px; height: 50px;
+            object-fit: contain;
+            cursor: pointer;
+            transition: transform .2s ease;
+        }
+        .circular-hotspot-img:hover { transform: scale(1.1); }
+        /* Floor projection hotspot (sin imagen personalizada) */
+        .floor-hotspot {
+            width: 58px; height: 58px;
+            position: relative;
+            cursor: pointer;
+            transform: perspective(60px) rotateX(64deg);
+        }
+        @@media (max-width:1024px) {
+            .floor-hotspot { width:46px; height:46px; transform:perspective(48px) rotateX(64deg); }
+        }
+        @@media (max-width:600px) {
+            .floor-hotspot { width:36px; height:36px; transform:perspective(38px) rotateX(64deg); }
+        }
+        .floor-hotspot-inner {
+            position: absolute; inset: 0;
+            border-radius: 50%;
+            border: 2.5px solid rgba(255,255,255,.92);
+            box-shadow: 0 0 10px rgba(255,255,255,.65), 0 0 22px rgba(255,255,255,.25), inset 0 0 6px rgba(255,255,255,.08);
+            animation: floor-pulse 2.6s ease-in-out infinite;
+        }
+        @@keyframes floor-pulse {
+            0%,100% { transform:scale(1);    opacity:.82; }
+            50%      { transform:scale(1.07); opacity:1;   }
+        }
+        .floor-hotspot:hover .floor-hotspot-inner {
+            animation: none;
+            transform: scale(1.1);
+            opacity: 1;
+            box-shadow: 0 0 16px rgba(255,255,255,.9), 0 0 32px rgba(255,255,255,.4), inset 0 0 8px rgba(255,255,255,.12);
+        }
+        .pnlm-hotspot.circular-hotspot {
+            background: transparent !important;
+            border: none !important;
+            width: auto !important;
+            height: auto !important;
+        }
+        .pnlm-load-box { display:none !important; }
     </style>
 @endpush
 
@@ -1213,10 +1280,69 @@
             });
         }
 
+        // ── Hotspot tooltip function (same as welcome.blade) ──
+        function hotspotTooltipFunction(hotSpotDiv, args) {
+            var imageUrl    = args.imageUrl || null;
+            var displayText = args.displayText || '';
+            var hotspotType = args.hotspotType || 'scene';
+            var pitchScale  = 1;
+            if (!imageUrl && args.pitch !== undefined) {
+                var absPitch = Math.abs(args.pitch);
+                var tanRef   = Math.tan(50 * Math.PI / 180);
+                pitchScale   = Math.min(1.0, Math.max(0.42, Math.tan(absPitch * Math.PI / 180) / tanRef));
+            }
+            var container = document.createElement('div');
+            container.classList.add('hotspot-tooltip-container');
+            if (displayText) {
+                var label = document.createElement('div');
+                label.classList.add('hotspot-label');
+                label.textContent = displayText;
+                label.classList.add(hotspotType === 'info' ? 'hotspot-label-info' : 'hotspot-label-scene');
+                container.appendChild(label);
+            }
+            if (imageUrl) {
+                var img = document.createElement('img');
+                img.classList.add('circular-hotspot-img');
+                img.src = imageUrl;
+                img.alt = displayText || 'hotspot';
+                container.appendChild(img);
+            } else {
+                var scaleWrapper = document.createElement('div');
+                scaleWrapper.style.cssText = 'display:inline-block;transform:scale(' + pitchScale.toFixed(3) + ');transform-origin:center bottom;';
+                var floor = document.createElement('div');
+                floor.classList.add('floor-hotspot');
+                var inner = document.createElement('div');
+                inner.classList.add('floor-hotspot-inner');
+                floor.appendChild(inner);
+                scaleWrapper.appendChild(floor);
+                container.appendChild(scaleWrapper);
+            }
+            hotSpotDiv.appendChild(container);
+        }
+        window.hotspotTooltipFunction = hotspotTooltipFunction;
+
+        function onHotspotClick(e, args) {
+            if (args && args.targetSceneId && window._svViewer) {
+                window._svViewer.loadScene(args.targetSceneId,
+                    args.targetPitch !== undefined ? args.targetPitch : 'same',
+                    args.targetYaw   !== undefined ? args.targetYaw   : 'same',
+                    'same');
+            }
+        }
+        window.onHotspotClick = onHotspotClick;
+
         // Pannellum demo — laptop (S5) usa multi-scene, phone (S3) usa primera imagen
         @if ($demoConfig)
             window.addEventListener('load', function() {
-                pannellum.viewer('sv-pannellum', @json($demoConfig));
+                // Reconnect string function references serialized by @json
+                var cfg = @json($demoConfig);
+                Object.keys(cfg.scenes || {}).forEach(function(sid) {
+                    (cfg.scenes[sid].hotSpots || []).forEach(function(h) {
+                        if (h.createTooltipFunc === 'hotspotTooltipFunction') h.createTooltipFunc = hotspotTooltipFunction;
+                        if (h.clickHandlerFunc  === 'onHotspotClick')         h.clickHandlerFunc  = onHotspotClick;
+                    });
+                });
+                window._svViewer = pannellum.viewer('sv-pannellum', cfg);
                 @if ($demoImageUrl)
                 pannellum.viewer('sv-phone-pannellum', {
                     type: 'equirectangular',

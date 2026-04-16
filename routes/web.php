@@ -525,21 +525,40 @@ Route::get('/vende-tu-vehiculo', function () {
             $hs = [];
             $sceneHotspots = $hotspots->get($scene->id, collect());
             foreach ($sceneHotspots as $h) {
-                $hs[] = [
-                    'pitch'  => (float) $h->pitch,
-                    'yaw'    => (float) $h->yaw,
-                    'type'   => $h->type === 'scene' ? 'scene' : 'info',
-                    'text'   => $h->info ?? ($h->targetSceneName ?? ''),
-                    'sceneId' => $h->type === 'scene' ? (string) $h->targetScene : null,
+                $entry = [
+                    'pitch'              => (float) $h->pitch,
+                    'yaw'                => (float) $h->yaw,
+                    'cssClass'           => 'circular-hotspot',
+                    'type'               => 'custom',
+                    'createTooltipFunc'  => 'hotspotTooltipFunction',
+                    'createTooltipArgs'  => [
+                        'imageUrl'    => !empty($h->image) ? route('file', $h->image) : null,
+                        'displayText' => $h->info ?? ($h->targetSceneName ?? ''),
+                        'hotspotType' => $h->type,
+                        'pitch'       => (float) $h->pitch,
+                    ],
+                    'text' => $h->info,
                 ];
+                if ($h->type === 'scene' && $h->targetScene) {
+                    $entry['clickHandlerFunc'] = 'onHotspotClick';
+                    $clickArgs = [
+                        'targetSceneId' => (string) $h->targetScene,
+                        'yaw'           => (float) $h->yaw,
+                        'pitch'         => (float) $h->pitch,
+                    ];
+                    if (isset($h->target_yaw)   && $h->target_yaw   !== null) $clickArgs['targetYaw']   = (float) $h->target_yaw;
+                    if (isset($h->target_pitch) && $h->target_pitch !== null) $clickArgs['targetPitch'] = (float) $h->target_pitch;
+                    $entry['clickHandlerArgs'] = $clickArgs;
+                }
+                $hs[] = $entry;
             }
             $scenesConfig[(string) $scene->id] = [
                 'title'    => $scene->title,
-                'type'     => 'equirectangular',
+                'type'     => $scene->type ?? 'equirectangular',
                 'panorama' => $scene->image ? route('file', $scene->image) : url('images/producto-sin-imagen.PNG'),
-                'hfov'     => (float) $scene->hfov,
-                'pitch'    => (float) $scene->pitch,
-                'yaw'      => (float) $scene->yaw,
+                'hfov'     => (float) ($scene->hfov ?? 100),
+                'pitch'    => (float) ($scene->pitch ?? 0),
+                'yaw'      => (float) ($scene->yaw ?? 0),
                 'hotSpots' => $hs,
             ];
         }
