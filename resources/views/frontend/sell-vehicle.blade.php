@@ -22,8 +22,8 @@
 .sv-btn-outline:hover { border-color:#c2ac1f; color:#c2ac1f; transform:translateY(-2px); text-decoration:none; }
 .sv-live-badge { display:inline-flex; align-items:center; gap:8px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15); backdrop-filter:blur(8px); padding:8px 18px; border-radius:50px; color:#fff; font-size:.85rem; font-weight:500; margin-bottom:24px; }
 .sv-live-dot { width:8px; height:8px; background:#ff3b30; border-radius:50%; animation:sv-pulse 1.4s ease-in-out infinite; }
-@keyframes sv-pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.4)} }
-@keyframes sv-bounce { 0%,100%{transform:translateX(-50%) translateY(0)} 50%{transform:translateX(-50%) translateY(8px)} }
+@@keyframes sv-pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.4)} }
+@@keyframes sv-bounce { 0%,100%{transform:translateX(-50%) translateY(0)} 50%{transform:translateX(-50%) translateY(8px)} }
 
 /* STATS */
 .sv-stats { background:#111; border-top:1px solid rgba(255,255,255,.06); border-bottom:1px solid rgba(255,255,255,.06); padding:56px 0; }
@@ -102,7 +102,7 @@
 .sv-qr-download-btn { background:#c2ac1f; color:#000; font-weight:700; border:none; padding:14px 32px; border-radius:50px; font-size:.95rem; transition:all .3s; cursor:pointer; display:inline-flex; align-items:center; gap:8px; }
 .sv-qr-download-btn:hover { background:#a89318; transform:translateY(-2px); }
 
-@media(max-width:767px){
+@@media(max-width:767px){
   .sv-hero h1{font-size:2rem;}
   .sv-stat-divider{display:none;}
   .sv-form-card{padding:28px 18px;}
