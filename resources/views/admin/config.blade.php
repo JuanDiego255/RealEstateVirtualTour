@@ -184,6 +184,12 @@
                         searchable: false
                     },
                     {
+                        data: 'demo',
+                        name: 'demo',
+                        orderable: false,
+                        searchable: false
+                    },
+                    {
                         data: 'action',
                         name: 'action',
                         orderable: false,
