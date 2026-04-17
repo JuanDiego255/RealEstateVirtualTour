@@ -590,7 +590,6 @@
                                 <td>{{ $quote->term_months }} meses</td>
                                 <td>
                                     <span class="quote-amount">₡{{ number_format($quote->monthly_payment) }}</span>
-                                    <br><small class="quote-monthly">Tasa: {{ $quote->interest_rate }}%</small>
                                 </td>
                                 <td>
                                     @if($quote->capturedBy)

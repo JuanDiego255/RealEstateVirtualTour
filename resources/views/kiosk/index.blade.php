@@ -1402,6 +1402,7 @@
         // QUOTE CALCULATOR
         // ============================================
         let indexPaymentFrequency = 'monthly';
+        let _indexQuoteCalc = { payment: 0, total: 0, interest: 0, principal: 0, downPayment: 0, monthlyRate: 0 };
 
         function selectFrequencyIndex(btn) {
             document.querySelectorAll('.frequency-btn-index').forEach(b => b.classList.remove('active'));
@@ -1464,11 +1465,20 @@
                 totalInterest = totalAmount - principal;
             }
 
+            // Store displayed (rounded) values — submitQuoteDirectly uses these exact amounts
+            _indexQuoteCalc.payment    = Math.round(payment);
+            _indexQuoteCalc.total      = Math.round(totalAmount);
+            _indexQuoteCalc.interest   = Math.round(totalInterest);
+            _indexQuoteCalc.principal  = Math.round(principal);
+            _indexQuoteCalc.downPayment = Math.round(downPayment);
+            // Convert annual rate to monthly for backend (backend model uses monthly rate)
+            _indexQuoteCalc.monthlyRate = (interestRate / 12);
+
             document.getElementById('downPaymentPercent').textContent = downPercent;
-            document.getElementById('downPaymentDisplay').value = '₡' + Math.round(downPayment).toLocaleString('es-CR');
-            document.getElementById('monthlyPaymentDisplay').textContent = '₡' + Math.round(payment).toLocaleString('es-CR');
-            document.getElementById('totalInterestDisplay').textContent = '₡' + Math.round(totalInterest).toLocaleString('es-CR');
-            document.getElementById('totalAmountDisplay').textContent = '₡' + Math.round(totalAmount).toLocaleString('es-CR');
+            document.getElementById('downPaymentDisplay').value = '₡' + _indexQuoteCalc.downPayment.toLocaleString('es-CR');
+            document.getElementById('monthlyPaymentDisplay').textContent = '₡' + _indexQuoteCalc.payment.toLocaleString('es-CR');
+            document.getElementById('totalInterestDisplay').textContent = '₡' + _indexQuoteCalc.interest.toLocaleString('es-CR');
+            document.getElementById('totalAmountDisplay').textContent = '₡' + _indexQuoteCalc.total.toLocaleString('es-CR');
         }
 
         document.getElementById('downPaymentSlider').addEventListener('input', updateQuoteCalculation);
@@ -1507,10 +1517,14 @@
                     body: JSON.stringify({
                         vehicle_id: vehicleId,
                         vehicle_price: price,
-                        down_payment: downPayment,
+                        down_payment: _indexQuoteCalc.downPayment,
                         term_months: termMonths,
-                        interest_rate: interestRate,
+                        interest_rate: _indexQuoteCalc.monthlyRate, // monthly rate = annual / 12
                         payment_frequency: paymentFrequency,
+                        // Pre-calculated values — exactly what the user saw in the form
+                        monthly_payment: _indexQuoteCalc.payment,
+                        total_amount: _indexQuoteCalc.total,
+                        total_interest: _indexQuoteCalc.interest,
                         customer_name: name,
                         customer_phone: phone,
                         event_name: eventName

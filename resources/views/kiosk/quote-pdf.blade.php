@@ -344,14 +344,6 @@
                     <td class="label">Frecuencia de pago</td>
                     <td class="value">{{ ($quote->payment_frequency ?? 'monthly') === 'annual' ? 'Anual' : 'Mensual' }}</td>
                 </tr>
-                <tr>
-                    <td class="label">Tasa de interes mensual</td>
-                    <td class="value">{{ number_format($quote->interest_rate, 2) }}%</td>
-                </tr>
-                <tr class="highlight">
-                    <td class="label">Total de intereses</td>
-                    <td class="value">{{ $quote->currency === 'USD' ? '$' : 'CRC ' }}{{ number_format($quote->total_interest, 0, ',', '.') }}</td>
-                </tr>
                 <tr class="total-row">
                     <td>Monto total a pagar</td>
                     <td class="value">{{ $quote->currency === 'USD' ? '$' : 'CRC ' }}{{ number_format($quote->total_amount, 0, ',', '.') }}</td>
