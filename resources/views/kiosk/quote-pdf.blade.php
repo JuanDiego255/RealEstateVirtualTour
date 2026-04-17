@@ -345,8 +345,8 @@
                     <td class="value">{{ ($quote->payment_frequency ?? 'monthly') === 'annual' ? 'Anual' : 'Mensual' }}</td>
                 </tr>
                 <tr class="total-row">
-                    <td>Monto total a pagar</td>
-                    <td class="value">{{ $quote->currency === 'USD' ? '$' : 'CRC ' }}{{ number_format($quote->total_amount, 0, ',', '.') }}</td>
+                    <td>Cuota Mensual</td>
+                    <td class="value">{{ $quote->currency === 'USD' ? '$' : 'CRC ' }}{{ number_format($quote->monthly_payment, 0, ',', '.') }}</td>
                 </tr>
             </table>
         </div>
