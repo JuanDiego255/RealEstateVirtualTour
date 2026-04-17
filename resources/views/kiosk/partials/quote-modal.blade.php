@@ -258,6 +258,8 @@
 <script>
 let quoteTermMonths = 36;
 let quotePaymentFrequency = 'monthly';
+// Stores the exact displayed values so saveQuote uses the same amounts the user sees
+let _quoteCalc = { payment: 0, total: 0, interest: 0, principal: 0, downPayment: 0 };
 
 function selectFrequency(btn) {
     document.querySelectorAll('.frequency-btn').forEach(b => b.classList.remove('active'));
@@ -335,14 +337,21 @@ function updateQuoteCalculation() {
         totalInterest = totalAmount - principal;
     }
 
+    // Store displayed (rounded) values so save request uses exactly what the user sees
+    _quoteCalc.payment     = Math.round(payment);
+    _quoteCalc.total       = Math.round(totalAmount);
+    _quoteCalc.interest    = Math.round(totalInterest);
+    _quoteCalc.principal   = Math.round(principal);
+    _quoteCalc.downPayment = Math.round(downPayment);
+
     // Update displays
     document.getElementById('downPaymentPercent').textContent = downPercent;
-    document.getElementById('downPaymentDisplay').textContent = '₡' + Math.round(downPayment).toLocaleString('es-CR');
+    document.getElementById('downPaymentDisplay').textContent = '₡' + _quoteCalc.downPayment.toLocaleString('es-CR');
     document.getElementById('interestRateDisplay').textContent = monthlyInterestRate;
-    document.getElementById('monthlyPaymentDisplay').textContent = '₡' + Math.round(payment).toLocaleString('es-CR');
-    document.getElementById('totalInterestDisplay').textContent = '₡' + Math.round(totalInterest).toLocaleString('es-CR');
-    document.getElementById('financedAmountDisplay').textContent = '₡' + Math.round(principal).toLocaleString('es-CR');
-    document.getElementById('totalAmountDisplay').textContent = '₡' + Math.round(totalAmount).toLocaleString('es-CR');
+    document.getElementById('monthlyPaymentDisplay').textContent = '₡' + _quoteCalc.payment.toLocaleString('es-CR');
+    document.getElementById('totalInterestDisplay').textContent = '₡' + _quoteCalc.interest.toLocaleString('es-CR');
+    document.getElementById('financedAmountDisplay').textContent = '₡' + _quoteCalc.principal.toLocaleString('es-CR');
+    document.getElementById('totalAmountDisplay').textContent = '₡' + _quoteCalc.total.toLocaleString('es-CR');
 }
 
 document.getElementById('downPaymentSlider').addEventListener('input', updateQuoteCalculation);
@@ -386,10 +395,15 @@ async function saveAndDownloadQuote() {
             body: JSON.stringify({
                 vehicle_id: vehicleId,
                 vehicle_price: price,
-                down_payment: downPayment,
+                down_payment: _quoteCalc.downPayment,
                 term_months: termMonths,
                 interest_rate: interestRate,
                 payment_frequency: paymentFrequency,
+                // Pre-calculated values — these are exactly what the form displays
+                monthly_payment: _quoteCalc.payment,
+                total_amount: _quoteCalc.total,
+                total_interest: _quoteCalc.interest,
+                financed_amount: _quoteCalc.principal,
                 customer_name: name,
                 customer_phone: phone,
                 customer_email: null,

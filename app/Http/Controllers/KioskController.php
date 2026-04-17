@@ -214,32 +214,41 @@ class KioskController extends Controller
         ]);
 
         $paymentFrequency = $request->get('payment_frequency', 'monthly');
+        $vehiclePrice     = (float) $request->vehicle_price;
+        $downPayment      = (float) $request->down_payment;
 
-        $quoteData = VehicleQuote::generateQuote(
-            $request->vehicle_price,
-            $request->down_payment,
-            $request->term_months,
-            $request->interest_rate,
-            $paymentFrequency
-        );
+        // Use pre-calculated values sent by the frontend (exact amounts the user saw in the form).
+        // Fall back to server-side calculation only if the frontend didn't send them.
+        if ($request->has('monthly_payment') && $request->has('total_amount')) {
+            $monthlyPayment       = (float) $request->monthly_payment;
+            $totalAmount          = (float) $request->total_amount;
+            $totalInterest        = (float) $request->total_interest;
+            $downPaymentPercent   = $vehiclePrice > 0 ? round(($downPayment / $vehiclePrice) * 100, 2) : 0;
+        } else {
+            $quoteData            = VehicleQuote::generateQuote($vehiclePrice, $downPayment, $request->term_months, $request->interest_rate, $paymentFrequency);
+            $monthlyPayment       = $quoteData['monthly_payment'];
+            $totalAmount          = $quoteData['total_amount'];
+            $totalInterest        = $quoteData['total_interest'];
+            $downPaymentPercent   = $quoteData['down_payment_percent'];
+        }
 
         $quote = VehicleQuote::create([
-            'property_id' => $request->vehicle_id,
-            'customer_name' => $request->customer_name,
-            'customer_email' => $request->customer_email,
-            'customer_phone' => $request->customer_phone,
-            'vehicle_price' => $quoteData['vehicle_price'],
-            'down_payment' => $quoteData['down_payment'],
-            'down_payment_percent' => $quoteData['down_payment_percent'],
-            'term_months' => $quoteData['term_months'],
-            'interest_rate' => $quoteData['interest_rate'],
-            'monthly_payment' => $quoteData['monthly_payment'],
-            'total_interest' => $quoteData['total_interest'],
-            'total_amount' => $quoteData['total_amount'],
-            'currency' => $request->get('currency', 'CRC'),
-            'event_name' => $request->get('event_name'),
-            'payment_frequency' => $paymentFrequency,
-            'captured_by_user_id' => Auth::id(),
+            'property_id'          => $request->vehicle_id,
+            'customer_name'        => $request->customer_name,
+            'customer_email'       => $request->customer_email,
+            'customer_phone'       => $request->customer_phone,
+            'vehicle_price'        => $vehiclePrice,
+            'down_payment'         => $downPayment,
+            'down_payment_percent' => $downPaymentPercent,
+            'term_months'          => (int) $request->term_months,
+            'interest_rate'        => (float) $request->interest_rate,
+            'monthly_payment'      => $monthlyPayment,
+            'total_interest'       => $totalInterest,
+            'total_amount'         => $totalAmount,
+            'currency'             => $request->get('currency', 'CRC'),
+            'event_name'           => $request->get('event_name'),
+            'payment_frequency'    => $paymentFrequency,
+            'captured_by_user_id'  => Auth::id(),
         ]);
 
         // Actualizar estadisticas
