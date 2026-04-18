@@ -15,6 +15,7 @@ use App\Models\SpinHotspot;
 use App\Models\VehicleColor;
 use App\Models\TestDriveVideo;
 use App\Models\Spin;
+use App\Models\RafflePrize;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Mail;
@@ -449,6 +450,68 @@ class KioskController extends Controller
         };
 
         return response()->stream($callback, 200, $headers);
+    }
+
+    // ── RAFFLE ──────────────────────────────────────────────────────────────
+
+    public function rafflePrizes(Request $request)
+    {
+        $company = Auth::user()->company;
+        if (!$company) return response()->json(['prizes' => []]);
+
+        $prizes = RafflePrize::where('company_id', $company->id)
+            ->available()
+            ->get(['id','name','emoji','color','weight','quantity','claimed']);
+
+        return response()->json(['prizes' => $prizes]);
+    }
+
+    public function raffleSpin(Request $request)
+    {
+        $request->validate([
+            'name'       => 'nullable|string|max:255',
+            'phone'      => 'nullable|string|max:20',
+            'capture'    => 'boolean',
+            'event_name' => 'nullable|string|max:255',
+        ]);
+
+        $user    = Auth::user();
+        $company = $user->company;
+        if (!$company) return response()->json(['success' => false, 'message' => 'Sin empresa']);
+
+        $prizes = RafflePrize::where('company_id', $company->id)->available()->get();
+        if ($prizes->isEmpty()) {
+            return response()->json(['success' => false, 'message' => '¡Los premios se han agotado!']);
+        }
+
+        // Selección aleatoria ponderada
+        $totalWeight = $prizes->sum('weight');
+        $rand        = rand(1, $totalWeight);
+        $accumulated = 0;
+        $winner      = null;
+        foreach ($prizes as $prize) {
+            $accumulated += $prize->weight;
+            if ($rand <= $accumulated) { $winner = $prize; break; }
+        }
+        if (!$winner) $winner = $prizes->first();
+
+        $winner->increment('claimed');
+
+        if ($request->boolean('capture') && $request->name && $request->phone) {
+            EventLead::create([
+                'company_id'     => $company->id,
+                'name'           => $request->name,
+                'phone'          => $request->phone,
+                'source'         => 'kiosk_raffle',
+                'description'    => 'Premio ruleta: ' . $winner->name,
+                'interest_level' => 'medium',
+                'lead_category'  => 'raffle',
+                'event_name'     => $request->event_name,
+                'captured_by'    => $user->id,
+            ]);
+        }
+
+        return response()->json(['success' => true, 'prize' => $winner]);
     }
 
     /**

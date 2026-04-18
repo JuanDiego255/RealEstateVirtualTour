@@ -240,6 +240,69 @@
         #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
         #toast.error { border-color: #e74c3c; }
 
+        /* ── RAFFLE BUTTON ── */
+        .btn-raffle {
+            background: linear-gradient(135deg, #8e44ad 0%, #c0392b 100%);
+            color: #fff;
+        }
+
+        /* ── RAFFLE MODAL ── */
+        .raffle-box { max-width: 660px; }
+
+        .wheel-section {
+            display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap;
+        }
+
+        .wheel-wrap {
+            position: relative; flex-shrink: 0;
+            display: flex; flex-direction: column; align-items: center;
+        }
+
+        .wheel-pointer {
+            font-size: 28px; line-height: 1;
+            margin-bottom: -6px; z-index: 2; position: relative;
+            filter: drop-shadow(0 2px 6px rgba(0,0,0,.6));
+        }
+
+        #wheelCanvas {
+            border-radius: 50%;
+            box-shadow: 0 0 0 6px rgba(255,255,255,.08), 0 8px 32px rgba(0,0,0,.5);
+            transition: transform 0s linear;
+            display: block;
+        }
+
+        .wheel-form { flex: 1; min-width: 200px; }
+
+        .capture-row {
+            display: flex; align-items: center; gap: 10px;
+            padding: 12px 14px; border-radius: 10px;
+            background: rgba(255,255,255,.05); border: 1px solid var(--border);
+            margin-bottom: 16px; cursor: pointer;
+        }
+        .capture-row input[type=checkbox] { width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent); }
+
+        .btn-spin {
+            width: 100%; padding: 16px; background: linear-gradient(135deg, #8e44ad, #c0392b);
+            border: none; border-radius: 12px; color: #fff;
+            font-size: 18px; font-weight: 800; cursor: pointer;
+            letter-spacing: 1px; transition: opacity .2s;
+        }
+        .btn-spin:disabled { opacity: .5; cursor: not-allowed; }
+
+        /* Pantalla de resultado */
+        #prizeResult {
+            text-align: center; padding: 12px 0;
+        }
+        .prize-emoji-big { font-size: 72px; line-height: 1; margin-bottom: 12px; }
+        .prize-name-big  { font-size: 26px; font-weight: 800; color: var(--accent); margin-bottom: 8px; }
+        .prize-sub       { font-size: 14px; color: rgba(255,255,255,.55); line-height: 1.6; margin-bottom: 24px; }
+
+        .btn-again {
+            padding: 14px 32px; border-radius: 12px;
+            background: var(--card); border: 1px solid var(--border);
+            color: #fff; font-size: 15px; font-weight: 600; cursor: pointer;
+        }
+
         /* ── OFFLINE INDICATOR ── */
         #offlineIndicator {
             position: fixed; top: 16px; left: 16px; z-index: 500;
@@ -283,6 +346,9 @@
     <div class="welcome-cta">
         <button class="btn-main btn-lead" onclick="openModal('leadModal')">
             <i class="fas fa-heart"></i> Me Interesa
+        </button>
+        <button class="btn-main btn-raffle" id="btnRaffle" onclick="openRaffle()" style="display:none;">
+            🎡 Ruleta de Premios
         </button>
     </div>
 
@@ -407,6 +473,79 @@
 </div>
 
 {{-- Formulario de cotización deshabilitado: el cliente solo usa "Me Interesa" --}}
+
+<!-- ══ RAFFLE MODAL ══ -->
+<div class="modal-overlay" id="raffleModal">
+    <div class="modal-box raffle-box">
+        <div class="modal-title"><span style="font-size:22px;">🎡</span> Ruleta de Premios</div>
+
+        {{-- Estado: cargando --}}
+        <div id="raffleLoading" style="text-align:center;padding:40px 0;">
+            <i class="fas fa-spinner fa-spin fa-2x" style="color:var(--accent);"></i>
+            <p style="margin-top:12px;color:rgba(255,255,255,.5);">Cargando premios...</p>
+        </div>
+
+        {{-- Sin premios --}}
+        <div id="raffleEmpty" style="display:none;text-align:center;padding:40px 0;">
+            <div style="font-size:48px;margin-bottom:12px;">😔</div>
+            <p style="color:rgba(255,255,255,.5);">Los premios se han agotado. ¡Gracias por participar!</p>
+        </div>
+
+        {{-- Ruleta + formulario --}}
+        <div id="raffleSpinSection" style="display:none;">
+            <div class="wheel-section">
+                {{-- Canvas de la ruleta --}}
+                <div class="wheel-wrap">
+                    <div class="wheel-pointer">▼</div>
+                    <canvas id="wheelCanvas" width="280" height="280"></canvas>
+                </div>
+
+                {{-- Formulario al lado --}}
+                <div class="wheel-form">
+                    <label class="capture-row" for="captureData">
+                        <input type="checkbox" id="captureData" checked onchange="toggleCaptureFields()">
+                        <div>
+                            <div style="font-size:14px;font-weight:600;">Guardar mis datos</div>
+                            <div style="font-size:12px;color:rgba(255,255,255,.45);">Para recibir tu premio y que un asesor te contacte</div>
+                        </div>
+                    </label>
+                    <div id="captureFields">
+                        <div class="field">
+                            <label>Nombre *</label>
+                            <input type="text" id="raffleName" placeholder="Tu nombre completo" autocomplete="off">
+                        </div>
+                        <div class="field">
+                            <label>Teléfono *</label>
+                            <input type="tel" id="rafflePhone" placeholder="8888-8888" autocomplete="off">
+                        </div>
+                    </div>
+                    <button class="btn-spin" id="spinBtn" onclick="spinWheel()">
+                        🎰 ¡GIRAR!
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        {{-- Resultado del premio --}}
+        <div id="prizeResult" style="display:none;">
+            <div class="prize-emoji-big" id="prizeEmoji">🎁</div>
+            <div class="prize-name-big" id="prizeName"></div>
+            <div class="prize-sub" id="prizeSub">¡Felicidades! Muestra esta pantalla a nuestro asesor para reclamar tu premio.</div>
+            <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+                <button class="btn-again" onclick="resetRaffle()">
+                    <i class="fas fa-redo"></i> Jugar de nuevo
+                </button>
+                <button class="btn-save" style="padding:14px 24px;border-radius:12px;" onclick="closeModal('raffleModal')">
+                    <i class="fas fa-check"></i> Cerrar
+                </button>
+            </div>
+        </div>
+
+        <div class="modal-actions" style="margin-top:20px;">
+            <button class="btn-cancel" onclick="closeModal('raffleModal')">Cerrar</button>
+        </div>
+    </div>
+</div>
 
 <!-- ══ SUCCESS SCREEN (agente + QR + WA) ══ -->
 <div id="successScreen">
@@ -674,6 +813,237 @@ function cleanWaNumber(raw) {
     if (num.length === 8) num = '506' + num;
     return num;
 }
+
+// ── RAFFLE ──────────────────────────────────────────────────────────────────
+const prizesUrl = @json(route('kiosk.raffle.prizes'));
+const spinUrl   = @json(route('kiosk.raffle.spin'));
+const accentColor = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#c2ac1f';
+
+let raffleLoaded  = false;
+let rafflePrizes  = [];
+let raffleRotation = 0;   // rotación acumulada del canvas
+let isSpinning    = false;
+
+async function openRaffle() {
+    openModal('raffleModal');
+    if (!raffleLoaded) { await loadPrizes(); raffleLoaded = true; }
+}
+
+async function loadPrizes() {
+    document.getElementById('raffleLoading').style.display = '';
+    document.getElementById('raffleSpinSection').style.display = 'none';
+    document.getElementById('raffleEmpty').style.display = 'none';
+    try {
+        const res  = await fetch(prizesUrl);
+        const data = await res.json();
+        rafflePrizes = data.prizes || [];
+    } catch { rafflePrizes = []; }
+    document.getElementById('raffleLoading').style.display = 'none';
+    if (rafflePrizes.length === 0) {
+        document.getElementById('raffleEmpty').style.display = '';
+    } else {
+        document.getElementById('raffleSpinSection').style.display = '';
+        drawWheel();
+    }
+}
+
+const WHEEL_COLORS = [
+    '#e74c3c','#e67e22','#f1c40f','#27ae60','#16a085',
+    '#2980b9','#8e44ad','#d35400','#c0392b','#1abc9c'
+];
+
+function drawWheel() {
+    const canvas = document.getElementById('wheelCanvas');
+    if (!canvas || rafflePrizes.length === 0) return;
+    const ctx = canvas.getContext('2d');
+    const cx  = canvas.width / 2, cy = canvas.height / 2;
+    const r   = Math.min(cx, cy) - 6;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const total = rafflePrizes.reduce((s, p) => s + (p.weight || 10), 0);
+    let angle   = -Math.PI / 2; // empieza en las 12
+
+    rafflePrizes.forEach((prize, i) => {
+        const slice = ((prize.weight || 10) / total) * 2 * Math.PI;
+        const color = prize.color || WHEEL_COLORS[i % WHEEL_COLORS.length];
+
+        // Segmento
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, r, angle, angle + slice);
+        ctx.closePath();
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Texto
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(angle + slice / 2);
+        ctx.textAlign = 'right';
+        ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 4;
+        if (prize.emoji) {
+            ctx.font = '15px Arial';
+            ctx.fillStyle = '#fff';
+            ctx.fillText(prize.emoji, r - 38, -3);
+            ctx.font = 'bold 11px Arial';
+            ctx.fillText(trunc(prize.name, 13), r - 8, 6);
+        } else {
+            ctx.font = 'bold 12px Arial';
+            ctx.fillStyle = '#fff';
+            ctx.fillText(trunc(prize.name, 16), r - 8, 5);
+        }
+        ctx.restore();
+        angle += slice;
+    });
+
+    // Centro
+    ctx.beginPath();
+    ctx.arc(cx, cy, 20, 0, 2 * Math.PI);
+    ctx.fillStyle = '#fff'; ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx, cy, 13, 0, 2 * Math.PI);
+    ctx.fillStyle = accentColor; ctx.fill();
+}
+
+function trunc(str, len) {
+    return str.length > len ? str.slice(0, len) + '…' : str;
+}
+
+async function spinWheel() {
+    if (isSpinning || rafflePrizes.length === 0) return;
+
+    const capture = document.getElementById('captureData').checked;
+    const name    = document.getElementById('raffleName').value.trim();
+    const phone   = document.getElementById('rafflePhone').value.trim();
+
+    if (capture && !name)  { showToast('Ingresa tu nombre', 'error'); return; }
+    if (capture && !phone) { showToast('Ingresa tu teléfono', 'error'); return; }
+
+    isSpinning = true;
+    const btn = document.getElementById('spinBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sorteando...';
+
+    let data;
+    try {
+        const res = await fetch(spinUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: JSON.stringify({ name, phone, capture, event_name: eventName })
+        });
+        data = await res.json();
+    } catch {
+        showToast('Error de conexión', 'error');
+        isSpinning = false;
+        btn.disabled = false;
+        btn.innerHTML = '🎰 ¡GIRAR!';
+        return;
+    }
+
+    if (!data.success) {
+        showToast(data.message || 'Error al sortear', 'error');
+        isSpinning = false;
+        btn.disabled = false;
+        btn.innerHTML = '🎰 ¡GIRAR!';
+        return;
+    }
+
+    animateToPrize(data.prize);
+}
+
+function animateToPrize(prize) {
+    const idx = rafflePrizes.findIndex(p => p.id === prize.id);
+    if (idx === -1) { showPrizeResult(prize); isSpinning = false; return; }
+
+    const total   = rafflePrizes.reduce((s, p) => s + (p.weight || 10), 0);
+    let fraction  = 0;
+    for (let i = 0; i < idx; i++) fraction += (rafflePrizes[i].weight || 10) / total;
+    fraction += ((rafflePrizes[idx].weight || 10) / total) / 2; // centro del segmento
+
+    // Calcular rotación necesaria para que el premio quede en el puntero (12h)
+    const targetDeg  = fraction * 360;
+    const currentMod = raffleRotation % 360;
+    let   delta      = (targetDeg - currentMod + 360) % 360;
+    if (delta < 15) delta += 360; // mínimo giro para no parecer que no se movió
+    const totalDeg   = raffleRotation + delta + 5 * 360; // 5 vueltas de drama
+
+    const canvas    = document.getElementById('wheelCanvas');
+    const startDeg  = raffleRotation;
+    const duration  = 4800;
+    const startTime = performance.now();
+
+    function tick(now) {
+        const t      = Math.min((now - startTime) / duration, 1);
+        const eased  = 1 - Math.pow(1 - t, 4); // ease-out quartic
+        const deg    = startDeg + (totalDeg - startDeg) * eased;
+        raffleRotation = deg;
+        canvas.style.transform = `rotate(${deg}deg)`;
+        if (t < 1) {
+            requestAnimationFrame(tick);
+        } else {
+            raffleRotation = deg % 360;
+            setTimeout(() => showPrizeResult(prize), 700);
+        }
+    }
+    requestAnimationFrame(tick);
+}
+
+function showPrizeResult(prize) {
+    isSpinning = false;
+    document.getElementById('raffleSpinSection').style.display = 'none';
+    document.getElementById('prizeResult').style.display = '';
+    document.getElementById('prizeEmoji').textContent = prize.emoji || '🎁';
+    document.getElementById('prizeName').textContent  = prize.name;
+
+    // Actualizar lista local
+    const idx = rafflePrizes.findIndex(p => p.id === prize.id);
+    if (idx !== -1 && rafflePrizes[idx].quantity !== null) {
+        rafflePrizes[idx].claimed = (rafflePrizes[idx].claimed || 0) + 1;
+        if (rafflePrizes[idx].claimed >= rafflePrizes[idx].quantity) {
+            rafflePrizes.splice(idx, 1);
+        }
+    }
+}
+
+function resetRaffle() {
+    document.getElementById('prizeResult').style.display = 'none';
+    document.getElementById('raffleEmpty').style.display = 'none';
+    document.getElementById('raffleName').value  = '';
+    document.getElementById('rafflePhone').value = '';
+    const btn = document.getElementById('spinBtn');
+    btn.disabled = false;
+    btn.innerHTML = '🎰 ¡GIRAR!';
+
+    if (rafflePrizes.length === 0) {
+        document.getElementById('raffleEmpty').style.display = '';
+    } else {
+        document.getElementById('raffleSpinSection').style.display = '';
+        drawWheel(); // redibujar sin el premio agotado
+    }
+}
+
+function toggleCaptureFields() {
+    const show = document.getElementById('captureData').checked;
+    document.getElementById('captureFields').style.display = show ? '' : 'none';
+}
+
+// Mostrar botón de ruleta solo si hay premios disponibles
+async function checkRaffleAvailability() {
+    try {
+        const res  = await fetch(prizesUrl);
+        const data = await res.json();
+        if ((data.prizes || []).length > 0) {
+            document.getElementById('btnRaffle').style.display = '';
+        }
+    } catch {}
+}
+checkRaffleAvailability();
 
 // ── OFFLINE QUEUE ──
 const QUEUE_KEY = 'kiosk_queue_{{ $company->id ?? 0 }}';

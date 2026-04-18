@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\SaleController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\CompanyController;
 use App\Http\Controllers\Admin\SubcategoryController;
+use App\Http\Controllers\Admin\RafflePrizeController;
 use App\Http\Controllers\Admin\LeadController;
 use App\Http\Controllers\Admin\AppointmentController;
 use App\Http\Controllers\Admin\ReminderController;
@@ -571,6 +572,10 @@ Route::middleware('auth')->prefix('kiosk')->group(function () {
     // Captura de leads
     Route::post('/lead', [KioskController::class, 'captureLead'])->name('kiosk.lead.capture');
 
+    // Ruleta de premios
+    Route::get('/raffle/prizes', [KioskController::class, 'rafflePrizes'])->name('kiosk.raffle.prizes');
+    Route::post('/raffle/spin', [KioskController::class, 'raffleSpin'])->name('kiosk.raffle.spin');
+
     // Tracking de vistas
     Route::post('/track/view', [KioskController::class, 'updateViewDuration'])->name('kiosk.track.view');
 
@@ -586,6 +591,10 @@ Route::get('/wishlist/{token}', [KioskController::class, 'viewWishlist'])->name(
 
 // Dashboard de estadísticas del evento y acciones (requiere autenticación)
 Route::middleware('auth')->group(function () {
+    // Premios ruleta (admin)
+    Route::resource('admin/raffle-prizes', RafflePrizeController::class)->names('admin.raffle-prizes');
+    Route::patch('admin/raffle-prizes/{rafflePrize}/reset', [RafflePrizeController::class, 'reset'])->name('admin.raffle-prizes.reset');
+
     Route::get('/admin/event-dashboard', [KioskController::class, 'dashboard'])->name('kiosk.dashboard');
     Route::get('/admin/event-dashboard/stats', [KioskController::class, 'statsRealtime'])->name('kiosk.stats.realtime');
     Route::get('/admin/event-dashboard/export-leads', [KioskController::class, 'exportLeads'])->name('kiosk.export.leads');
