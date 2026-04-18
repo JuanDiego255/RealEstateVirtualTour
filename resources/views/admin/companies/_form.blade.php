@@ -79,4 +79,23 @@
         </div>
         <small class="form-text text-muted">Activar para empresas que usan el kiosko solo para captura de leads y cotizaciones libres, sin necesidad de un catálogo de vehículos o propiedades en BD.</small>
     </div>
+    <div class="form-group" id="otherKioskCategories" style="{{ old('other_kiosk', $company->other_kiosk ?? false) ? '' : 'display:none' }}">
+        <label>Categorías del Kiosko Other</label>
+        <input type="text" name="other_kiosk_categories" class="form-control"
+               placeholder="Ej: Filtros, Rodamientos, Hidráulicos, Eléctrico, Otro"
+               value="{{ old('other_kiosk_categories', ($company->settings['other_kiosk_categories'] ?? '')) }}">
+        <small class="form-text text-muted">Categorías separadas por coma. Se muestran como botones en el formulario del kiosko para que el cliente seleccione qué busca.</small>
+    </div>
 @endif
+
+<script>
+(function() {
+    var sw = document.getElementById('otherKioskSwitch');
+    var cats = document.getElementById('otherKioskCategories');
+    if (sw && cats) {
+        sw.addEventListener('change', function() {
+            cats.style.display = this.checked ? '' : 'none';
+        });
+    }
+})();
+</script>

@@ -84,7 +84,16 @@ class KioskController extends Controller
         $settings = KioskSetting::getActiveForCompany($company->id)
             ?? new KioskSetting(KioskSetting::defaults());
         $eventName = $request->get('event', $settings->event_name ?? null);
-        return view('kiosk.other-index', compact('settings', 'eventName', 'company'));
+
+        // Categorías configuradas por la empresa (guardadas en company->settings JSON)
+        $companySettings = $company->settings ?? [];
+        $categoriesRaw   = $companySettings['other_kiosk_categories'] ?? '';
+        $categories      = array_filter(array_map('trim', explode(',', $categoriesRaw)));
+
+        // Número de WhatsApp: contact_info del KioskSetting, o teléfono de la empresa
+        $whatsappNumber = $settings->contact_info ?? $company->phone ?? null;
+
+        return view('kiosk.other-index', compact('settings', 'eventName', 'company', 'categories', 'whatsappNumber'));
     }
 
     /**

@@ -119,6 +119,11 @@ class CompanyController extends Controller
         ]);
         $data['other_kiosk'] = $request->boolean('other_kiosk');
 
+        // Guardar categorías del kiosko other dentro del JSON settings
+        $currentSettings = $company->settings ?? [];
+        $currentSettings['other_kiosk_categories'] = $request->input('other_kiosk_categories', '');
+        $data['settings'] = $currentSettings;
+
         if ($request->name !== $company->name) {
             $data['slug'] = Str::slug($request->name);
         }
