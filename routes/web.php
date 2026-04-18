@@ -592,8 +592,8 @@ Route::get('/wishlist/{token}', [KioskController::class, 'viewWishlist'])->name(
 // Dashboard de estadísticas del evento y acciones (requiere autenticación)
 Route::middleware('auth')->group(function () {
     // Premios ruleta (admin)
-    Route::resource('admin/raffle-prizes', RafflePrizeController::class)->names('admin.raffle-prizes');
-    Route::patch('admin/raffle-prizes/{rafflePrize}/reset', [RafflePrizeController::class, 'reset'])->name('admin.raffle-prizes.reset');
+    Route::resource('admin/raffle-prizes', 'Admin\RafflePrizeController')->names('admin.raffle-prizes');
+    Route::patch('admin/raffle-prizes/{rafflePrize}/reset', 'Admin\RafflePrizeController@reset')->name('admin.raffle-prizes.reset');
 
     Route::get('/admin/event-dashboard', [KioskController::class, 'dashboard'])->name('kiosk.dashboard');
     Route::get('/admin/event-dashboard/stats', [KioskController::class, 'statsRealtime'])->name('kiosk.stats.realtime');
