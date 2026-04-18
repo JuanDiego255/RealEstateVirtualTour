@@ -548,7 +548,7 @@ class KioskController extends Controller
         return view('kiosk.dashboard', compact(
             'topViewed', 'topQrScans', 'leadStats', 'quotesToday',
             'viewsByHour', 'recentLeads', 'recentQuotes', 'eventName'
-        ));
+        ) + ['isOtherKiosk' => $user->company?->other_kiosk ?? false]);
     }
 
     /**

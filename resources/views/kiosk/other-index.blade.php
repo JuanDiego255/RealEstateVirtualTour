@@ -391,6 +391,19 @@
             <label>Empresa / Negocio</label>
             <input type="text" id="quoteCompanyName" placeholder="Nombre de su empresa" autocomplete="off">
         </div>
+
+        @if(count($categories) > 0)
+        <div class="field">
+            <label>¿Qué tipo de producto busca?</label>
+            <div class="sel-grid" id="quoteCatGrid">
+                @foreach($categories as $cat)
+                <button class="sel-btn sm" data-cat="{{ $cat }}" onclick="selectQuoteCat(this)">{{ $cat }}</button>
+                @endforeach
+            </div>
+            <input type="hidden" id="quoteCategory" value="">
+        </div>
+        @endif
+
         <div class="field">
             <label>Descripción de lo cotizado *</label>
             <textarea id="quoteDescription" placeholder="Describa el producto, repuesto o servicio a cotizar..."></textarea>
@@ -512,6 +525,13 @@ function selectCat(btn) {
     document.querySelectorAll('#catGrid .sel-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('leadCategory').value = btn.dataset.cat;
+}
+
+function selectQuoteCat(btn) {
+    document.querySelectorAll('#quoteCatGrid .sel-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const el = document.getElementById('quoteCategory');
+    if (el) el.value = btn.dataset.cat;
 }
 
 // ── Toast ──
@@ -679,7 +699,9 @@ async function submitQuote() {
     const amount   = parseFloat(document.getElementById('quoteAmount').value) || 0;
     const company  = document.getElementById('quoteCompanyName').value.trim();
     const urgency  = document.getElementById('quoteUrgency').value;
+    const cat      = document.getElementById('quoteCategory')?.value || '';
     const fullDesc = (company ? 'Empresa: ' + company + '\n' : '') +
+                     (cat ? 'Cat: ' + cat + '\n' : '') +
                      '[Urgencia: ' + urgency + ']\n' + desc;
 
     try {
@@ -759,6 +781,8 @@ function clearQuoteForm() {
     const normalBtn = document.querySelector('#quoteModal [data-urgency="normal"]');
     if (normalBtn) normalBtn.classList.add('active');
     document.getElementById('quoteUrgency').value = 'normal';
+    const catInput = document.getElementById('quoteCategory');
+    if (catInput) catInput.value = '';
 }
 </script>
 </body>

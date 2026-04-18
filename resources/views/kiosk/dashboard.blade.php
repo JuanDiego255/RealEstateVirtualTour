@@ -422,7 +422,11 @@
                             <tr>
                                 <th>Cliente</th>
                                 <th>Contacto</th>
+                                @if($isOtherKiosk ?? false)
+                                <th>Lo que busca</th>
+                                @else
                                 <th>Vehículo de Interés</th>
+                                @endif
                                 <th>Origen</th>
                                 <th>Interés</th>
                                 <th>Agente</th>
@@ -445,7 +449,16 @@
                                     </a>
                                 </td>
                                 <td>
-                                    @if($lead->vehicle)
+                                    @if($isOtherKiosk ?? false)
+                                        {{-- Kiosko Other: mostrar descripción / lo que busca --}}
+                                        @if($lead->description)
+                                            <div style="font-size:13px; max-width:180px; line-height:1.4;">{{ Str::limit($lead->description, 80) }}</div>
+                                        @elseif($lead->notes)
+                                            <div style="font-size:12px; color:#888; max-width:180px;">{{ Str::limit($lead->notes, 60) }}</div>
+                                        @else
+                                            <span style="color: #999;">—</span>
+                                        @endif
+                                    @elseif($lead->vehicle)
                                     <div class="vehicle-interest">
                                         <img src="{{ $lead->vehicle->image ? route('file', $lead->vehicle->image) : url('images/producto-sin-imagen.PNG') }}"
                                              alt="{{ $lead->vehicle->brand }}">
@@ -547,11 +560,16 @@
                         <thead>
                             <tr>
                                 <th>Cliente</th>
+                                @if($isOtherKiosk ?? false)
+                                <th>Descripción</th>
+                                <th>Monto Estimado</th>
+                                @else
                                 <th>Vehículo Cotizado</th>
                                 <th>Precio Vehículo</th>
                                 <th>Prima</th>
                                 <th>Plazo</th>
                                 <th>Cuota Mensual</th>
+                                @endif
                                 <th>Agente</th>
                                 <th>Hora</th>
                                 <th>Acciones</th>
@@ -566,6 +584,24 @@
                                     <br><small style="color: #666;"><i class="fa fa-phone"></i> {{ $quote->customer_phone }}</small>
                                     @endif
                                 </td>
+                                @if($isOtherKiosk ?? false)
+                                {{-- Kiosko Other: descripción libre --}}
+                                <td style="max-width:200px;">
+                                    @if($quote->description)
+                                        <div style="font-size:13px; line-height:1.4;">{{ Str::limit($quote->description, 80) }}</div>
+                                    @else
+                                        <span style="color:#999;">—</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    @if($quote->vehicle_price)
+                                        <span class="quote-amount">₡{{ number_format($quote->vehicle_price) }}</span>
+                                    @else
+                                        <span style="color:#999;">—</span>
+                                    @endif
+                                </td>
+                                @else
+                                {{-- Kiosko normal: vehículo + financiamiento --}}
                                 <td>
                                     @if($quote->property)
                                     <div class="vehicle-interest">
@@ -595,6 +631,7 @@
                                 <td>
                                     <span class="quote-amount">₡{{ number_format($quote->monthly_payment) }}</span>
                                 </td>
+                                @endif
                                 <td>
                                     @if($quote->capturedBy)
                                         <small><i class="fa fa-user"></i> {{ $quote->capturedBy->name }}</small>
@@ -625,7 +662,7 @@
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="9" style="text-align: center; padding: 40px; color: #666;">
+                                <td colspan="{{ ($isOtherKiosk ?? false) ? 6 : 9 }}" style="text-align: center; padding: 40px; color: #666;">
                                     <i class="fa fa-calculator" style="font-size: 32px; color: #ddd; margin-bottom: 10px; display: block;"></i>
                                     No hay cotizaciones realizadas aún
                                 </td>
