@@ -582,9 +582,9 @@ function selectUrgency(btn, form) {
 }
 
 function selectCat(btn) {
-    document.querySelectorAll('#catGrid .sel-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('leadCategory').value = btn.dataset.cat;
+    btn.classList.toggle('active');
+    const selected = [...document.querySelectorAll('#catGrid .sel-btn.active')].map(b => b.dataset.cat);
+    document.getElementById('leadCategory').value = selected.join(', ');
 }
 
 function selectQuoteCat(btn) {
