@@ -414,7 +414,13 @@
             <div class="dashboard-card" style="margin-bottom: 25px;">
                 <div class="card-header">
                     <h4><i class="fa fa-heart"></i> Clientes Interesados (Me Interesa)</h4>
-                    <a href="{{ route('admin.crm.leads.index') }}" style="color: #c2ac1f; font-size: 13px;">Ver todos en CRM</a>
+                    <div style="display:flex;gap:10px;align-items:center;">
+                        <a href="{{ route('kiosk.export.leads', $eventName ? ['event' => $eventName] : []) }}"
+                           class="btn btn-sm btn-success" title="Exportar a CSV">
+                            <i class="fa fa-download"></i> CSV
+                        </a>
+                        <a href="{{ route('admin.crm.leads.index') }}" style="color: #c2ac1f; font-size: 13px;">Ver todos en CRM</a>
+                    </div>
                 </div>
                 <div class="card-body" style="padding: 0; overflow-x: auto;">
                     <table class="leads-table">
@@ -450,14 +456,24 @@
                                 </td>
                                 <td>
                                     @if($isOtherKiosk ?? false)
-                                        {{-- Kiosko Other: mostrar descripción / lo que busca --}}
-                                        @if($lead->description)
-                                            <div style="font-size:13px; max-width:180px; line-height:1.4;">{{ Str::limit($lead->description, 80) }}</div>
-                                        @elseif($lead->notes)
-                                            <div style="font-size:12px; color:#888; max-width:180px;">{{ Str::limit($lead->notes, 60) }}</div>
-                                        @else
-                                            <span style="color: #999;">—</span>
-                                        @endif
+                                        {{-- Kiosko Other: descripción + foto si existe --}}
+                                        <div style="display:flex;gap:8px;align-items:flex-start;">
+                                            @if($lead->photo_path)
+                                            <a href="{{ asset('storage/'.$lead->photo_path) }}" target="_blank">
+                                                <img src="{{ asset('storage/'.$lead->photo_path) }}"
+                                                     style="width:48px;height:48px;object-fit:cover;border-radius:6px;flex-shrink:0;" alt="foto">
+                                            </a>
+                                            @endif
+                                            <div>
+                                                @if($lead->description)
+                                                    <div style="font-size:13px; max-width:160px; line-height:1.4;">{{ Str::limit($lead->description, 70) }}</div>
+                                                @elseif($lead->notes)
+                                                    <div style="font-size:12px; color:#888; max-width:160px;">{{ Str::limit($lead->notes, 50) }}</div>
+                                                @else
+                                                    <span style="color: #999;">—</span>
+                                                @endif
+                                            </div>
+                                        </div>
                                     @elseif($lead->vehicle)
                                     <div class="vehicle-interest">
                                         <img src="{{ $lead->vehicle->image ? route('file', $lead->vehicle->image) : url('images/producto-sin-imagen.PNG') }}"

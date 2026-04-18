@@ -588,6 +588,7 @@ Route::get('/wishlist/{token}', [KioskController::class, 'viewWishlist'])->name(
 Route::middleware('auth')->group(function () {
     Route::get('/admin/event-dashboard', [KioskController::class, 'dashboard'])->name('kiosk.dashboard');
     Route::get('/admin/event-dashboard/stats', [KioskController::class, 'statsRealtime'])->name('kiosk.stats.realtime');
+    Route::get('/admin/event-dashboard/export-leads', [KioskController::class, 'exportLeads'])->name('kiosk.export.leads');
 
     // Acciones de leads del evento
     Route::post('/admin/event-leads/{id}/contacted', [KioskController::class, 'markLeadContacted'])->name('event-leads.contacted');

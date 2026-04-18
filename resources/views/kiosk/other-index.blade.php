@@ -255,15 +255,25 @@
         </div>
     @endif
 
-    <div class="welcome-company">{{ $company->name }}</div>
+    {{-- Triple-tap en el nombre activa modo asesor --}}
+    <div class="welcome-company" id="companyNameTap" onclick="handleAgentTap()">{{ $company->name }}</div>
     <div class="welcome-msg">
         {{ $settings->welcome_message ?? 'Bienvenido. Regístranos tu interés o solicita una cotización.' }}
     </div>
+
+    {{-- Contador en tiempo real (Feature 4) --}}
+    <div id="todayCounter" style="margin-bottom:20px;font-size:15px;color:rgba(255,255,255,0.45);min-height:22px;"></div>
 
     <div class="welcome-cta">
         <button class="btn-main btn-lead" onclick="openModal('leadModal')">
             <i class="fas fa-heart"></i> Me Interesa
         </button>
+    </div>
+
+    {{-- Badge modo asesor (oculto por defecto) --}}
+    <div id="agentBadge" style="display:none;position:absolute;top:16px;right:16px;background:var(--accent);color:#000;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;">
+        <i class="fas fa-user-tie"></i> Modo Asesor
+        <button onclick="exitAgentMode()" style="background:none;border:none;color:#000;margin-left:8px;cursor:pointer;font-size:12px;">✕</button>
     </div>
 
     <div class="idle-hint">Toca para comenzar</div>
@@ -332,6 +342,22 @@
             <label>Notas adicionales</label>
             <textarea id="leadNotes" placeholder="Información adicional..."></textarea>
         </div>
+        {{-- Feature 1: Foto del producto --}}
+        <div class="field">
+            <label>Foto de referencia (opcional)</label>
+            <div id="photoDropZone" onclick="document.getElementById('leadPhoto').click()"
+                 style="border:2px dashed var(--border);border-radius:10px;padding:18px;text-align:center;cursor:pointer;transition:border-color .2s;">
+                <i class="fas fa-camera" style="font-size:24px;color:rgba(255,255,255,.4);display:block;margin-bottom:6px;"></i>
+                <span style="font-size:13px;color:rgba(255,255,255,.4);">Toca para tomar o subir una foto del repuesto</span>
+                <input type="file" id="leadPhoto" accept="image/*" capture="environment" style="display:none" onchange="previewPhoto(this)">
+            </div>
+            <div id="photoPreview" style="display:none;margin-top:10px;text-align:center;">
+                <img id="photoImg" style="max-height:120px;border-radius:8px;object-fit:cover;">
+                <button onclick="removePhoto()" style="display:block;margin:6px auto 0;background:none;border:none;color:rgba(255,255,255,.5);font-size:12px;cursor:pointer;">
+                    <i class="fas fa-times"></i> Quitar foto
+                </button>
+            </div>
+        </div>
 
         {{-- Feature 2: Urgencia --}}
         <div class="field">
@@ -366,24 +392,27 @@
 
 {{-- Formulario de cotización deshabilitado: el cliente solo usa "Me Interesa" --}}
 
-<!-- ══ SUCCESS SCREEN (Feature 1 + 5) ══ -->
+<!-- ══ SUCCESS SCREEN (agente + QR + WA) ══ -->
 <div id="successScreen">
     <div class="success-icon"><i class="fas fa-check-circle"></i></div>
     <div class="success-title" id="successTitle">¡Registro guardado!</div>
     <div class="success-msg" id="successMsg">Sus datos han sido registrados. Un asesor se pondrá en contacto pronto.</div>
 
+    {{-- Feature 3: Datos del asesor --}}
+    <div id="agentCard" style="display:none;align-items:center;gap:12px;background:rgba(255,255,255,.06);border-radius:14px;padding:14px 20px;margin-bottom:20px;">
+        <img id="agentAvatar" src="" alt="" style="width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid var(--accent);">
+        <div>
+            <div style="font-size:12px;color:rgba(255,255,255,.5);">Su asesor asignado</div>
+            <div id="agentName" style="font-size:16px;font-weight:700;color:var(--accent);"></div>
+        </div>
+    </div>
+
     <div class="success-actions">
-        {{-- Feature 5: WhatsApp post-cotización --}}
-        <button class="btn-wa" id="btnWaAdvisor" style="display:none" onclick="openWaAdvisor()">
-            <i class="fab fa-whatsapp"></i> Enviar al asesor
-        </button>
-        {{-- Feature 1: Abrir WhatsApp directamente (alternativa al QR) --}}
         <button class="btn-wa" id="btnWaDirect" style="display:none;background:#128C7E;" onclick="openWaDirect()">
             <i class="fab fa-whatsapp"></i> Abrir WhatsApp
         </button>
     </div>
 
-    {{-- Feature 1: QR de WhatsApp --}}
     <div id="qrContainer">
         <div class="qr-label">Escanea para contactar al asesor vía WhatsApp</div>
         <div id="qrCanvas"></div>
@@ -392,22 +421,100 @@
     <div class="success-countdown" id="successCountdown"></div>
 </div>
 
+<!-- ══ PIN MODAL (Modo Asesor) ══ -->
+@if($agentPin)
+<div class="modal-overlay" id="pinModal">
+    <div class="modal-box" style="max-width:320px;text-align:center;">
+        <div class="modal-title" style="justify-content:center;">
+            <i class="fas fa-user-tie"></i> Modo Asesor
+        </div>
+        <p style="color:rgba(255,255,255,.5);font-size:14px;margin-bottom:20px;">Ingresa el PIN para activar el modo compacto</p>
+        <div class="field">
+            <input type="password" id="pinInput" inputmode="numeric" maxlength="6"
+                   placeholder="••••" style="text-align:center;font-size:24px;letter-spacing:8px;"
+                   autocomplete="off">
+        </div>
+        <div id="pinError" style="color:#e74c3c;font-size:13px;margin-bottom:12px;display:none;">PIN incorrecto</div>
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="closeModal('pinModal')">Cancelar</button>
+            <button class="btn-save" onclick="checkPin()"><i class="fas fa-unlock"></i> Entrar</button>
+        </div>
+    </div>
+</div>
+@endif
+
 <div id="toast"></div>
 
 <script>
 const eventName      = @json($eventName);
 const waNumber       = @json($whatsappNumber ?? '');
 const idleTimeoutSec = {{ $settings->idle_timeout_seconds ?? 60 }};
+const agentPin       = @json($agentPin ?? '');
+const statsUrl       = @json(route('kiosk.stats.realtime', $eventName ? ['event' => $eventName] : []));
+const captureUrl     = @json(route('kiosk.lead.capture'));
 
 // ── Estado ──
-let currentWaUrl   = '';
-let currentWaAdvisoryMsg = '';
-let dismissTimer   = null;
-let idleTimer      = null;
-let qrInstance     = null;
+let currentWaUrl  = '';
+let dismissTimer  = null;
+let idleTimer     = null;
+let qrInstance    = null;
+let agentMode     = false;
+let tapCount      = 0;
+let tapTimer      = null;
 
-// ── Idle overlay (Feature 3) ──
+// ── Contador en tiempo real (Feature 4) ──
+async function refreshCounter() {
+    try {
+        const res  = await fetch(statsUrl);
+        const data = await res.json();
+        const cnt  = data.leads?.today ?? 0;
+        const el   = document.getElementById('todayCounter');
+        if (el) el.textContent = cnt > 0 ? cnt + ' persona' + (cnt !== 1 ? 's' : '') + ' registrada' + (cnt !== 1 ? 's' : '') + ' hoy' : '';
+    } catch (_) {}
+}
+refreshCounter();
+setInterval(refreshCounter, 30000);
+
+// ── Modo Asesor (Feature 6) ──
+function handleAgentTap() {
+    if (!agentPin) return;
+    tapCount++;
+    clearTimeout(tapTimer);
+    tapTimer = setTimeout(() => { tapCount = 0; }, 600);
+    if (tapCount >= 3) { tapCount = 0; openModal('pinModal'); }
+}
+
+function checkPin() {
+    const input = document.getElementById('pinInput').value.trim();
+    if (input === String(agentPin)) {
+        closeModal('pinModal');
+        document.getElementById('pinInput').value = '';
+        document.getElementById('pinError').style.display = 'none';
+        activateAgentMode();
+    } else {
+        document.getElementById('pinError').style.display = '';
+    }
+}
+
+function activateAgentMode() {
+    agentMode = true;
+    document.body.classList.add('agent-mode');
+    document.getElementById('agentBadge').style.display = '';
+    // Deshabilitar idle en modo asesor
+    clearTimeout(idleTimer);
+    document.getElementById('idleOverlay').classList.remove('active');
+}
+
+function exitAgentMode() {
+    agentMode = false;
+    document.body.classList.remove('agent-mode');
+    document.getElementById('agentBadge').style.display = 'none';
+    resetIdle();
+}
+
+// ── Idle overlay ──
 function resetIdle() {
+    if (agentMode) return; // Idle desactivado en modo asesor
     clearTimeout(idleTimer);
     idleTimer = setTimeout(showIdle, idleTimeoutSec * 1000);
 }
@@ -481,15 +588,23 @@ function showSuccess(title, msg, opts = {}) {
     document.getElementById('successTitle').textContent = title;
     document.getElementById('successMsg').textContent   = msg;
 
-    // QR WhatsApp (Feature 1)
-    const qrCont = document.getElementById('qrContainer');
+    // Feature 3: Datos del asesor
+    const agentCard = document.getElementById('agentCard');
+    if (opts.agent && opts.agent.name) {
+        document.getElementById('agentName').textContent = opts.agent.name;
+        document.getElementById('agentAvatar').src       = opts.agent.avatar || '';
+        agentCard.style.display = 'flex';
+    } else {
+        agentCard.style.display = 'none';
+    }
+
+    // QR WhatsApp
+    const qrCont    = document.getElementById('qrContainer');
     const btnDirect = document.getElementById('btnWaDirect');
     if (opts.waUrl && waNumber) {
         currentWaUrl = opts.waUrl;
         qrCont.classList.add('show');
         btnDirect.style.display = '';
-
-        // Regenerar QR
         document.getElementById('qrCanvas').innerHTML = '';
         qrInstance = new QRCode(document.getElementById('qrCanvas'), {
             text: opts.waUrl, width: 180, height: 180,
@@ -499,15 +614,6 @@ function showSuccess(title, msg, opts = {}) {
     } else {
         qrCont.classList.remove('show');
         btnDirect.style.display = 'none';
-    }
-
-    // Botón WhatsApp al asesor (Feature 5 - cotización)
-    const btnAdvisor = document.getElementById('btnWaAdvisor');
-    if (opts.waAdvisorUrl) {
-        currentWaAdvisoryMsg = opts.waAdvisorUrl;
-        btnAdvisor.style.display = '';
-    } else {
-        btnAdvisor.style.display = 'none';
     }
 
     const s = document.getElementById('successScreen');
@@ -571,27 +677,32 @@ async function submitLead() {
 
     const notesWithUrgency = '[Urgencia: ' + urgency + ']' + (notes ? ' ' + notes : '');
 
+    // FormData para soportar upload de foto
+    const fd = new FormData();
+    fd.append('name',           name);
+    fd.append('phone',          phone);
+    fd.append('email',          document.getElementById('leadEmail').value.trim() || '');
+    fd.append('source',         'kiosk');
+    fd.append('event_name',     eventName || '');
+    fd.append('interest_level', level);
+    fd.append('lead_category',  'prospect');
+    fd.append('notes',          notesWithUrgency);
+    fd.append('description',    desc || '');
+    const photoFile = document.getElementById('leadPhoto')?.files?.[0];
+    if (photoFile) fd.append('photo', photoFile);
+
     try {
-        const res = await fetch('{{ route("kiosk.lead.capture") }}', {
+        const res = await fetch(captureUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
-            body: JSON.stringify({
-                name, phone,
-                email:          document.getElementById('leadEmail').value.trim() || null,
-                source:         'kiosk',
-                event_name:     eventName,
-                interest_level: level,
-                lead_category:  'prospect',
-                notes:          notesWithUrgency,
-                description:    desc || null,
-            })
+            headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
+            body: fd,
         });
         const data = await res.json();
         if (data.success) {
             closeModal('leadModal');
             clearLeadForm();
+            refreshCounter(); // Actualizar contador
 
-            // Feature 1: construir URL de WhatsApp para el asesor
             let waUrl = null;
             const waNum = cleanWaNumber(waNumber);
             if (waNum) {
@@ -609,7 +720,7 @@ async function submitLead() {
             showSuccess(
                 '¡Registro guardado!',
                 'Un asesor se pondrá en contacto pronto.' + (waUrl ? ' Escanea el QR para escribirnos directamente.' : ''),
-                { waUrl }
+                { waUrl, agent: data.agent }
             );
         } else {
             showToast('Error al guardar. Intente de nuevo.', 'error');
@@ -703,6 +814,27 @@ function clearLeadForm() {
     if (catInput) catInput.value = '';
     document.getElementById('leadInterestLevel').value = 'medium';
     document.getElementById('leadUrgency').value = 'normal';
+    removePhoto();
+}
+
+// ── Foto de referencia ──
+function previewPhoto(input) {
+    if (!input.files || !input.files[0]) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        document.getElementById('photoImg').src = e.target.result;
+        document.getElementById('photoPreview').style.display = '';
+        document.getElementById('photoDropZone').style.borderColor = 'var(--accent)';
+    };
+    reader.readAsDataURL(input.files[0]);
+}
+
+function removePhoto() {
+    const inp = document.getElementById('leadPhoto');
+    if (inp) inp.value = '';
+    document.getElementById('photoPreview').style.display = 'none';
+    const dz = document.getElementById('photoDropZone');
+    if (dz) dz.style.borderColor = '';
 }
 
 function clearQuoteForm() {

@@ -86,15 +86,24 @@
                value="{{ old('other_kiosk_categories', ($company->settings['other_kiosk_categories'] ?? '')) }}">
         <small class="form-text text-muted">Categorías separadas por coma. Se muestran como botones en el formulario del kiosko para que el cliente seleccione qué busca.</small>
     </div>
+    <div class="form-group" id="agentPinField" style="{{ old('other_kiosk', $company->other_kiosk ?? false) ? '' : 'display:none' }}">
+        <label>PIN Modo Asesor</label>
+        <input type="text" name="agent_kiosk_pin" class="form-control" maxlength="6"
+               placeholder="Ej: 1234"
+               value="{{ old('agent_kiosk_pin', ($company->settings['agent_kiosk_pin'] ?? '')) }}">
+        <small class="form-text text-muted">PIN numérico que el asesor ingresa en el kiosko para activar el modo compacto (sin pantalla idle, formulario directo). Dejar vacío para desactivar.</small>
+    </div>
 @endif
 
 <script>
 (function() {
-    var sw = document.getElementById('otherKioskSwitch');
+    var sw   = document.getElementById('otherKioskSwitch');
     var cats = document.getElementById('otherKioskCategories');
+    var pin  = document.getElementById('agentPinField');
     if (sw && cats) {
         sw.addEventListener('change', function() {
             cats.style.display = this.checked ? '' : 'none';
+            if (pin) pin.style.display = this.checked ? '' : 'none';
         });
     }
 })();

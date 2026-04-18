@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use App\Properties;
 use App\Models\KioskSetting;
 use App\Models\VehicleEventView;
@@ -93,7 +94,14 @@ class KioskController extends Controller
         // Número de WhatsApp: contact_info del KioskSetting, o teléfono de la empresa
         $whatsappNumber = $settings->contact_info ?? $company->phone ?? null;
 
-        return view('kiosk.other-index', compact('settings', 'eventName', 'company', 'categories', 'whatsappNumber'));
+        // PIN del modo asesor y datos del agente actual
+        $agentPin = $companySettings['agent_kiosk_pin'] ?? null;
+        $agent    = Auth::user();
+
+        return view('kiosk.other-index', compact(
+            'settings', 'eventName', 'company', 'categories',
+            'whatsappNumber', 'agentPin', 'agent'
+        ));
     }
 
     /**
@@ -342,11 +350,17 @@ class KioskController extends Controller
     public function captureLead(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
-            'phone' => 'required|string|max:20',
-            'email' => 'nullable|email',
+            'name'       => 'required|string|max:255',
+            'phone'      => 'required|string|max:20',
+            'email'      => 'nullable|email',
             'vehicle_id' => 'nullable|exists:properties,id',
+            'photo'      => 'nullable|image|max:5120',
         ]);
+
+        $photoPath = null;
+        if ($request->hasFile('photo')) {
+            $photoPath = $request->file('photo')->store('event-leads/photos', 'public');
+        }
 
         $lead = EventLead::create([
             'name'                => $request->name,
@@ -360,6 +374,7 @@ class KioskController extends Controller
             'lead_category'       => $request->get('lead_category', 'prospect'),
             'notes'               => $request->get('notes'),
             'description'         => $request->get('description'),
+            'photo_path'          => $photoPath,
             'vehicles_viewed'     => $request->get('vehicles_viewed', []),
             'captured_by_user_id' => Auth::id(),
         ]);
@@ -373,10 +388,67 @@ class KioskController extends Controller
                 ?->update(['lead_captured' => true]);
         }
 
+        $agent = Auth::user();
+
         return response()->json([
-            'success' => true,
-            'lead_id' => $lead->id,
+            'success'  => true,
+            'lead_id'  => $lead->id,
+            'agent'    => [
+                'name'   => $agent->name,
+                'avatar' => $agent->avatar_url,
+            ],
         ]);
+    }
+
+    /**
+     * Exportar leads del evento a CSV
+     */
+    public function exportLeads(Request $request)
+    {
+        $eventName = $request->get('event');
+        $user      = Auth::user();
+        $companyId = $user->isSuperAdmin() ? null : $user->company_id;
+
+        $leads = EventLead::with('capturedBy')
+            ->when($companyId, fn($q) => $q->where('company_id', $companyId))
+            ->when($eventName,  fn($q) => $q->where('event_name', $eventName))
+            ->latest()
+            ->get();
+
+        $filename = 'leads-' . ($eventName ? Str::slug($eventName) : 'evento') . '-' . now()->format('Y-m-d') . '.csv';
+
+        $headers = [
+            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ];
+
+        $callback = function () use ($leads) {
+            $file = fopen('php://output', 'w');
+            // UTF-8 BOM para compatibilidad con Excel
+            fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+            fputcsv($file, ['Nombre', 'Teléfono', 'Email', 'Descripción', 'Nivel Interés', 'Urgencia', 'Evento', 'Origen', 'Fecha/Hora', 'Agente', 'Contactado']);
+
+            foreach ($leads as $lead) {
+                preg_match('/\[Urgencia:\s*([^\]]+)\]/', $lead->notes ?? '', $m);
+                fputcsv($file, [
+                    $lead->name,
+                    $lead->phone,
+                    $lead->email ?? '',
+                    $lead->description ?? '',
+                    $lead->interest_level,
+                    $m[1] ?? '',
+                    $lead->event_name ?? '',
+                    $lead->source,
+                    $lead->created_at->format('d/m/Y H:i'),
+                    $lead->capturedBy?->name ?? '',
+                    $lead->contacted ? 'Sí' : 'No',
+                ]);
+            }
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 
     /**
