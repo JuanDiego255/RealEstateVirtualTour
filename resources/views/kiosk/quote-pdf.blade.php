@@ -265,6 +265,7 @@
             </div>
         </div>
 
+        @if($quote->property)
         <!-- Vehicle Section -->
         <div class="vehicle-section">
             <div class="section-title">Vehiculo</div>
@@ -286,6 +287,18 @@
                 {{ $quote->currency === 'USD' ? '$' : 'CRC ' }}{{ number_format($quote->vehicle_price, 0, ',', '.') }}
             </div>
         </div>
+        @elseif($quote->description)
+        <!-- Description Section (other_kiosk mode) -->
+        <div class="vehicle-section">
+            <div class="section-title">Descripcion de la Cotizacion</div>
+            <div class="vehicle-name" style="font-size: 14px; font-weight: normal;">{{ $quote->description }}</div>
+            @if($quote->vehicle_price)
+            <div class="vehicle-price">
+                Monto estimado: {{ $quote->currency === 'USD' ? '$' : 'CRC ' }}{{ number_format($quote->vehicle_price, 0, ',', '.') }}
+            </div>
+            @endif
+        </div>
+        @endif
 
         <!-- Customer Section -->
         @if($quote->customer_name || $quote->customer_phone || $quote->customer_email)
@@ -316,6 +329,8 @@
 
         <!-- Quote Details -->
         <div class="quote-details">
+            @if($quote->property)
+            {{-- Kiosko normal: detalle de financiamiento del vehículo --}}
             <div class="section-title">Detalle del Financiamiento</div>
             <table class="details-table">
                 <tr>
@@ -349,9 +364,22 @@
                     <td class="value">{{ $quote->currency === 'USD' ? '$' : 'CRC ' }}{{ number_format($quote->monthly_payment, 0, ',', '.') }}</td>
                 </tr>
             </table>
+            @else
+            {{-- Kiosko "other": cotización libre sin vehículo --}}
+            <div class="section-title">Resumen de Cotizacion</div>
+            <table class="details-table">
+                @if($quote->vehicle_price)
+                <tr class="total-row">
+                    <td>Monto estimado</td>
+                    <td class="value">{{ $quote->currency === 'USD' ? '$' : 'CRC ' }}{{ number_format($quote->vehicle_price, 0, ',', '.') }}</td>
+                </tr>
+                @endif
+            </table>
+            @endif
         </div>
 
-        <!-- Payment Box -->
+        @if($quote->property && $quote->monthly_payment)
+        <!-- Payment Box (solo kiosko normal con financiamiento) -->
         <div class="monthly-payment-box">
             <div class="monthly-label">
                 @if(($quote->payment_frequency ?? 'monthly') === 'annual')
@@ -371,6 +399,7 @@
                 @endif
             </div>
         </div>
+        @endif
 
         <!-- Disclaimer -->
         <div class="disclaimer">

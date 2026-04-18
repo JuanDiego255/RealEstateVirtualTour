@@ -12,7 +12,7 @@ class VehicleQuote extends Model
         'vehicle_price', 'down_payment', 'down_payment_percent', 'term_months',
         'interest_rate', 'monthly_payment', 'total_interest', 'total_amount',
         'currency', 'email_sent', 'pdf_generated', 'pdf_path', 'event_name',
-        'payment_frequency', 'captured_by_user_id'
+        'payment_frequency', 'captured_by_user_id', 'company_id', 'description'
     ];
 
     protected $casts = [

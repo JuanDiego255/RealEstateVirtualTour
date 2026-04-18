@@ -576,6 +576,10 @@
                                             <div class="vehicle-price">{{ $quote->property->year }}</div>
                                         </div>
                                     </div>
+                                    @elseif($quote->description)
+                                    <div class="vehicle-info">
+                                        <div class="vehicle-name" style="font-size: 12px; max-width: 160px;">{{ Str::limit($quote->description, 60) }}</div>
+                                    </div>
                                     @else
                                     <span style="color: #999;">-</span>
                                     @endif

@@ -29,6 +29,12 @@ class KioskController extends Controller
     public function index(Request $request)
     {
         $user = Auth::user();
+
+        // Bifurcación: si la empresa usa el kiosko "other" (sin catálogo), redirigir a esa vista
+        if ($user->company && $user->company->other_kiosk) {
+            return $this->indexOther($request, $user->company);
+        }
+
         // Super admin puede filtrar por company_id en query string; los demás usan su propia empresa
         $companyId = $user->isSuperAdmin()
             ? $request->get('company_id', $user->company_id ?? 1)
@@ -67,6 +73,18 @@ class KioskController extends Controller
         }])->get();
 
         return view('kiosk.index', compact('vehicles', 'settings', 'eventName'));
+    }
+
+    /**
+     * Kiosko "other": captura de leads/cotizaciones sin catálogo de productos
+     * Se activa cuando company->other_kiosk = true
+     */
+    private function indexOther(Request $request, $company)
+    {
+        $settings = KioskSetting::getActiveForCompany($company->id)
+            ?? new KioskSetting(KioskSetting::defaults());
+        $eventName = $request->get('event', $settings->event_name ?? null);
+        return view('kiosk.other-index', compact('settings', 'eventName', 'company'));
     }
 
     /**
@@ -202,15 +220,17 @@ class KioskController extends Controller
     public function saveQuote(Request $request)
     {
         $request->validate([
-            'vehicle_id' => 'required|exists:properties,id',
+            'vehicle_id' => 'nullable|exists:properties,id',
             'customer_name' => 'required|string|max:255',
             'customer_email' => 'nullable|email',
             'customer_phone' => 'required|string|max:20',
-            'vehicle_price' => 'required|numeric',
-            'down_payment' => 'required|numeric',
-            'term_months' => 'required|integer',
-            'interest_rate' => 'required|numeric',
+            'vehicle_price' => 'nullable|numeric',
+            'down_payment' => 'nullable|numeric',
+            'term_months' => 'nullable|integer',
+            'interest_rate' => 'nullable|numeric',
             'payment_frequency' => 'nullable|in:monthly,annual',
+            'monthly_payment' => 'nullable|numeric',
+            'description' => 'nullable|string',
         ]);
 
         $paymentFrequency = $request->get('payment_frequency', 'monthly');
@@ -234,20 +254,22 @@ class KioskController extends Controller
 
         $quote = VehicleQuote::create([
             'property_id'          => $request->vehicle_id,
+            'company_id'           => Auth::user()->company_id,
             'customer_name'        => $request->customer_name,
             'customer_email'       => $request->customer_email,
             'customer_phone'       => $request->customer_phone,
             'vehicle_price'        => $vehiclePrice,
             'down_payment'         => $downPayment,
             'down_payment_percent' => $downPaymentPercent,
-            'term_months'          => (int) $request->term_months,
-            'interest_rate'        => (float) $request->interest_rate,
+            'term_months'          => $request->term_months ? (int) $request->term_months : null,
+            'interest_rate'        => $request->interest_rate ? (float) $request->interest_rate : null,
             'monthly_payment'      => $monthlyPayment,
             'total_interest'       => $totalInterest,
             'total_amount'         => $totalAmount,
             'currency'             => $request->get('currency', 'CRC'),
             'event_name'           => $request->get('event_name'),
             'payment_frequency'    => $paymentFrequency,
+            'description'          => $request->get('description'),
             'captured_by_user_id'  => Auth::id(),
         ]);
 
@@ -279,7 +301,11 @@ class KioskController extends Controller
             'pdf_path' => "quotes/quote-{$quoteId}.pdf",
         ]);
 
-        return $pdf->download("cotizacion-{$quote->property->brand}-{$quote->property->model}.pdf");
+        $filename = $quote->property
+            ? "cotizacion-{$quote->property->brand}-{$quote->property->model}.pdf"
+            : "cotizacion-{$quote->customer_name}-{$quote->id}.pdf";
+
+        return $pdf->download($filename);
     }
 
     /**
@@ -314,17 +340,18 @@ class KioskController extends Controller
         ]);
 
         $lead = EventLead::create([
-            'name' => $request->name,
-            'phone' => $request->phone,
-            'email' => $request->email,
-            'property_id' => $request->vehicle_id,
-            'company_id' => $request->get('company_id'),
-            'source' => $request->get('source', 'event'),
-            'event_name' => $request->get('event_name'),
-            'interest_level' => $request->get('interest_level', 'medium'),
-            'lead_category'  => $request->get('lead_category', 'prospect'),
-            'notes' => $request->get('notes'),
-            'vehicles_viewed' => $request->get('vehicles_viewed', []),
+            'name'                => $request->name,
+            'phone'               => $request->phone,
+            'email'               => $request->email,
+            'property_id'         => $request->vehicle_id,
+            'company_id'          => Auth::user()->company_id,
+            'source'              => $request->get('source', 'kiosk'),
+            'event_name'          => $request->get('event_name'),
+            'interest_level'      => $request->get('interest_level', 'medium'),
+            'lead_category'       => $request->get('lead_category', 'prospect'),
+            'notes'               => $request->get('notes'),
+            'description'         => $request->get('description'),
+            'vehicles_viewed'     => $request->get('vehicles_viewed', []),
             'captured_by_user_id' => Auth::id(),
         ]);
 
@@ -459,6 +486,8 @@ class KioskController extends Controller
     public function dashboard(Request $request)
     {
         $eventName = $request->get('event');
+        $user = Auth::user();
+        $companyId = $user->isSuperAdmin() ? null : $user->company_id;
 
         // Top vehiculos vistos
         $topViewed = VehicleEventView::topViewed($eventName, 10);
@@ -466,11 +495,20 @@ class KioskController extends Controller
         // Top QR escaneados
         $topQrScans = QrScan::topScanned($eventName, 10);
 
-        // Estadisticas de leads
-        $leadStats = EventLead::eventStats($eventName);
+        // Estadisticas de leads (filtradas por empresa)
+        $leadStats = EventLead::when($companyId, fn($q) => $q->where('company_id', $companyId))
+            ->when($eventName, fn($q) => $q->where('event_name', $eventName))
+            ->selectRaw('
+                COUNT(*) as total,
+                SUM(CASE WHEN DATE(created_at) = CURDATE() THEN 1 ELSE 0 END) as today,
+                SUM(CASE WHEN interest_level = "hot" THEN 1 ELSE 0 END) as hot,
+                SUM(CASE WHEN contacted = 0 THEN 1 ELSE 0 END) as pending,
+                SUM(CASE WHEN contacted = 1 THEN 1 ELSE 0 END) as contacted
+            ')->first()->toArray();
 
-        // Cotizaciones del dia
+        // Cotizaciones del dia (filtradas por empresa)
         $quotesToday = VehicleQuote::whereDate('created_at', today())
+            ->when($companyId, fn($q) => $q->where('company_id', $companyId))
             ->when($eventName, fn($q) => $q->where('event_name', $eventName))
             ->count();
 
@@ -482,15 +520,17 @@ class KioskController extends Controller
             ->orderBy('hour')
             ->get();
 
-        // Leads recientes con vehículo de interés
+        // Leads recientes (filtrados por empresa)
         $recentLeads = EventLead::with(['property', 'capturedBy'])
+            ->when($companyId, fn($q) => $q->where('company_id', $companyId))
             ->when($eventName, fn($q) => $q->where('event_name', $eventName))
             ->latest()
             ->limit(20)
             ->get();
 
-        // Cotizaciones recientes con vehículo
+        // Cotizaciones recientes (filtradas por empresa)
         $recentQuotes = VehicleQuote::with(['property', 'capturedBy'])
+            ->when($companyId, fn($q) => $q->where('company_id', $companyId))
             ->when($eventName, fn($q) => $q->where('event_name', $eventName))
             ->latest()
             ->limit(15)
@@ -661,13 +701,26 @@ class KioskController extends Controller
     public function statsRealtime(Request $request)
     {
         $eventName = $request->get('event');
+        $user = Auth::user();
+        $companyId = $user->isSuperAdmin() ? null : $user->company_id;
+
+        $leads = EventLead::when($companyId, fn($q) => $q->where('company_id', $companyId))
+            ->when($eventName, fn($q) => $q->where('event_name', $eventName))
+            ->selectRaw('
+                COUNT(*) as total,
+                SUM(CASE WHEN DATE(created_at) = CURDATE() THEN 1 ELSE 0 END) as today,
+                SUM(CASE WHEN interest_level = "hot" THEN 1 ELSE 0 END) as hot,
+                SUM(CASE WHEN contacted = 0 THEN 1 ELSE 0 END) as pending,
+                SUM(CASE WHEN contacted = 1 THEN 1 ELSE 0 END) as contacted
+            ')->first()->toArray();
 
         return response()->json([
-            'leads' => EventLead::eventStats($eventName),
+            'leads' => $leads,
             'views_today' => VehicleEventView::whereDate('created_at', today())
                 ->when($eventName, fn($q) => $q->where('event_name', $eventName))
                 ->count(),
             'quotes_today' => VehicleQuote::whereDate('created_at', today())
+                ->when($companyId, fn($q) => $q->where('company_id', $companyId))
                 ->when($eventName, fn($q) => $q->where('event_name', $eventName))
                 ->count(),
             'qr_scans_today' => QrScan::whereDate('last_scanned_at', today())

@@ -21,10 +21,12 @@ class Company extends Model
         'owner_id',
         'status',
         'settings',
+        'other_kiosk',
     ];
 
     protected $casts = [
         'settings' => 'array',
+        'other_kiosk' => 'boolean',
     ];
 
     /**

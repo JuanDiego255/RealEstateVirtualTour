@@ -10,7 +10,7 @@ class EventLead extends Model
 {
     protected $fillable = [
         'property_id', 'vehicle_id', 'company_id', 'captured_by_user_id',
-        'name', 'email', 'phone', 'notes',
+        'name', 'email', 'phone', 'notes', 'description',
         'source', 'event_name', 'interest_level', 'lead_category', 'sale_status',
         'contacted', 'contacted_at', 'contacted_by', 'converted_at',
         'vehicles_viewed', 'vehicles_compared', 'quotes_requested',

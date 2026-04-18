@@ -67,4 +67,16 @@
             <option value="suspended" {{ old('status', $company->status) == 'suspended' ? 'selected' : '' }}>Suspendida</option>
         </select>
     </div>
+    <div class="form-group">
+        <label>Modo Kiosko</label>
+        <div class="custom-control custom-switch">
+            <input type="checkbox" class="custom-control-input" id="otherKioskSwitch"
+                   name="other_kiosk" value="1"
+                   {{ old('other_kiosk', $company->other_kiosk ?? false) ? 'checked' : '' }}>
+            <label class="custom-control-label" for="otherKioskSwitch">
+                Kiosko "Other" — sin catálogo de productos (ideal para repuestos, servicios B2B)
+            </label>
+        </div>
+        <small class="form-text text-muted">Activar para empresas que usan el kiosko solo para captura de leads y cotizaciones libres, sin necesidad de un catálogo de vehículos o propiedades en BD.</small>
+    </div>
 @endif

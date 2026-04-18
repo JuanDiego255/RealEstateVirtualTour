@@ -117,6 +117,7 @@ class CompanyController extends Controller
         $data = $request->only([
             'name', 'legal_name', 'tax_id', 'email', 'phone', 'address', 'owner_id', 'status'
         ]);
+        $data['other_kiosk'] = $request->boolean('other_kiosk');
 
         if ($request->name !== $company->name) {
             $data['slug'] = Str::slug($request->name);
