@@ -239,6 +239,22 @@
         }
         #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
         #toast.error { border-color: #e74c3c; }
+
+        /* ── OFFLINE INDICATOR ── */
+        #offlineIndicator {
+            position: fixed; top: 16px; left: 16px; z-index: 500;
+            display: none; align-items: center; gap: 8px;
+            background: rgba(231,76,60,0.15); border: 1px solid rgba(231,76,60,0.4);
+            border-radius: 20px; padding: 6px 14px;
+            font-size: 12px; font-weight: 600; color: #e74c3c;
+            transition: opacity 0.3s;
+        }
+        #offlineIndicator.show { display: flex; }
+        #offlineIndicator.syncing {
+            color: var(--accent);
+            border-color: rgba(194,172,31,0.4);
+            background: rgba(194,172,31,0.08);
+        }
     </style>
 </head>
 <body>
@@ -442,6 +458,11 @@
     </div>
 </div>
 @endif
+
+<div id="offlineIndicator">
+    <i class="fas fa-exclamation-triangle" id="offlineIcon"></i>
+    <span id="offlineText">Sin conexión</span>
+</div>
 
 <div id="toast"></div>
 
@@ -654,6 +675,71 @@ function cleanWaNumber(raw) {
     return num;
 }
 
+// ── OFFLINE QUEUE ──
+const QUEUE_KEY = 'kiosk_queue_{{ $company->id ?? 0 }}';
+
+function getQueue() {
+    try { return JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]'); } catch { return []; }
+}
+
+function saveToQueue(fields) {
+    const queue = getQueue();
+    queue.push({ ...fields, _ts: new Date().toISOString() });
+    localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
+    updateOfflineIndicator();
+}
+
+function updateOfflineIndicator() {
+    const el    = document.getElementById('offlineIndicator');
+    const text  = document.getElementById('offlineText');
+    const icon  = document.getElementById('offlineIcon');
+    const count = getQueue().length;
+
+    if (!navigator.onLine) {
+        el.className    = 'show';
+        el.classList.remove('syncing');
+        icon.className  = 'fas fa-exclamation-triangle';
+        text.textContent = count > 0 ? `Sin conexión · ${count} en cola` : 'Sin conexión';
+    } else if (count > 0) {
+        el.className    = 'show syncing';
+        icon.className  = 'fas fa-sync fa-spin';
+        text.textContent = `Sincronizando ${count} registro${count !== 1 ? 's' : ''}...`;
+    } else {
+        el.className = '';
+    }
+}
+
+async function flushQueue() {
+    const queue = getQueue();
+    if (queue.length === 0) return;
+    updateOfflineIndicator();
+    const failed = [];
+    for (const item of queue) {
+        const fd = new FormData();
+        Object.entries(item).forEach(([k, v]) => {
+            if (k !== '_ts' && v != null) fd.append(k, v);
+        });
+        try {
+            const res = await fetch(captureUrl, {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
+                body: fd,
+            });
+            if (!res.ok) { failed.push(item); break; }
+        } catch {
+            failed.push(item); break;
+        }
+    }
+    localStorage.setItem(QUEUE_KEY, JSON.stringify(failed));
+    if (failed.length < queue.length) refreshCounter();
+    updateOfflineIndicator();
+}
+
+window.addEventListener('online',  () => { updateOfflineIndicator(); flushQueue(); });
+window.addEventListener('offline', updateOfflineIndicator);
+setInterval(() => { if (navigator.onLine && getQueue().length > 0) flushQueue(); }, 30000);
+updateOfflineIndicator();
+
 // ── SUBMIT LEAD ──
 async function submitLead() {
     const name  = document.getElementById('leadName').value.trim();
@@ -726,7 +812,25 @@ async function submitLead() {
             showToast('Error al guardar. Intente de nuevo.', 'error');
         }
     } catch (e) {
-        showToast('Error de conexión.', 'error');
+        // Sin conexión: guardar en cola local (la foto se pierde en modo offline)
+        saveToQueue({
+            name:           name,
+            phone:          phone,
+            email:          document.getElementById('leadEmail').value.trim() || '',
+            source:         'kiosk',
+            event_name:     eventName || '',
+            interest_level: level,
+            lead_category:  'prospect',
+            notes:          notesWithUrgency,
+            description:    desc || '',
+        });
+        closeModal('leadModal');
+        clearLeadForm();
+        showSuccess(
+            '¡Guardado sin conexión!',
+            'No hay conexión en este momento. El registro se enviará automáticamente cuando se restablezca.',
+            {}
+        );
     }
 }
 
