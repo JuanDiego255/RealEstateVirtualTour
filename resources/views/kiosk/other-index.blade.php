@@ -961,33 +961,39 @@ function animateToPrize(prize) {
     const idx = rafflePrizes.findIndex(p => p.id === prize.id);
     if (idx === -1) { showPrizeResult(prize); isSpinning = false; return; }
 
-    const total   = rafflePrizes.reduce((s, p) => s + (p.weight || 10), 0);
-    let fraction  = 0;
-    for (let i = 0; i < idx; i++) fraction += (rafflePrizes[i].weight || 10) / total;
-    fraction += ((rafflePrizes[idx].weight || 10) / total) / 2; // centro del segmento
+    const total = rafflePrizes.reduce((s, p) => s + (p.weight || 10), 0);
+    let frac = 0;
+    for (let i = 0; i < idx; i++) frac += (rafflePrizes[i].weight || 10) / total;
+    frac += ((rafflePrizes[idx].weight || 10) / total) / 2; // centro del segmento
 
-    // Calcular rotación necesaria para que el premio quede en el puntero (12h)
-    const targetDeg  = fraction * 360;
-    const currentMod = raffleRotation % 360;
-    let   delta      = (targetDeg - currentMod + 360) % 360;
-    if (delta < 15) delta += 360; // mínimo giro para no parecer que no se movió
-    const totalDeg   = raffleRotation + delta + 5 * 360; // 5 vueltas de drama
+    // El segmento está a frac*360° desde las 12h en el canvas.
+    // Para traerlo al puntero (12h) girando EN SENTIDO horario:
+    //   posición_visual = posición_canvas + rotación
+    //   queremos posición_visual = 0 (mod 360)
+    //   → rotación_necesaria = (360 - frac*360) % 360
+    const targetAngle = (360 - frac * 360 + 360) % 360;
+    const currentMod  = raffleRotation % 360;
+    let   delta       = (targetAngle - currentMod + 360) % 360;
+    if (delta < 30) delta += 360; // garantizar giro mínimo visible
 
+    const totalDeg  = raffleRotation + delta + 5 * 360;
     const canvas    = document.getElementById('wheelCanvas');
     const startDeg  = raffleRotation;
     const duration  = 4800;
     const startTime = performance.now();
 
     function tick(now) {
-        const t      = Math.min((now - startTime) / duration, 1);
-        const eased  = 1 - Math.pow(1 - t, 4); // ease-out quartic
-        const deg    = startDeg + (totalDeg - startDeg) * eased;
+        const t     = Math.min((now - startTime) / duration, 1);
+        const eased = 1 - Math.pow(1 - t, 4); // ease-out quartic
+        const deg   = startDeg + (totalDeg - startDeg) * eased;
         raffleRotation = deg;
         canvas.style.transform = `rotate(${deg}deg)`;
         if (t < 1) {
             requestAnimationFrame(tick);
         } else {
+            // Normalizar para evitar acumulación de grados
             raffleRotation = deg % 360;
+            canvas.style.transform = `rotate(${raffleRotation}deg)`;
             setTimeout(() => showPrizeResult(prize), 700);
         }
     }
