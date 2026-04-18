@@ -264,11 +264,6 @@
         <button class="btn-main btn-lead" onclick="openModal('leadModal')">
             <i class="fas fa-heart"></i> Me Interesa
         </button>
-        @if($settings->enable_quote ?? true)
-        <button class="btn-main btn-quote" onclick="openModal('quoteModal')">
-            <i class="fas fa-calculator"></i> Cotizar
-        </button>
-        @endif
     </div>
 
     <div class="idle-hint">Toca para comenzar</div>
@@ -369,70 +364,7 @@
     </div>
 </div>
 
-<!-- ══ QUOTE MODAL ══ -->
-@if($settings->enable_quote ?? true)
-<div class="modal-overlay" id="quoteModal">
-    <div class="modal-box">
-        <div class="modal-title"><i class="fas fa-calculator"></i> Cotización</div>
-
-        <div class="field">
-            <label>Nombre completo *</label>
-            <input type="text" id="quoteName" placeholder="Tu nombre" autocomplete="off">
-        </div>
-        <div class="field">
-            <label>Teléfono *</label>
-            <input type="tel" id="quotePhone" placeholder="8888-8888" autocomplete="off">
-        </div>
-        <div class="field">
-            <label>Correo electrónico</label>
-            <input type="email" id="quoteEmail" placeholder="correo@empresa.com" autocomplete="off">
-        </div>
-        <div class="field">
-            <label>Empresa / Negocio</label>
-            <input type="text" id="quoteCompanyName" placeholder="Nombre de su empresa" autocomplete="off">
-        </div>
-
-        @if(count($categories) > 0)
-        <div class="field">
-            <label>¿Qué tipo de producto busca?</label>
-            <div class="sel-grid" id="quoteCatGrid">
-                @foreach($categories as $cat)
-                <button class="sel-btn sm" data-cat="{{ $cat }}" onclick="selectQuoteCat(this)">{{ $cat }}</button>
-                @endforeach
-            </div>
-            <input type="hidden" id="quoteCategory" value="">
-        </div>
-        @endif
-
-        <div class="field">
-            <label>Descripción de lo cotizado *</label>
-            <textarea id="quoteDescription" placeholder="Describa el producto, repuesto o servicio a cotizar..."></textarea>
-        </div>
-        <div class="field">
-            <label>Monto estimado (opcional)</label>
-            <input type="number" id="quoteAmount" placeholder="0" min="0" step="1000" autocomplete="off">
-        </div>
-
-        {{-- Feature 2: Urgencia en cotización --}}
-        <div class="field">
-            <label>¿Cuándo lo necesita?</label>
-            <div class="sel-grid">
-                <button class="sel-btn" data-urgency="urgente" onclick="selectUrgency(this,'quote')">⚡ Urgente (&lt;1 sem)</button>
-                <button class="sel-btn active" data-urgency="normal" onclick="selectUrgency(this,'quote')">Normal (1 mes)</button>
-                <button class="sel-btn" data-urgency="planificacion" onclick="selectUrgency(this,'quote')">📋 Planificación (3+ m)</button>
-            </div>
-            <input type="hidden" id="quoteUrgency" value="normal">
-        </div>
-
-        <div class="modal-actions">
-            <button class="btn-cancel" onclick="closeModal('quoteModal')">Cancelar</button>
-            <button class="btn-save" onclick="submitQuote()">
-                <i class="fas fa-file-alt"></i> Guardar y PDF
-            </button>
-        </div>
-    </div>
-</div>
-@endif
+{{-- Formulario de cotización deshabilitado: el cliente solo usa "Me Interesa" --}}
 
 <!-- ══ SUCCESS SCREEN (Feature 1 + 5) ══ -->
 <div id="successScreen">
