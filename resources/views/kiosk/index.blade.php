@@ -923,8 +923,8 @@
 
                 <div class="form-group-kiosk">
                     <label>Prima (enganche) - <span id="downPaymentPercent">50</span>%</label>
-                    <input type="range" id="downPaymentSlider" min="10" max="50" value="50" style="width: 100%;">
-                    <input type="text" class="form-control-kiosk" id="downPaymentDisplay" readonly style="margin-top: 10px;">
+                    <input type="range" id="downPaymentSlider" min="10" max="90" value="50" style="width: 100%;">
+                    <input type="text" class="form-control-kiosk" id="downPaymentDisplay" style="margin-top: 10px;" placeholder="Monto de prima" inputmode="numeric">
                 </div>
 
                 <div class="form-group-kiosk">
@@ -1484,6 +1484,19 @@
         document.getElementById('downPaymentSlider').addEventListener('input', updateQuoteCalculation);
         document.getElementById('termMonths').addEventListener('change', updateQuoteCalculation);
         document.getElementById('interestRate').addEventListener('input', updateQuoteCalculation);
+
+        // Prima input → slider bidireccional
+        document.getElementById('downPaymentDisplay').addEventListener('input', function () {
+            const price = parseFloat(document.getElementById('quoteVehiclePrice').value) || 0;
+            if (!price) return;
+            const raw = this.value.replace(/[^\d]/g, '');
+            const amount = parseFloat(raw) || 0;
+            let percent = Math.round((amount / price) * 100);
+            percent = Math.max(10, Math.min(90, percent));
+            document.getElementById('downPaymentSlider').value = percent;
+            document.getElementById('downPaymentPercent').textContent = percent;
+        });
+        document.getElementById('downPaymentDisplay').addEventListener('change', updateQuoteCalculation);
 
         async function submitQuoteDirectly() {
             const vehicleId = document.getElementById('quoteVehicleId').value;

@@ -164,10 +164,10 @@
                 <span>Prima (enganche)</span>
                 <span class="value"><span id="downPaymentPercent">50</span>%</span>
             </div>
-            <input type="range" id="downPaymentSlider" min="10" max="60" value="50" step="5">
-            <div style="text-align: center; margin-top: 8px; font-size: 18px; font-weight: 600;" id="downPaymentDisplay">
-                ₡0
-            </div>
+            <input type="range" id="downPaymentSlider" min="10" max="90" value="50" step="5">
+            <input type="text" id="downPaymentDisplay"
+                   style="text-align:center;margin-top:8px;font-size:18px;font-weight:600;width:100%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:8px 12px;color:#fff;outline:none;"
+                   placeholder="Monto de prima" inputmode="numeric">
         </div>
 
         <!-- Payment Frequency Selection -->
@@ -346,7 +346,7 @@ function updateQuoteCalculation() {
 
     // Update displays
     document.getElementById('downPaymentPercent').textContent = downPercent;
-    document.getElementById('downPaymentDisplay').textContent = '₡' + _quoteCalc.downPayment.toLocaleString('es-CR');
+    document.getElementById('downPaymentDisplay').value = '₡' + _quoteCalc.downPayment.toLocaleString('es-CR');
     document.getElementById('interestRateDisplay').textContent = monthlyInterestRate;
     document.getElementById('monthlyPaymentDisplay').textContent = '₡' + _quoteCalc.payment.toLocaleString('es-CR');
     document.getElementById('totalInterestDisplay').textContent = '₡' + _quoteCalc.interest.toLocaleString('es-CR');
@@ -356,6 +356,20 @@ function updateQuoteCalculation() {
 
 document.getElementById('downPaymentSlider').addEventListener('input', updateQuoteCalculation);
 document.getElementById('interestRateSlider').addEventListener('input', updateQuoteCalculation);
+
+// Prima input → slider bidireccional
+document.getElementById('downPaymentDisplay').addEventListener('input', function () {
+    const price = parseFloat(document.getElementById('quoteVehiclePrice').value) || 0;
+    if (!price) return;
+    const raw = this.value.replace(/[^\d]/g, '');
+    const amount = parseFloat(raw) || 0;
+    let percent = Math.round((amount / price) * 100);
+    percent = Math.max(10, Math.min(90, percent));
+    percent = Math.round(percent / 5) * 5; // snap al step=5 del slider
+    document.getElementById('downPaymentSlider').value = percent;
+    document.getElementById('downPaymentPercent').textContent = percent;
+});
+document.getElementById('downPaymentDisplay').addEventListener('change', updateQuoteCalculation);
 
 // Initialize calculation
 document.addEventListener('DOMContentLoaded', updateQuoteCalculation);
