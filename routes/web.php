@@ -488,6 +488,8 @@ Route::get('/api/search-properties', function (\Illuminate\Http\Request $request
 // LANDING PAGE: VENDE TU VEHÍCULO
 // =====================================================
 Route::get('/vende-tu-vehiculo', function () {
+    \App\Models\LandingVisit::record();
+
     $demoProperty = \App\Properties::where('is_demo_tour', true)->first();
 
     $scenes       = collect();
@@ -594,6 +596,36 @@ Route::middleware('auth')->group(function () {
     // Premios ruleta (admin)
     Route::resource('admin/raffle-prizes', 'Admin\RafflePrizeController')->names('admin.raffle-prizes');
     Route::patch('admin/raffle-prizes/{rafflePrize}/reset', 'Admin\RafflePrizeController@reset')->name('admin.raffle-prizes.reset');
+
+    // Estadísticas landing /vende-tu-vehiculo
+    Route::get('/admin/landing-stats', function () {
+        $visits = \App\Models\LandingVisit::all();
+
+        $totalToday = $visits->filter(fn($v) => $v->created_at->isToday())->count();
+        $totalAll   = $visits->count();
+
+        $bySource = $visits->groupBy('source')->map->count();
+
+        // Últimos 14 días por día
+        $byDay = $visits
+            ->filter(fn($v) => $v->created_at->gte(now()->subDays(13)->startOfDay()))
+            ->groupBy(fn($v) => $v->created_at->format('d/m'))
+            ->map->count();
+
+        // Rellenar días sin visitas
+        $days = collect();
+        for ($i = 13; $i >= 0; $i--) {
+            $label = now()->subDays($i)->format('d/m');
+            $days[$label] = $byDay[$label] ?? 0;
+        }
+
+        $landingUrl = url('/vende-tu-vehiculo');
+        $qrUrl      = $landingUrl . '?ref=qr';
+
+        return view('admin.landing-stats', compact(
+            'totalToday', 'totalAll', 'bySource', 'days', 'landingUrl', 'qrUrl'
+        ));
+    })->name('admin.landing-stats');
 
     Route::get('/admin/event-dashboard', [KioskController::class, 'dashboard'])->name('kiosk.dashboard');
     Route::get('/admin/event-dashboard/stats', [KioskController::class, 'statsRealtime'])->name('kiosk.stats.realtime');
