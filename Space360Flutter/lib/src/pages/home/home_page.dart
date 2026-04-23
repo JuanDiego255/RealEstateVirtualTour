@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:space360_flutter/src/pages/home/contact_form.dart';
+import 'package:space360_flutter/src/pages/legal/privacy_page.dart';
 
 const _kGold = Color(0xFFD4A843);
 const _kGoldDark = Color(0xFFA07828);
@@ -621,7 +622,41 @@ class _Footer extends StatelessWidget {
             'Tours virtuales 360° · Costa Rica',
             style: TextStyle(color: _kSubtext, fontSize: 11),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 14),
+          // Legal links
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              GestureDetector(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const PrivacyPage()),
+                ),
+                child: const Text(
+                  'Política de Privacidad',
+                  style: TextStyle(
+                    color: _kGold,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    decoration: TextDecoration.underline,
+                    decorationColor: _kGold,
+                  ),
+                ),
+              ),
+              const Text(' · ', style: TextStyle(color: Color(0xFF333333), fontSize: 11)),
+              GestureDetector(
+                onTap: () async {
+                  final uri = Uri.parse('https://space360cr.com/privacidad');
+                  if (await canLaunchUrl(uri)) launchUrl(uri, mode: LaunchMode.externalApplication);
+                },
+                child: const Text(
+                  'Ver en web',
+                  style: TextStyle(color: Color(0xFF555555), fontSize: 11),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
           Text(
             '© ${DateTime.now().year} Space 360 CR. Todos los derechos reservados.',
             style: const TextStyle(color: Color(0xFF444444), fontSize: 10),

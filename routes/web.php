@@ -539,6 +539,10 @@ Route::post('/vende-tu-vehiculo/contacto', function (\Illuminate\Http\Request $r
     return response()->json(['success' => true, 'message' => '¡Listo! Nos pondremos en contacto contigo pronto.']);
 })->name('sell-vehicle.contact');
 
+Route::get('/privacidad', function () {
+    return view('frontend.privacy');
+})->name('privacy');
+
 // Archivo desde storage
 Route::get('/file/{filename}', function ($filename) {
     $path = storage_path('app/public/' . $filename);
