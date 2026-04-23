@@ -1,6 +1,8 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:space360_flutter/src/models/auth_response.dart';
+import 'package:space360_flutter/src/pages/legal/privacy_page.dart';
 import 'package:space360_flutter/src/services/api_service.dart';
 import 'package:space360_flutter/src/utils/resource.dart';
 
@@ -69,7 +71,32 @@ class _LoginPageState extends State<LoginPage> {
                     _logo(),
                     const SizedBox(height: 40),
                     _card(),
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 20),
+                    // Privacy notice
+                    RichText(
+                      textAlign: TextAlign.center,
+                      text: TextSpan(
+                        style: const TextStyle(color: _kSubtext, fontSize: 11, height: 1.5),
+                        children: [
+                          const TextSpan(text: 'Al iniciar sesión aceptás la '),
+                          TextSpan(
+                            text: 'Política de Privacidad',
+                            style: const TextStyle(
+                              color: _kGold,
+                              decoration: TextDecoration.underline,
+                              decorationColor: _kGold,
+                            ),
+                            recognizer: TapGestureRecognizer()
+                              ..onTap = () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => const PrivacyPage()),
+                                  ),
+                          ),
+                          const TextSpan(text: ' de Space 360 CR.'),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
                     GestureDetector(
                       onTap: () => Navigator.pushReplacementNamed(context, '/home'),
                       child: const Text(

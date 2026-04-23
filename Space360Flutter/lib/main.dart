@@ -1,13 +1,21 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:space360_flutter/src/pages/dashboard/dashboard_page.dart';
 import 'package:space360_flutter/src/pages/home/home_page.dart';
+import 'package:space360_flutter/src/pages/legal/privacy_page.dart';
 import 'package:space360_flutter/src/pages/login/login_page.dart';
 import 'package:space360_flutter/src/services/api_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const Space360App());
+  runZonedGuarded(
+    () => runApp(const Space360App()),
+    (error, stack) {
+      // Unhandled exceptions are caught here — prevents store rejection due to crashes
+      debugPrint('Uncaught error: $error\n$stack');
+    },
+  );
 }
 
 class Space360App extends StatelessWidget {
@@ -32,6 +40,7 @@ class Space360App extends StatelessWidget {
         '/home': (_) => const HomePage(),
         '/login': (_) => const LoginPage(),
         '/dashboard': (_) => const DashboardPage(),
+        '/privacidad': (_) => const PrivacyPage(),
       },
     );
   }

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:space360_flutter/src/pages/legal/privacy_page.dart';
 import 'package:space360_flutter/src/services/api_service.dart';
 import 'package:space360_flutter/src/utils/resource.dart';
 
@@ -180,6 +182,8 @@ class _ContactFormState extends State<ContactForm> {
                 ),
               ),
             ),
+            const SizedBox(height: 14),
+            _PrivacyNotice(),
           ],
         ),
       ),
@@ -238,6 +242,7 @@ class _ContactFormState extends State<ContactForm> {
   }
 
   Widget _tourTypeDropdown() {
+
     return DropdownButtonFormField<String>(
       value: _tourType,
       dropdownColor: const Color(0xFF1E1E1E),
@@ -267,6 +272,35 @@ class _ContactFormState extends State<ContactForm> {
           .map((t) => DropdownMenuItem(value: t, child: Text(t)))
           .toList(),
       onChanged: (v) => setState(() => _tourType = v ?? _tourType),
+    );
+  }
+}
+
+class _PrivacyNotice extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return RichText(
+      textAlign: TextAlign.center,
+      text: TextSpan(
+        style: const TextStyle(color: _kSubtext, fontSize: 11, height: 1.5),
+        children: [
+          const TextSpan(text: 'Al enviar aceptás nuestra '),
+          TextSpan(
+            text: 'Política de Privacidad',
+            style: const TextStyle(
+              color: _kGold,
+              decoration: TextDecoration.underline,
+              decorationColor: _kGold,
+            ),
+            recognizer: TapGestureRecognizer()
+              ..onTap = () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const PrivacyPage()),
+                  ),
+          ),
+          const TextSpan(text: '. Tus datos solo se usarán para contactarte.'),
+        ],
+      ),
     );
   }
 }
