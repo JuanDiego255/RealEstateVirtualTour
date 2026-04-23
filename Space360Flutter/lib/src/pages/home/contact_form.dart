@@ -246,7 +246,7 @@ class _ContactFormState extends State<ContactForm> {
       decoration: InputDecoration(
         labelText: 'Tipo de tour',
         labelStyle: const TextStyle(color: _kSubtext, fontSize: 12),
-        prefixIcon: const Icon(Icons.three_sixty_rounded, color: _kGold, size: 18),
+        prefixIcon: const Icon(Icons.threesixty , color: _kGold, size: 18),
         filled: true,
         fillColor: const Color(0xFF262626),
         contentPadding: const EdgeInsets.symmetric(vertical: 14),

@@ -27,7 +27,7 @@ class DashboardPage extends StatelessWidget {
                 shape: BoxShape.circle,
                 gradient: LinearGradient(colors: [_kGold, _kGoldDark]),
               ),
-              child: const Icon(Icons.three_sixty_rounded, size: 17, color: Colors.black),
+              child: const Icon(Icons.threesixty, size: 17, color: Colors.black),
             ),
             const SizedBox(width: 10),
             const Text(

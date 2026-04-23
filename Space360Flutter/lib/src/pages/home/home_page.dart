@@ -61,7 +61,7 @@ class _HomePageState extends State<HomePage> {
               shape: BoxShape.circle,
               gradient: LinearGradient(colors: [_kGold, _kGoldDark]),
             ),
-            child: const Icon(Icons.three_sixty_rounded, size: 18, color: Colors.black),
+            child: const Icon(Icons.threesixty, size: 18, color: Colors.black),
           ),
           const SizedBox(width: 10),
           const Text(
@@ -607,7 +607,7 @@ class _Footer extends StatelessWidget {
                   shape: BoxShape.circle,
                   gradient: LinearGradient(colors: [_kGold, _kGoldDark]),
                 ),
-                child: const Icon(Icons.three_sixty_rounded, size: 15, color: Colors.black),
+                child: const Icon(Icons.threesixty, size: 15, color: Colors.black),
               ),
               const SizedBox(width: 8),
               const Text(

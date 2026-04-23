@@ -108,7 +108,7 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ],
           ),
-          child: const Icon(Icons.three_sixty_rounded, size: 48, color: Colors.black),
+          child: const Icon(Icons.threesixty, size: 48, color: Colors.black),
         ),
         const SizedBox(height: 20),
         const Text(

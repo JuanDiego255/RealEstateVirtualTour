@@ -12,3 +12,21 @@ npm-debug.log
 yarn-error.log
 
 /storage/tenantsynergy/app/public/uploads/
+/Space360Flutter/build
+/Space360Flutter/.dart_tool/
+/Space360Flutter/.dart_tool
+/Space360Flutter/linux/
+/Space360Flutter/windows
+/Space360Flutter/windows/flutter/
+/Space360Flutter/.dart_tool/package_config.json
+/Space360Flutter/.flutter-plugins-dependencies
+/Space360Flutter/build/app/intermediates/flutter/debug/flutter_assets/kernel_blob.bin
+/Space360Flutter/linux/flutter/generated_plugin_registrant.cc
+/Space360Flutter/linux/flutter/generated_plugin_registrant.h
+/Space360Flutter/linux/flutter/generated_plugins.cmake
+/Space360Flutter/macos/Flutter/GeneratedPluginRegistrant.swift
+/Space360Flutter/windows/flutter/generated_plugin_registrant.cc
+/Space360Flutter/windows/flutter/generated_plugin_registrant.h
+/Space360Flutter/windows/flutter/generated_plugins.cmake
+/Space360Flutter/.dart_tool/dartpad/web_plugin_registrant.dart
+/Space360Flutter/.dart_tool/dartpad/web_plugin_registrant.dart
