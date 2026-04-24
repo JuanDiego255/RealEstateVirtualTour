@@ -53,10 +53,29 @@ Route::post('/login', function (\Illuminate\Http\Request $request) {
     }
 
     $user = \Illuminate\Support\Facades\Auth::user();
-    // Stateless token: deterministic HMAC so no extra schema/package needed
-    $token = hash_hmac('sha256', $user->email . '|' . $user->id, config('app.key'));
 
-    return response()->json(['token' => $token, 'user' => ['name' => $user->name, 'email' => $user->email]]);
+    // Token HMAC determinista — persiste en api_token para que auth:api lo valide
+    $token = hash_hmac('sha256', $user->email . '|' . $user->id, config('app.key'));
+    $user->forceFill(['api_token' => $token])->save();
+
+    // Permisos del usuario (null para super_admin / company_admin que tienen acceso total)
+    $permissions = null;
+    if ($user->isAgent()) {
+        $perm = $user->modulePermissions;
+        $permissions = $perm ? $perm->permissions : [];
+    }
+
+    return response()->json([
+        'token' => $token,
+        'user'  => [
+            'id'          => $user->id,
+            'name'        => $user->name,
+            'email'       => $user->email,
+            'role'        => $user->role,
+            'company_id'  => $user->company_id,
+            'permissions' => $permissions,
+        ],
+    ]);
 })->name('api.login');
 
 // Flutter app lead form: POST /api/leads
@@ -372,3 +391,302 @@ Route::get('/featured', function () {
 
     return response()->json($properties);
 })->name('api.featured');
+
+// ═══════════════════════════════════════════════════════
+// AUTHENTICATED API — requires valid api_token (auth:api)
+// Used by the Flutter agent/kiosk section
+// ═══════════════════════════════════════════════════════
+
+Route::middleware('auth:api')->group(function () {
+
+    // ── Perfil del usuario autenticado ────────────────────
+    Route::get('/auth/me', function (\Illuminate\Http\Request $request) {
+        $user = $request->user();
+        $permissions = null;
+        if ($user->isAgent()) {
+            $perm = $user->modulePermissions;
+            $permissions = $perm ? $perm->permissions : [];
+        }
+        return response()->json([
+            'id'          => $user->id,
+            'name'        => $user->name,
+            'email'       => $user->email,
+            'role'        => $user->role,
+            'company_id'  => $user->company_id,
+            'permissions' => $permissions,
+        ]);
+    })->name('api.auth.me');
+
+    // ── Logout (invalida el token) ─────────────────────────
+    Route::post('/auth/logout', function (\Illuminate\Http\Request $request) {
+        $request->user()->forceFill(['api_token' => null])->save();
+        return response()->json(['success' => true]);
+    })->name('api.auth.logout');
+
+    // ── Kiosko — requiere permiso kiosk.view ──────────────
+    Route::middleware('api.permission:kiosk,view')->group(function () {
+
+        // Listar vehículos del kiosko para la empresa del agente
+        Route::get('/kiosk/vehicles', function (\Illuminate\Http\Request $request) {
+            $user      = $request->user();
+            $companyId = $user->isSuperAdmin()
+                ? $request->get('company_id', $user->company_id ?? 1)
+                : $user->company_id;
+
+            $companyCategoryIds = \App\Category::where('company_id', $companyId)->pluck('id');
+
+            $vehicles = \App\Properties::vehicles()
+                ->whereIn('status', ['available', 'reserved', 'negotiating'])
+                ->where(function ($q) use ($companyCategoryIds) {
+                    $q->whereIn('category_id', $companyCategoryIds)
+                      ->orWhereHas('subcategory', fn($sq) => $sq->whereIn('category_id', $companyCategoryIds));
+                })
+                ->with(['images' => fn($q) => $q->orderBy('is_primary', 'desc')->orderBy('sort_order')])
+                ->orderByDesc('is_featured')
+                ->orderBy('brand')
+                ->get()
+                ->map(fn($v) => [
+                    'id'           => $v->id,
+                    'name'         => trim("{$v->brand} {$v->model} {$v->year}"),
+                    'brand'        => $v->brand,
+                    'model'        => $v->model,
+                    'year'         => $v->year,
+                    'price'        => ($v->currency === 'USD' ? '$' : '₡') . number_format((float)($v->price ?? 0)),
+                    'price_raw'    => (float)($v->price ?? 0),
+                    'currency'     => $v->currency,
+                    'fuel_type'    => $v->fuel_type,
+                    'transmission' => $v->transmission,
+                    'engine_cc'    => $v->engine_cc,
+                    'doors'        => $v->doors,
+                    'passengers'   => $v->passengers,
+                    'mileage_km'   => $v->mileage_km,
+                    'color'        => $v->color,
+                    'condition'    => $v->condition,
+                    'drivetrain'   => $v->drivetrain,
+                    'status'       => $v->status,
+                    'is_featured'  => (bool)$v->is_featured,
+                    'has_spin'     => (bool)$v->spin_active,
+                    'image'        => $v->image ? apiFileUrl($v->image) : null,
+                    'images'       => $v->images->map(fn($i) => apiFileUrl($i->image))->filter()->values(),
+                ]);
+
+            return response()->json(['total' => $vehicles->count(), 'vehicles' => $vehicles]);
+        })->name('api.kiosk.vehicles');
+
+        // Detalle de vehículo
+        Route::get('/kiosk/vehicles/{id}', function (\Illuminate\Http\Request $request, int $id) {
+            $v = \App\Properties::vehicles()
+                ->with(['images' => fn($q) => $q->orderBy('is_primary', 'desc')->orderBy('sort_order')])
+                ->findOrFail($id);
+
+            $images = $v->images->map(fn($i) => apiFileUrl($i->image))->filter()->values();
+            if ($images->isEmpty() && $v->image) {
+                $images = collect([apiFileUrl($v->image)]);
+            }
+
+            return response()->json([
+                'id'           => $v->id,
+                'name'         => trim("{$v->brand} {$v->model} {$v->year}"),
+                'brand'        => $v->brand,
+                'model'        => $v->model,
+                'year'         => $v->year,
+                'price'        => ($v->currency === 'USD' ? '$' : '₡') . number_format((float)($v->price ?? 0)),
+                'price_raw'    => (float)($v->price ?? 0),
+                'currency'     => $v->currency,
+                'description'  => $v->description,
+                'fuel_type'    => $v->fuel_type,
+                'transmission' => $v->transmission,
+                'engine_cc'    => $v->engine_cc,
+                'doors'        => $v->doors,
+                'passengers'   => $v->passengers,
+                'mileage_km'   => $v->mileage_km,
+                'color'        => $v->color,
+                'condition'    => $v->condition,
+                'drivetrain'   => $v->drivetrain,
+                'plate'        => $v->plate,
+                'status'       => $v->status,
+                'is_featured'  => (bool)$v->is_featured,
+                'has_spin'     => (bool)$v->spin_active,
+                'image'        => $v->image ? apiFileUrl($v->image) : ($images->first()),
+                'images'       => $images,
+            ]);
+        })->name('api.kiosk.vehicles.show');
+    });
+
+    // ── Kiosko — capturar lead (requiere event_dashboard.create_lead) ─────
+    Route::middleware('api.permission:event_dashboard,create_lead')->group(function () {
+        Route::post('/kiosk/leads', function (\Illuminate\Http\Request $request) {
+            $data = $request->validate([
+                'name'           => 'required|string|max:255',
+                'phone'          => 'required|string|max:20',
+                'email'          => 'nullable|email',
+                'vehicle_id'     => 'nullable|exists:properties,id',
+                'interest_level' => 'nullable|in:low,medium,high,hot',
+                'lead_category'  => 'nullable|in:prospect,exploring,comparing,future_interest,referral,returning',
+                'notes'          => 'nullable|string|max:1000',
+            ]);
+
+            $user = $request->user();
+            $lead = \App\Models\EventLead::create([
+                'name'                => $data['name'],
+                'phone'               => $data['phone'],
+                'email'               => $data['email'] ?? null,
+                'property_id'         => $data['vehicle_id'] ?? null,
+                'company_id'          => $user->company_id,
+                'source'              => 'kiosk',
+                'interest_level'      => $data['interest_level'] ?? 'medium',
+                'lead_category'       => $data['lead_category'] ?? 'prospect',
+                'notes'               => $data['notes'] ?? null,
+                'captured_by_user_id' => $user->id,
+            ]);
+
+            return response()->json(['success' => true, 'lead_id' => $lead->id], 201);
+        })->name('api.kiosk.leads.store');
+    });
+
+    // ── Cotización — calcular y guardar ──────────────────
+    Route::middleware('api.permission:kiosk,view')->group(function () {
+        Route::post('/kiosk/quotes/calculate', function (\Illuminate\Http\Request $request) {
+            $request->validate([
+                'vehicle_price'     => 'required|numeric|min:0',
+                'down_payment'      => 'required|numeric|min:0',
+                'term_months'       => 'required|integer|in:12,24,36,48,60,72,84',
+                'interest_rate'     => 'required|numeric|min:0|max:100',
+                'payment_frequency' => 'nullable|in:monthly,annual',
+            ]);
+
+            $quote = \App\Models\VehicleQuote::generateQuote(
+                (float) $request->vehicle_price,
+                (float) $request->down_payment,
+                (int)   $request->term_months,
+                (float) $request->interest_rate,
+                $request->get('payment_frequency', 'monthly')
+            );
+
+            return response()->json($quote);
+        })->name('api.kiosk.quotes.calculate');
+
+        Route::post('/kiosk/quotes', function (\Illuminate\Http\Request $request) {
+            $data = $request->validate([
+                'vehicle_id'        => 'nullable|exists:properties,id',
+                'customer_name'     => 'required|string|max:255',
+                'customer_email'    => 'nullable|email',
+                'customer_phone'    => 'required|string|max:20',
+                'vehicle_price'     => 'nullable|numeric',
+                'down_payment'      => 'nullable|numeric',
+                'term_months'       => 'nullable|integer',
+                'interest_rate'     => 'nullable|numeric',
+                'payment_frequency' => 'nullable|in:monthly,annual',
+                'monthly_payment'   => 'nullable|numeric',
+                'total_amount'      => 'nullable|numeric',
+                'total_interest'    => 'nullable|numeric',
+            ]);
+
+            $user             = $request->user();
+            $vehiclePrice     = (float)($data['vehicle_price'] ?? 0);
+            $downPayment      = (float)($data['down_payment'] ?? 0);
+            $paymentFrequency = $data['payment_frequency'] ?? 'monthly';
+
+            if (isset($data['monthly_payment'], $data['total_amount'])) {
+                $monthlyPayment     = (float) $data['monthly_payment'];
+                $totalAmount        = (float) $data['total_amount'];
+                $totalInterest      = (float)($data['total_interest'] ?? 0);
+                $downPaymentPercent = $vehiclePrice > 0 ? round(($downPayment / $vehiclePrice) * 100, 2) : 0;
+            } else {
+                $calc               = \App\Models\VehicleQuote::generateQuote($vehiclePrice, $downPayment, $data['term_months'] ?? 36, $data['interest_rate'] ?? 1, $paymentFrequency);
+                $monthlyPayment     = $calc['monthly_payment'];
+                $totalAmount        = $calc['total_amount'];
+                $totalInterest      = $calc['total_interest'];
+                $downPaymentPercent = $calc['down_payment_percent'];
+            }
+
+            $quote = \App\Models\VehicleQuote::create([
+                'property_id'          => $data['vehicle_id'] ?? null,
+                'company_id'           => $user->company_id,
+                'customer_name'        => $data['customer_name'],
+                'customer_email'       => $data['customer_email'] ?? null,
+                'customer_phone'       => $data['customer_phone'],
+                'vehicle_price'        => $vehiclePrice,
+                'down_payment'         => $downPayment,
+                'down_payment_percent' => $downPaymentPercent,
+                'term_months'          => $data['term_months'] ?? null,
+                'interest_rate'        => $data['interest_rate'] ?? null,
+                'monthly_payment'      => $monthlyPayment,
+                'total_interest'       => $totalInterest,
+                'total_amount'         => $totalAmount,
+                'currency'             => 'CRC',
+                'payment_frequency'    => $paymentFrequency,
+                'captured_by_user_id'  => $user->id,
+            ]);
+
+            return response()->json(['success' => true, 'quote_id' => $quote->id], 201);
+        })->name('api.kiosk.quotes.store');
+    });
+
+    // ── Dashboard del evento ──────────────────────────────
+    Route::middleware('api.permission:event_dashboard,view')->group(function () {
+        Route::get('/kiosk/dashboard', function (\Illuminate\Http\Request $request) {
+            $user      = $request->user();
+            $companyId = $user->isSuperAdmin() ? null : $user->company_id;
+
+            $leadsQ  = \App\Models\EventLead::when($companyId, fn($q) => $q->where('company_id', $companyId));
+            $quotesQ = \App\Models\VehicleQuote::when($companyId, fn($q) => $q->where('company_id', $companyId));
+
+            return response()->json([
+                'total_leads'     => $leadsQ->count(),
+                'leads_today'     => (clone $leadsQ)->whereDate('created_at', today())->count(),
+                'leads_hot'       => (clone $leadsQ)->where('interest_level', 'hot')->count(),
+                'leads_pending'   => (clone $leadsQ)->where('contacted', false)->count(),
+                'quotes_today'    => $quotesQ->whereDate('created_at', today())->count(),
+            ]);
+        })->name('api.kiosk.dashboard');
+
+        Route::get('/kiosk/dashboard/leads', function (\Illuminate\Http\Request $request) {
+            $user      = $request->user();
+            $companyId = $user->isSuperAdmin() ? null : $user->company_id;
+
+            $leads = \App\Models\EventLead::with(['capturedBy:id,name', 'property:id,brand,model,year,image'])
+                ->when($companyId, fn($q) => $q->where('company_id', $companyId))
+                ->latest()
+                ->limit(50)
+                ->get()
+                ->map(fn($l) => [
+                    'id'             => $l->id,
+                    'name'           => $l->name,
+                    'phone'          => $l->phone,
+                    'email'          => $l->email,
+                    'interest_level' => $l->interest_level,
+                    'lead_category'  => $l->lead_category,
+                    'source'         => $l->source,
+                    'contacted'      => (bool)$l->contacted,
+                    'contacted_at'   => $l->contacted_at?->toIso8601String(),
+                    'contacted_by'   => $l->contacted_by,
+                    'notes'          => $l->notes,
+                    'created_at'     => $l->created_at->toIso8601String(),
+                    'agent'          => $l->capturedBy ? ['id' => $l->capturedBy->id, 'name' => $l->capturedBy->name] : null,
+                    'vehicle'        => $l->property ? [
+                        'id'    => $l->property->id,
+                        'name'  => trim("{$l->property->brand} {$l->property->model} {$l->property->year}"),
+                        'image' => $l->property->image ? apiFileUrl($l->property->image) : null,
+                    ] : null,
+                ]);
+
+            return response()->json(['total' => $leads->count(), 'leads' => $leads]);
+        })->name('api.kiosk.dashboard.leads');
+
+        // Marcar lead como contactado
+        Route::post('/kiosk/leads/{id}/contacted', function (\Illuminate\Http\Request $request, int $id) {
+            if (!$request->user()->canAccessModule('event_dashboard', 'mark_contacted')) {
+                return response()->json(['message' => 'Sin permiso para marcar como contactado'], 403);
+            }
+            $lead = \App\Models\EventLead::findOrFail($id);
+            $lead->update([
+                'contacted'      => true,
+                'contacted_at'   => now(),
+                'contacted_by'   => $request->user()->name,
+                'follow_up_status' => 'completed',
+            ]);
+            return response()->json(['success' => true]);
+        })->name('api.kiosk.leads.contacted');
+    });
+});

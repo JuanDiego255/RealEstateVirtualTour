@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:space360_flutter/src/models/auth_response.dart';
+import 'package:space360_flutter/src/navigation/agent_nav_page.dart';
 import 'package:space360_flutter/src/pages/legal/privacy_page.dart';
 import 'package:space360_flutter/src/services/api_service.dart';
 import 'package:space360_flutter/src/utils/resource.dart';
@@ -43,8 +44,14 @@ class _LoginPageState extends State<LoginPage> {
     if (!mounted) return;
     setState(() => _loading = false);
     if (result is Success<AuthResponse>) {
-      await _api.saveToken(result.data.token);
-      if (mounted) Navigator.pushReplacementNamed(context, '/dashboard');
+      final auth = (result as Success<AuthResponse>).data;
+      await _api.saveSession(auth);
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => AgentNavPage(user: auth.user)),
+        );
+      }
     } else if (result is AppError) {
       Fluttertoast.showToast(
         msg: (result as AppError).message,

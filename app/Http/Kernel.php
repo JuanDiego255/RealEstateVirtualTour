@@ -65,8 +65,9 @@ class Kernel extends HttpKernel
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
 
         // Custom middleware
-        'role' => \App\Http\Middleware\CheckRole::class,
-        'subscription' => \App\Http\Middleware\CheckSubscription::class,
-        'company' => \App\Http\Middleware\CheckCompanyAccess::class,
+        'role'           => \App\Http\Middleware\CheckRole::class,
+        'subscription'   => \App\Http\Middleware\CheckSubscription::class,
+        'company'        => \App\Http\Middleware\CheckCompanyAccess::class,
+        'api.permission' => \App\Http\Middleware\CheckApiPermission::class,
     ];
 }

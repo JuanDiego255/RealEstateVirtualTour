@@ -7,7 +7,8 @@ import 'package:space360_flutter/src/utils/resource.dart';
 const _kHost = 'space360cr.com';
 
 class ApiService {
-  static const _tokenKey = 's360_token';
+  static const _tokenKey  = 's360_token';
+  static const _userKey   = 's360_user';
 
   // ─── Auth ─────────────────────────────────────────────────────────────────
 
@@ -31,6 +32,19 @@ class ApiService {
 
   // ─── Session ──────────────────────────────────────────────────────────────
 
+  Future<void> saveSession(AuthResponse auth) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_tokenKey, auth.token);
+    await prefs.setString(_userKey, jsonEncode({
+      'id':          auth.user.id,
+      'name':        auth.user.name,
+      'email':       auth.user.email,
+      'role':        auth.user.role,
+      'company_id':  auth.user.companyId,
+      'permissions': auth.user.permissions,
+    }));
+  }
+
   Future<void> saveToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_tokenKey, token);
@@ -41,9 +55,32 @@ class ApiService {
     return prefs.getString(_tokenKey);
   }
 
+  Future<AuthUser?> getSavedUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_userKey);
+    if (raw == null) return null;
+    try {
+      return AuthUser.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> clearSession() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
+    await prefs.remove(_userKey);
+  }
+
+  // ─── Authenticated headers ────────────────────────────────────────────────
+
+  Future<Map<String, String>> authHeaders() async {
+    final token = await getToken();
+    return {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+    };
   }
 
   // ─── Contact / Lead capture ───────────────────────────────────────────────

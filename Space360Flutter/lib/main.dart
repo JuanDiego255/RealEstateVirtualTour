@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:space360_flutter/src/navigation/agent_nav_page.dart';
 import 'package:space360_flutter/src/navigation/bottom_nav_page.dart';
-import 'package:space360_flutter/src/pages/dashboard/dashboard_page.dart';
 import 'package:space360_flutter/src/pages/legal/privacy_page.dart';
 import 'package:space360_flutter/src/pages/login/login_page.dart';
 import 'package:space360_flutter/src/services/api_service.dart';
@@ -12,7 +12,6 @@ void main() async {
   runZonedGuarded(
     () => runApp(const Space360App()),
     (error, stack) {
-      // Unhandled exceptions are caught here — prevents store rejection due to crashes
       debugPrint('Uncaught error: $error\n$stack');
     },
   );
@@ -39,14 +38,13 @@ class Space360App extends StatelessWidget {
         '/': (_) => const _SplashRoute(),
         '/home': (_) => const BottomNavPage(),
         '/login': (_) => const LoginPage(),
-        '/dashboard': (_) => const DashboardPage(),
         '/privacidad': (_) => const PrivacyPage(),
       },
     );
   }
 }
 
-/// Splash — checks for a saved token and routes to /dashboard or /home.
+/// Splash — checks for a saved session and routes accordingly.
 class _SplashRoute extends StatefulWidget {
   const _SplashRoute();
 
@@ -62,12 +60,23 @@ class _SplashRouteState extends State<_SplashRoute> {
   }
 
   Future<void> _check() async {
-    final token = await ApiService().getToken();
+    final api   = ApiService();
+    final token = await api.getToken();
     if (!mounted) return;
-    Navigator.pushReplacementNamed(
-      context,
-      (token != null && token.isNotEmpty) ? '/dashboard' : '/home',
-    );
+
+    if (token != null && token.isNotEmpty) {
+      final user = await api.getSavedUser();
+      if (!mounted) return;
+      if (user != null) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => AgentNavPage(user: user)),
+        );
+        return;
+      }
+    }
+
+    Navigator.pushReplacementNamed(context, '/home');
   }
 
   @override
