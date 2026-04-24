@@ -1,4 +1,38 @@
 /node_modules
+
+# ========================
+# FLUTTER (subcarpeta)
+# ========================
+
+Space360Flutter/build/
+
+# Dart / Flutter
+Space360Flutter/.dart_tool/
+Space360Flutter/.packages
+Space360Flutter/.pub-cache/
+Space360Flutter/.pub/
+
+# IDEs
+Space360Flutter/.idea/
+Space360Flutter/.vscode/
+
+# Mac
+Space360Flutter/.DS_Store
+
+# Android
+Space360Flutter/android/.gradle/
+Space360Flutter/android/app/build/
+
+# iOS
+Space360Flutter/ios/Pods/
+Space360Flutter/ios/.symlinks/
+Space360Flutter/ios/Flutter/Flutter.framework
+Space360Flutter/ios/Flutter/Flutter.podspec
+
+# Archivos sensibles
+Space360Flutter/*.keystore
+Space360Flutter/*.jks
+Space360Flutter/key.properties
 /public/hot
 /public/storage
 /storage/*.key
