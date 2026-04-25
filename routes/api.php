@@ -688,5 +688,79 @@ Route::middleware('auth:api')->group(function () {
             ]);
             return response()->json(['success' => true]);
         })->name('api.kiosk.leads.contacted');
+
+        // Detalle de lead con historial de seguimiento
+        Route::get('/kiosk/leads/{id}', function (\Illuminate\Http\Request $request, int $id) {
+            $user      = $request->user();
+            $companyId = $user->isSuperAdmin() ? null : $user->company_id;
+
+            $lead = \App\Models\EventLead::with([
+                'capturedBy:id,name',
+                'property:id,brand,model,year,image',
+                'followups.agent:id,name',
+            ])
+            ->when($companyId, fn($q) => $q->where('company_id', $companyId))
+            ->findOrFail($id);
+
+            return response()->json([
+                'id'             => $lead->id,
+                'name'           => $lead->name,
+                'phone'          => $lead->phone,
+                'email'          => $lead->email,
+                'interest_level' => $lead->interest_level,
+                'lead_category'  => $lead->lead_category,
+                'source'         => $lead->source,
+                'contacted'      => (bool)$lead->contacted,
+                'contacted_at'   => $lead->contacted_at?->toIso8601String(),
+                'contacted_by'   => $lead->contacted_by,
+                'notes'          => $lead->notes,
+                'created_at'     => $lead->created_at->toIso8601String(),
+                'agent'          => $lead->capturedBy ? ['id' => $lead->capturedBy->id, 'name' => $lead->capturedBy->name] : null,
+                'vehicle'        => $lead->property ? [
+                    'id'    => $lead->property->id,
+                    'name'  => trim("{$lead->property->brand} {$lead->property->model} {$lead->property->year}"),
+                    'image' => $lead->property->image ? apiFileUrl($lead->property->image) : null,
+                ] : null,
+                'followups' => $lead->followups->map(fn($f) => [
+                    'id'               => $f->id,
+                    'action'           => $f->action,
+                    'outcome'          => $f->outcome,
+                    'notes'            => $f->notes,
+                    'next_followup_at' => $f->next_followup_at?->toIso8601String(),
+                    'created_at'       => $f->created_at->toIso8601String(),
+                    'agent'            => $f->agent ? ['id' => $f->agent->id, 'name' => $f->agent->name] : null,
+                ]),
+            ]);
+        })->name('api.kiosk.leads.show');
+
+        // Agregar seguimiento a lead
+        Route::post('/kiosk/leads/{id}/followup', function (\Illuminate\Http\Request $request, int $id) {
+            $data = $request->validate([
+                'action'           => 'required|in:call,whatsapp,email,meeting,demo,quote_sent,other',
+                'outcome'          => 'required|in:no_answer,interested,not_interested,thinking,follow_up_later,converted,lost',
+                'notes'            => 'nullable|string|max:1000',
+                'next_followup_at' => 'nullable|date',
+            ]);
+
+            $user      = $request->user();
+            $companyId = $user->isSuperAdmin() ? null : $user->company_id;
+
+            $lead = \App\Models\EventLead::when($companyId, fn($q) => $q->where('company_id', $companyId))
+                ->findOrFail($id);
+
+            $followup = $lead->followups()->create([
+                'user_id'          => $user->id,
+                'action'           => $data['action'],
+                'outcome'          => $data['outcome'],
+                'notes'            => $data['notes'] ?? null,
+                'next_followup_at' => isset($data['next_followup_at']) ? \Carbon\Carbon::parse($data['next_followup_at']) : null,
+            ]);
+
+            if (in_array($data['outcome'], ['converted', 'lost'])) {
+                $lead->update(['sale_status' => $data['outcome']]);
+            }
+
+            return response()->json(['success' => true, 'followup_id' => $followup->id], 201);
+        })->name('api.kiosk.leads.followup');
     });
 });

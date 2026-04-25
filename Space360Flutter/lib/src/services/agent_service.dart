@@ -167,6 +167,44 @@ class AgentService {
     }
   }
 
+  Future<Resource<EventLeadModel>> getLead(int id) async {
+    try {
+      final headers = await _api.authHeaders();
+      final res = await http.get(Uri.https(_kHost, '/api/kiosk/leads/$id'), headers: headers);
+      if (res.statusCode == 200) {
+        return Success(EventLeadModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>));
+      }
+      return AppError('Error ${res.statusCode}');
+    } catch (e) {
+      return AppError(e.toString());
+    }
+  }
+
+  Future<Resource<bool>> addFollowup({
+    required int leadId,
+    required String action,
+    required String outcome,
+    String? notes,
+  }) async {
+    try {
+      final headers = await _api.authHeaders();
+      final res = await http.post(
+        Uri.https(_kHost, '/api/kiosk/leads/$leadId/followup'),
+        headers: headers,
+        body: jsonEncode({
+          'action':  action,
+          'outcome': outcome,
+          if (notes != null) 'notes': notes,
+        }),
+      );
+      if (res.statusCode == 200 || res.statusCode == 201) return Success(true);
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return AppError(data['message']?.toString() ?? 'Error');
+    } catch (e) {
+      return AppError(e.toString());
+    }
+  }
+
   // ─── Dashboard del evento ─────────────────────────────────────────────────
 
   Future<Resource<DashboardStats>> getDashboardStats() async {

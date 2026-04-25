@@ -1,3 +1,35 @@
+class LeadFollowup {
+  final int id;
+  final String action;
+  final String outcome;
+  final String? notes;
+  final String? nextFollowupAt;
+  final String createdAt;
+  final EventLeadAgent? agent;
+
+  const LeadFollowup({
+    required this.id,
+    required this.action,
+    required this.outcome,
+    required this.createdAt,
+    this.notes,
+    this.nextFollowupAt,
+    this.agent,
+  });
+
+  factory LeadFollowup.fromJson(Map<String, dynamic> j) => LeadFollowup(
+        id:              j['id'] as int,
+        action:          j['action'] as String? ?? '',
+        outcome:         j['outcome'] as String? ?? '',
+        notes:           j['notes'] as String?,
+        nextFollowupAt:  j['next_followup_at'] as String?,
+        createdAt:       j['created_at'] as String? ?? '',
+        agent:           j['agent'] != null
+            ? EventLeadAgent.fromJson(j['agent'] as Map<String, dynamic>)
+            : null,
+      );
+}
+
 class EventLeadVehicle {
   final int id;
   final String name;
@@ -39,6 +71,7 @@ class EventLeadModel {
   final String createdAt;
   final EventLeadAgent? agent;
   final EventLeadVehicle? vehicle;
+  final List<LeadFollowup> followups;
 
   const EventLeadModel({
     required this.id,
@@ -55,6 +88,7 @@ class EventLeadModel {
     this.notes,
     this.agent,
     this.vehicle,
+    this.followups = const [],
   });
 
   factory EventLeadModel.fromJson(Map<String, dynamic> j) => EventLeadModel(
@@ -72,6 +106,9 @@ class EventLeadModel {
         createdAt:      j['created_at'] as String? ?? '',
         agent:          j['agent'] != null ? EventLeadAgent.fromJson(j['agent'] as Map<String, dynamic>) : null,
         vehicle:        j['vehicle'] != null ? EventLeadVehicle.fromJson(j['vehicle'] as Map<String, dynamic>) : null,
+        followups:      (j['followups'] as List<dynamic>?)
+            ?.map((e) => LeadFollowup.fromJson(e as Map<String, dynamic>))
+            .toList() ?? const [],
       );
 }
 
