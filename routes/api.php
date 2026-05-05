@@ -43,10 +43,21 @@ Route::post('/vehicle-inquiries', function (\Illuminate\Http\Request $request) {
 
 // Flutter app login: POST /api/login
 Route::post('/login', function (\Illuminate\Http\Request $request) {
-    $credentials = $request->validate([
-        'email'    => 'required|email',
+
+    $request->validate([
+        'login'    => 'required|string',
         'password' => 'required|string',
     ]);
+
+    // Detectar si es email o username
+    $field = filter_var($request->login, FILTER_VALIDATE_EMAIL) 
+                ? 'email' 
+                : 'username';
+
+    $credentials = [
+        $field    => $request->login,
+        'password'=> $request->password
+    ];
 
     if (!\Illuminate\Support\Facades\Auth::attempt($credentials)) {
         return response()->json(['message' => 'Credenciales inválidas'], 401);
@@ -54,11 +65,9 @@ Route::post('/login', function (\Illuminate\Http\Request $request) {
 
     $user = \Illuminate\Support\Facades\Auth::user();
 
-    // Token HMAC determinista — persiste en api_token para que auth:api lo valide
     $token = hash_hmac('sha256', $user->email . '|' . $user->id, config('app.key'));
     $user->forceFill(['api_token' => $token])->save();
 
-    // Permisos del usuario (null para super_admin / company_admin que tienen acceso total)
     $permissions = null;
     if ($user->isAgent()) {
         $perm = $user->modulePermissions;
@@ -76,7 +85,7 @@ Route::post('/login', function (\Illuminate\Http\Request $request) {
             'permissions' => $permissions,
         ],
     ]);
-})->name('api.login');
+});
 
 // Flutter app lead form: POST /api/leads
 Route::post('/leads', function (\Illuminate\Http\Request $request) {
