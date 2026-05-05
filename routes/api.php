@@ -1149,5 +1149,178 @@ Route::middleware(['auth:api', 'api.permission:event_dashboard,view'])->group(fu
             'last_page'    => $quotes->lastPage(),
         ]);
     })->name('api.crm.quotes.index');
+
+    // ── Editar lead ────────────────────────────────────────────────────────────
+    Route::patch('/crm/leads/{id}', function (\Illuminate\Http\Request $request, int $id) {
+        $user = $request->user();
+        $lead = \App\Lead::where('id', $id)
+            ->when(!$user->isSuperAdmin(), fn($q) => $q->where('company_id', $user->company_id))
+            ->firstOrFail();
+
+        $data = $request->validate([
+            'name'            => 'sometimes|string|max:150',
+            'phone'           => 'sometimes|string|max:30',
+            'email'           => 'sometimes|nullable|email|max:150',
+            'whatsapp'        => 'sometimes|nullable|string|max:30',
+            'priority'        => 'sometimes|in:low,medium,high,urgent',
+            'interest_type'   => 'sometimes|in:buy,rent,trade',
+            'budget_min'      => 'sometimes|nullable|numeric|min:0',
+            'budget_max'      => 'sometimes|nullable|numeric|min:0',
+            'budget_currency' => 'sometimes|in:CRC,USD',
+            'notes'           => 'sometimes|nullable|string|max:2000',
+            'requirements'    => 'sometimes|nullable|string|max:2000',
+            'next_follow_up'  => 'sometimes|nullable|date',
+        ]);
+
+        $lead->update($data);
+
+        return response()->json(['success' => true, 'lead_id' => $lead->id]);
+    })->name('api.crm.leads.update');
+
+    // ── Citas de un lead ───────────────────────────────────────────────────────
+    Route::get('/crm/leads/{id}/appointments', function (\Illuminate\Http\Request $request, int $id) {
+        $user = $request->user();
+        $lead = \App\Lead::where('id', $id)
+            ->when(!$user->isSuperAdmin(), fn($q) => $q->where('company_id', $user->company_id))
+            ->firstOrFail();
+
+        $appointments = $lead->appointments()
+            ->with('user:id,name')
+            ->orderBy('starts_at', 'asc')
+            ->get();
+
+        return response()->json([
+            'appointments' => $appointments->map(fn($a) => [
+                'id'          => $a->id,
+                'title'       => $a->title,
+                'type'        => $a->type,
+                'type_label'  => $a->type_label,
+                'status'      => $a->status,
+                'status_label'=> $a->status_label,
+                'starts_at'   => $a->starts_at->toIso8601String(),
+                'ends_at'     => $a->ends_at ? $a->ends_at->toIso8601String() : null,
+                'location'    => $a->location,
+                'description' => $a->description,
+                'outcome'     => $a->outcome,
+                'outcome_label' => $a->outcome_label,
+                'outcome_notes' => $a->outcome_notes,
+                'agent'       => $a->user ? ['id' => $a->user->id, 'name' => $a->user->name] : null,
+            ]),
+        ]);
+    })->name('api.crm.lead.appointments');
+
+    // ── Crear cita ─────────────────────────────────────────────────────────────
+    Route::post('/crm/appointments', function (\Illuminate\Http\Request $request) {
+        $user = $request->user();
+
+        $data = $request->validate([
+            'lead_id'     => 'required|integer',
+            'title'       => 'required|string|max:200',
+            'type'        => 'required|in:property_visit,vehicle_visit,meeting,call,video_call,signing,other',
+            'starts_at'   => 'required|date',
+            'ends_at'     => 'nullable|date|after:starts_at',
+            'location'    => 'nullable|string|max:300',
+            'description' => 'nullable|string|max:1000',
+        ]);
+
+        // Verify lead belongs to same company
+        $lead = \App\Lead::where('id', $data['lead_id'])
+            ->when(!$user->isSuperAdmin(), fn($q) => $q->where('company_id', $user->company_id))
+            ->firstOrFail();
+
+        $appointment = \App\Appointment::create([
+            'company_id'  => $user->company_id ?? $lead->company_id,
+            'user_id'     => $user->id,
+            'lead_id'     => $lead->id,
+            'title'       => $data['title'],
+            'type'        => $data['type'],
+            'starts_at'   => $data['starts_at'],
+            'ends_at'     => $data['ends_at'] ?? null,
+            'location'    => $data['location'] ?? null,
+            'description' => $data['description'] ?? null,
+            'status'      => 'scheduled',
+            'client_name'  => $lead->name,
+            'client_phone' => $lead->phone,
+            'client_email' => $lead->email,
+        ]);
+
+        $lead->logActivity('meeting', [
+            'user_id'     => $user->id,
+            'subject'     => "Cita programada: {$appointment->title}",
+            'description' => $data['description'] ?? null,
+            'activity_at' => now(),
+        ]);
+
+        return response()->json(['success' => true, 'appointment_id' => $appointment->id], 201);
+    })->name('api.crm.appointments.store');
+
+    // ── Actualizar estado de cita ──────────────────────────────────────────────
+    Route::patch('/crm/appointments/{id}/status', function (\Illuminate\Http\Request $request, int $id) {
+        $user = $request->user();
+        $appointment = \App\Appointment::where('id', $id)
+            ->when(!$user->isSuperAdmin(), fn($q) => $q->where('company_id', $user->company_id))
+            ->firstOrFail();
+
+        $data = $request->validate([
+            'status'        => 'required|in:confirmed,completed,cancelled,no_show',
+            'outcome'       => 'nullable|in:successful,follow_up_needed,not_interested,pending',
+            'outcome_notes' => 'nullable|string|max:1000',
+            'cancellation_reason' => 'nullable|string|max:500',
+        ]);
+
+        $appointment->update([
+            'status'               => $data['status'],
+            'outcome'              => $data['outcome'] ?? null,
+            'outcome_notes'        => $data['outcome_notes'] ?? null,
+            'cancellation_reason'  => $data['cancellation_reason'] ?? null,
+        ]);
+
+        // Log activity on lead if completed
+        if ($data['status'] === 'completed' && $appointment->lead_id) {
+            $lead = \App\Lead::find($appointment->lead_id);
+            $lead?->logActivity('visit', [
+                'user_id'     => $user->id,
+                'subject'     => "Cita completada: {$appointment->title}",
+                'description' => $data['outcome_notes'] ?? null,
+                'activity_at' => now(),
+            ]);
+        }
+
+        return response()->json(['success' => true]);
+    })->name('api.crm.appointments.status');
+
+    // ── Agenda: próximas citas ─────────────────────────────────────────────────
+    Route::get('/crm/agenda', function (\Illuminate\Http\Request $request) {
+        $user      = $request->user();
+        $companyId = $user->isSuperAdmin() ? null : $user->company_id;
+
+        $days  = (int) $request->query('days', 14);
+        $days  = max(1, min(90, $days));
+
+        $appointments = \App\Appointment::with(['lead:id,name,phone', 'user:id,name'])
+            ->when($companyId, fn($q) => $q->where('company_id', $companyId))
+            ->when(!$user->isAdmin(), fn($q) => $q->where('user_id', $user->id))
+            ->where('starts_at', '>=', now()->startOfDay())
+            ->where('starts_at', '<=', now()->addDays($days)->endOfDay())
+            ->whereNotIn('status', ['cancelled'])
+            ->orderBy('starts_at', 'asc')
+            ->get();
+
+        return response()->json([
+            'appointments' => $appointments->map(fn($a) => [
+                'id'           => $a->id,
+                'title'        => $a->title,
+                'type'         => $a->type,
+                'type_label'   => $a->type_label,
+                'status'       => $a->status,
+                'status_label' => $a->status_label,
+                'starts_at'    => $a->starts_at->toIso8601String(),
+                'ends_at'      => $a->ends_at ? $a->ends_at->toIso8601String() : null,
+                'location'     => $a->location,
+                'lead'         => $a->lead ? ['id' => $a->lead->id, 'name' => $a->lead->name, 'phone' => $a->lead->phone] : null,
+                'agent'        => $a->user ? ['id' => $a->user->id, 'name' => $a->user->name] : null,
+            ]),
+        ]);
+    })->name('api.crm.agenda');
 });
 

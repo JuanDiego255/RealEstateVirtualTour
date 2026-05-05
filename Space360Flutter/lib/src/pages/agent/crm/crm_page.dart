@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:space360_flutter/src/models/auth_response.dart';
 import 'package:space360_flutter/src/models/crm_lead_model.dart';
+import 'package:space360_flutter/src/pages/agent/crm/crm_agenda_page.dart';
 import 'package:space360_flutter/src/pages/agent/crm/crm_lead_detail_page.dart';
+import 'package:space360_flutter/src/pages/agent/crm/crm_pipeline_page.dart';
 import 'package:space360_flutter/src/pages/agent/crm/create_lead_sheet.dart';
 import 'package:space360_flutter/src/services/crm_service.dart';
 import 'package:space360_flutter/src/utils/resource.dart';
@@ -22,9 +24,24 @@ class CrmPage extends StatefulWidget {
   State<CrmPage> createState() => _CrmPageState();
 }
 
-class _CrmPageState extends State<CrmPage> {
+class _CrmPageState extends State<CrmPage> with SingleTickerProviderStateMixin {
+  late final TabController _tab;
   final _service = CrmService();
   final _searchCtrl = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _tab = TabController(length: 3, vsync: this);
+    _load(reset: true);
+  }
+
+  @override
+  void dispose() {
+    _tab.dispose();
+    _searchCtrl.dispose();
+    super.dispose();
+  }
 
   Resource<CrmLeadPage>? _result;
   String _filterStatus = 'all';
@@ -51,18 +68,6 @@ class _CrmPageState extends State<CrmPage> {
     ('event',  'Eventos'),
     ('agency', 'Agencia'),
   ];
-
-  @override
-  void initState() {
-    super.initState();
-    _load(reset: true);
-  }
-
-  @override
-  void dispose() {
-    _searchCtrl.dispose();
-    super.dispose();
-  }
 
   Future<void> _load({bool reset = false}) async {
     if (reset) {
@@ -118,37 +123,70 @@ class _CrmPageState extends State<CrmPage> {
         automaticallyImplyLeading: false,
         title: const Text('CRM', style: TextStyle(color: _kText, fontWeight: FontWeight.bold)),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: _kSubtext),
-            onPressed: () => _load(reset: true),
+          AnimatedBuilder(
+            animation: _tab,
+            builder: (_, __) => _tab.index == 0
+                ? IconButton(
+                    icon: const Icon(Icons.refresh_rounded, color: _kSubtext),
+                    onPressed: () => _load(reset: true),
+                  )
+                : const SizedBox(),
           ),
         ],
+        bottom: TabBar(
+          controller: _tab,
+          indicatorColor: _kGold,
+          labelColor: _kGold,
+          unselectedLabelColor: _kSubtext,
+          labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+          unselectedLabelStyle: const TextStyle(fontSize: 13),
+          tabs: const [
+            Tab(text: 'Leads'),
+            Tab(text: 'Pipeline'),
+            Tab(text: 'Agenda'),
+          ],
+        ),
       ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: _kGold,
-        foregroundColor: Colors.black,
-        child: const Icon(Icons.person_add_rounded),
-        onPressed: () async {
-          final created = await showCreateLeadSheet(context);
-          if (created == true) _load(reset: true);
-        },
+      floatingActionButton: AnimatedBuilder(
+        animation: _tab,
+        builder: (_, __) => _tab.index == 0
+            ? FloatingActionButton(
+                backgroundColor: _kGold,
+                foregroundColor: Colors.black,
+                child: const Icon(Icons.person_add_rounded),
+                onPressed: () async {
+                  final created = await showCreateLeadSheet(context);
+                  if (created == true) _load(reset: true);
+                },
+              )
+            : const SizedBox(),
       ),
-      body: Column(
+      body: TabBarView(
+        controller: _tab,
         children: [
-          _SearchBar(
-            controller: _searchCtrl,
-            onSubmitted: (_) => _load(reset: true),
+          // ── Tab 1: Leads list ──────────────────────────────────
+          Column(
+            children: [
+              _SearchBar(
+                controller: _searchCtrl,
+                onSubmitted: (_) => _load(reset: true),
+              ),
+              if (_stats != null) _StatsRow(stats: _stats!),
+              _FilterBar(
+                statusOptions: _statusOptions,
+                originOptions: _originOptions,
+                filterStatus: _filterStatus,
+                filterOrigin: _filterOrigin,
+                onStatusChanged: (v) { setState(() => _filterStatus = v); _load(reset: true); },
+                onOriginChanged: (v) { setState(() => _filterOrigin = v); _load(reset: true); },
+              ),
+              Expanded(child: _buildBody()),
+            ],
           ),
-          if (_stats != null) _StatsRow(stats: _stats!),
-          _FilterBar(
-            statusOptions: _statusOptions,
-            originOptions: _originOptions,
-            filterStatus: _filterStatus,
-            filterOrigin: _filterOrigin,
-            onStatusChanged: (v) { setState(() => _filterStatus = v); _load(reset: true); },
-            onOriginChanged: (v) { setState(() => _filterOrigin = v); _load(reset: true); },
-          ),
-          Expanded(child: _buildBody()),
+          // ── Tab 2: Pipeline Kanban ─────────────────────────────
+          CrmPipelinePage(user: widget.user),
+          // ── Tab 3: Agenda ──────────────────────────────────────
+          CrmAgendaPage(user: widget.user),
         ],
       ),
     );

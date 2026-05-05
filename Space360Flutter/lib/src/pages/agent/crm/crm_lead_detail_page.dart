@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:space360_flutter/src/models/appointment_model.dart';
 import 'package:space360_flutter/src/models/auth_response.dart';
 import 'package:space360_flutter/src/models/crm_lead_model.dart';
 import 'package:space360_flutter/src/services/crm_service.dart';
@@ -52,7 +53,9 @@ class CrmLeadDetailPage extends StatefulWidget {
   State<CrmLeadDetailPage> createState() => _CrmLeadDetailPageState();
 }
 
-class _CrmLeadDetailPageState extends State<CrmLeadDetailPage> {
+class _CrmLeadDetailPageState extends State<CrmLeadDetailPage>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tab;
   final _service = CrmService();
   CrmLead? _lead;
   bool _loading = true;
@@ -61,7 +64,14 @@ class _CrmLeadDetailPageState extends State<CrmLeadDetailPage> {
   @override
   void initState() {
     super.initState();
+    _tab = TabController(length: 3, vsync: this);
     _load();
+  }
+
+  @override
+  void dispose() {
+    _tab.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -91,11 +101,32 @@ class _CrmLeadDetailPageState extends State<CrmLeadDetailPage> {
           style: const TextStyle(color: _kText, fontWeight: FontWeight.bold, fontSize: 17),
         ),
         actions: [
+          if (_lead != null)
+            IconButton(
+              icon: const Icon(Icons.edit_rounded, color: _kSubtext),
+              onPressed: () async {
+                final updated = await showEditLeadSheet(context, _lead!);
+                if (updated == true) _load();
+              },
+            ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: _kSubtext),
             onPressed: _load,
           ),
         ],
+        bottom: TabBar(
+          controller: _tab,
+          indicatorColor: _kGold,
+          labelColor: _kGold,
+          unselectedLabelColor: _kSubtext,
+          labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+          unselectedLabelStyle: const TextStyle(fontSize: 12),
+          tabs: const [
+            Tab(text: 'Info'),
+            Tab(text: 'Actividad'),
+            Tab(text: 'Citas'),
+          ],
+        ),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation(_kGold)))
@@ -107,7 +138,14 @@ class _CrmLeadDetailPageState extends State<CrmLeadDetailPage> {
                     TextButton(onPressed: _load, child: const Text('Reintentar', style: TextStyle(color: _kGold))),
                   ]),
                 )
-              : _buildContent(),
+              : TabBarView(
+                  controller: _tab,
+                  children: [
+                    _InfoTab(lead: _lead!),
+                    _ActivityTab(lead: _lead!),
+                    _AppointmentsTab(lead: _lead!, user: widget.user),
+                  ],
+                ),
       bottomNavigationBar: _lead == null
           ? null
           : _ActionBar(
@@ -117,16 +155,22 @@ class _CrmLeadDetailPageState extends State<CrmLeadDetailPage> {
             ),
     );
   }
+}
 
-  Widget _buildContent() {
-    final lead = _lead!;
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
-      children: [
-        // ── Status badge ───────────────────────────────────────────
-        _StatusBadgeRow(lead: lead),
-        const SizedBox(height: 16),
-        // ── Contact info ───────────────────────────────────────────
+// ─── Info tab ─────────────────────────────────────────────────────────────────
+
+class _InfoTab extends StatelessWidget {
+  final CrmLead lead;
+  const _InfoTab({required this.lead});
+
+  @override
+  Widget build(BuildContext context) => ListView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+        children: [
+          // ── Status badge ───────────────────────────────────────────
+          _StatusBadgeRow(lead: lead),
+          const SizedBox(height: 16),
+          // ── Contact info ───────────────────────────────────────────
         _SectionCard(
           title: 'Contacto',
           children: [
@@ -223,73 +267,411 @@ class _CrmLeadDetailPageState extends State<CrmLeadDetailPage> {
             ],
           ),
         ],
-        // ── Activity timeline ──────────────────────────────────────
-        const SizedBox(height: 20),
-        const Text('Actividad', style: TextStyle(color: _kText, fontSize: 15, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 10),
-        if (lead.activities.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 16),
-            child: Center(
-              child: Text('Sin actividades registradas', style: TextStyle(color: _kSubtext, fontSize: 13)),
+        ],
+      );
+}
+
+// ─── Activity tab ─────────────────────────────────────────────────────────────
+
+class _ActivityTab extends StatelessWidget {
+  final CrmLead lead;
+  const _ActivityTab({required this.lead});
+
+  @override
+  Widget build(BuildContext context) {
+    if (lead.activities.isEmpty) {
+      return const Center(
+        child: Text('Sin actividades registradas', style: TextStyle(color: _kSubtext, fontSize: 13)),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
+      itemCount: lead.activities.length,
+      itemBuilder: (_, i) => _ActivityTile(activity: lead.activities[i]),
+    );
+  }
+}
+
+// ─── Appointments tab ─────────────────────────────────────────────────────────
+
+class _AppointmentsTab extends StatefulWidget {
+  final CrmLead lead;
+  final AuthUser user;
+  const _AppointmentsTab({required this.lead, required this.user});
+
+  @override
+  State<_AppointmentsTab> createState() => _AppointmentsTabState();
+}
+
+class _AppointmentsTabState extends State<_AppointmentsTab> with AutomaticKeepAliveClientMixin {
+  final _service = CrmService();
+  List<AppointmentModel> _appointments = [];
+  bool _loading = true;
+  String? _error;
+
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() { _loading = true; _error = null; });
+    final r = await _service.getLeadAppointments(widget.lead.id);
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      if (r is Success<List<AppointmentModel>>) {
+        _appointments = r.data;
+      } else if (r is AppError<List<AppointmentModel>>) {
+        _error = r.message;
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return Scaffold(
+      backgroundColor: _kBg,
+      floatingActionButton: FloatingActionButton(
+        mini: true,
+        backgroundColor: _kGold,
+        foregroundColor: Colors.black,
+        child: const Icon(Icons.add_rounded),
+        onPressed: () async {
+          final created = await showCreateAppointmentSheet(context, widget.lead);
+          if (created == true) _load();
+        },
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation(_kGold)))
+          : _error != null
+              ? Center(child: Text(_error!, style: const TextStyle(color: _kSubtext)))
+              : _appointments.isEmpty
+                  ? const Center(
+                      child: Column(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(Icons.event_busy_rounded, color: _kSubtext, size: 48),
+                        SizedBox(height: 10),
+                        Text('Sin citas programadas', style: TextStyle(color: _kSubtext)),
+                        SizedBox(height: 4),
+                        Text('Toca + para agregar una', style: TextStyle(color: _kSubtext, fontSize: 12)),
+                      ]),
+                    )
+                  : RefreshIndicator(
+                      color: _kGold,
+                      backgroundColor: _kSurface,
+                      onRefresh: _load,
+                      child: ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
+                        itemCount: _appointments.length,
+                        itemBuilder: (_, i) => _AppointmentCard(
+                          appointment: _appointments[i],
+                          onStatusUpdate: _load,
+                        ),
+                      ),
+                    ),
+    );
+  }
+}
+
+// ─── Appointment card (in lead detail) ───────────────────────────────────────
+
+class _AppointmentCard extends StatelessWidget {
+  final AppointmentModel appointment;
+  final VoidCallback onStatusUpdate;
+  const _AppointmentCard({required this.appointment, required this.onStatusUpdate});
+
+  static const _typeColors = {
+    'property_visit': Color(0xFF4CAF50), 'vehicle_visit': Color(0xFF2196F3),
+    'meeting': Color(0xFF9C27B0), 'call': Color(0xFFFF9800),
+    'video_call': Color(0xFF00BCD4), 'signing': Color(0xFFE91E63), 'other': Color(0xFF607D8B),
+  };
+  static const _typeIcons = {
+    'property_visit': Icons.home_rounded, 'vehicle_visit': Icons.directions_car_rounded,
+    'meeting': Icons.groups_rounded, 'call': Icons.phone_rounded,
+    'video_call': Icons.videocam_rounded, 'signing': Icons.draw_rounded, 'other': Icons.event_rounded,
+  };
+  static const _statusColors = {
+    'scheduled': Color(0xFF3498DB), 'confirmed': Color(0xFF2ECC71),
+    'in_progress': Color(0xFFF39C12), 'completed': Color(0xFF27AE60), 'no_show': Color(0xFF7F8C8D),
+  };
+
+  Color get _typeColor  => _typeColors[appointment.type]  ?? const Color(0xFF607D8B);
+  IconData get _typeIcon => _typeIcons[appointment.type]  ?? Icons.event_rounded;
+  Color get _statusColor => _statusColors[appointment.status] ?? _kSubtext;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: _kSurface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border(left: BorderSide(color: _typeColor, width: 3)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Icon(_typeIcon, size: 16, color: _typeColor),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(appointment.title,
+                style: const TextStyle(color: _kText, fontSize: 14, fontWeight: FontWeight.bold)),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+            decoration: BoxDecoration(
+              color: _statusColor.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(10),
             ),
-          )
-        else
-          ...lead.activities.map((a) => _ActivityTile(activity: a)),
-      ],
+            child: Text(appointment.statusLabel,
+                style: TextStyle(color: _statusColor, fontSize: 10, fontWeight: FontWeight.bold)),
+          ),
+        ]),
+        const SizedBox(height: 6),
+        Row(children: [
+          const Icon(Icons.access_time_rounded, size: 12, color: _kSubtext),
+          const SizedBox(width: 4),
+          Text(_fmtDatetime(appointment.startsAt),
+              style: const TextStyle(color: _kSubtext, fontSize: 12)),
+        ]),
+        if (appointment.location != null && appointment.location!.isNotEmpty) ...[
+          const SizedBox(height: 3),
+          Row(children: [
+            const Icon(Icons.location_on_rounded, size: 12, color: _kSubtext),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Text(appointment.location!,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: _kSubtext, fontSize: 12)),
+            ),
+          ]),
+        ],
+        if (_canUpdateStatus) ...[
+          const SizedBox(height: 10),
+          Row(children: [
+            if (appointment.status == 'scheduled')
+              _StatusBtn('Confirmar', const Color(0xFF2ECC71), () => _updateStatus(context, 'confirmed')),
+            if (appointment.status != 'completed' && appointment.status != 'no_show') ...[
+              const SizedBox(width: 8),
+              _StatusBtn('Completar', const Color(0xFF27AE60), () => _showCompleteDialog(context)),
+              const SizedBox(width: 8),
+              _StatusBtn('Cancelar', const Color(0xFFE74C3C), () => _updateStatus(context, 'cancelled')),
+            ],
+          ]),
+        ],
+      ]),
     );
   }
 
-  Widget _vehiclePlaceholder() => Container(
-        width: 72, height: 52,
-        decoration: BoxDecoration(color: _kCard, borderRadius: BorderRadius.circular(8)),
-        child: const Center(child: Icon(Icons.directions_car_rounded, color: Color(0xFF444444), size: 22)),
-      );
+  bool get _canUpdateStatus =>
+      appointment.status != 'completed' && appointment.status != 'cancelled';
 
-  String _interestTypeLabel(String t) => switch (t) {
-    'buy'   => 'Compra',
-    'rent'  => 'Arriendo',
-    'trade' => 'Canje',
-    _       => t,
-  };
-
-  String _priorityLabel(String p) => switch (p) {
-    'urgent' => 'Urgente',
-    'high'   => 'Alta',
-    'medium' => 'Media',
-    'low'    => 'Baja',
-    _        => p,
-  };
-
-  String _budgetText(CrmLead lead) {
-    final sym = lead.budgetCurrency == 'USD' ? '\$' : '₡';
-    if (lead.budgetMin != null && lead.budgetMax != null) {
-      return '$sym${_fmt2(lead.budgetMin!)} – $sym${_fmt2(lead.budgetMax!)}';
+  Future<void> _updateStatus(BuildContext context, String status) async {
+    final r = await CrmService().updateAppointmentStatus(appointment.id, status);
+    if (r is Success<bool>) {
+      Fluttertoast.showToast(msg: 'Estado actualizado', backgroundColor: const Color(0xFF2E7D32));
+      onStatusUpdate();
+    } else if (r is AppError<bool>) {
+      Fluttertoast.showToast(msg: r.message, backgroundColor: Colors.red[700]);
     }
-    if (lead.budgetMin != null) return 'Desde $sym${_fmt2(lead.budgetMin!)}';
-    return 'Hasta $sym${_fmt2(lead.budgetMax!)}';
   }
 
-  String _fmt2(double v) {
-    final s = v.toStringAsFixed(0);
-    final buf = StringBuffer();
-    int c = 0;
-    for (int i = s.length - 1; i >= 0; i--) {
-      if (c > 0 && c % 3 == 0) buf.write(',');
-      buf.write(s[i]);
-      c++;
-    }
-    return buf.toString().split('').reversed.join();
+  void _showCompleteDialog(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: _kSurface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => _CompleteAppointmentSheet(
+        appointmentId: appointment.id,
+        onCompleted: onStatusUpdate,
+      ),
+    );
   }
 
-  String _fmt(String iso) {
+  String _fmtDatetime(String iso) {
     try {
       final dt = DateTime.parse(iso).toLocal();
-      return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} '
+      const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Set','Oct','Nov','Dic'];
+      return '${dt.day} ${months[dt.month - 1]} — '
           '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-    } catch (_) {
-      return iso;
+    } catch (_) { return iso; }
+  }
+}
+
+class _StatusBtn extends StatelessWidget {
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+  const _StatusBtn(this.label, this.color, this.onTap);
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: color.withOpacity(0.4)),
+          ),
+          child: Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold)),
+        ),
+      );
+}
+
+class _CompleteAppointmentSheet extends StatefulWidget {
+  final int appointmentId;
+  final VoidCallback onCompleted;
+  const _CompleteAppointmentSheet({required this.appointmentId, required this.onCompleted});
+
+  @override
+  State<_CompleteAppointmentSheet> createState() => _CompleteAppointmentSheetState();
+}
+
+class _CompleteAppointmentSheetState extends State<_CompleteAppointmentSheet> {
+  String? _outcome;
+  final _notesCtrl = TextEditingController();
+  bool _saving = false;
+
+  static const _outcomes = [
+    ('successful',       'Exitosa',              Color(0xFF27AE60)),
+    ('follow_up_needed', 'Requiere seguimiento', Color(0xFFF39C12)),
+    ('not_interested',   'No interesado',        Color(0xFFE74C3C)),
+    ('pending',          'Pendiente',            Color(0xFF3498DB)),
+  ];
+
+  @override
+  void dispose() { _notesCtrl.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 20),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('Completar cita', style: TextStyle(color: _kText, fontSize: 16, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 14),
+          const Text('Resultado', style: TextStyle(color: _kSubtext, fontSize: 11)),
+          const SizedBox(height: 8),
+          Wrap(spacing: 8, runSpacing: 8, children: _outcomes.map((o) {
+            final sel = _outcome == o.$1;
+            return GestureDetector(
+              onTap: () => setState(() => _outcome = o.$1),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                decoration: BoxDecoration(
+                  color: sel ? o.$3.withOpacity(0.2) : const Color(0xFF222222),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: sel ? o.$3 : Colors.white12),
+                ),
+                child: Text(o.$2, style: TextStyle(
+                  color: sel ? o.$3 : _kSubtext,
+                  fontSize: 12, fontWeight: sel ? FontWeight.bold : FontWeight.normal,
+                )),
+              ),
+            );
+          }).toList()),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _notesCtrl,
+            style: const TextStyle(color: _kText, fontSize: 13),
+            decoration: const InputDecoration(
+              hintText: 'Notas (opcional)',
+              hintStyle: TextStyle(color: _kSubtext, fontSize: 13),
+              filled: true, fillColor: Color(0xFF222222),
+              border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(10)), borderSide: BorderSide.none),
+              contentPadding: EdgeInsets.all(12),
+            ),
+            maxLines: 2,
+          ),
+          const SizedBox(height: 14),
+          SizedBox(width: double.infinity, child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _kGold, foregroundColor: Colors.black,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: _saving ? null : _save,
+            child: _saving
+                ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
+                : const Text('Guardar', style: TextStyle(fontWeight: FontWeight.bold)),
+          )),
+        ]),
+      );
+
+  Future<void> _save() async {
+    setState(() => _saving = true);
+    final r = await CrmService().updateAppointmentStatus(
+      widget.appointmentId, 'completed',
+      outcome: _outcome,
+      outcomeNotes: _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
+    );
+    if (!mounted) return;
+    Navigator.pop(context);
+    if (r is Success<bool>) {
+      Fluttertoast.showToast(msg: 'Cita completada', backgroundColor: const Color(0xFF2E7D32));
+      widget.onCompleted();
+    } else if (r is AppError<bool>) {
+      Fluttertoast.showToast(msg: r.message, backgroundColor: Colors.red[700]);
     }
+  }
+}
+
+// ─── Helper functions (shared across tabs) ───────────────────────────────────
+
+Widget _vehiclePlaceholder() => Container(
+      width: 72, height: 52,
+      decoration: BoxDecoration(color: _kCard, borderRadius: BorderRadius.circular(8)),
+      child: const Center(child: Icon(Icons.directions_car_rounded, color: Color(0xFF444444), size: 22)),
+    );
+
+String _interestTypeLabel(String t) => switch (t) {
+  'buy'   => 'Compra',
+  'rent'  => 'Arriendo',
+  'trade' => 'Canje',
+  _       => t,
+};
+
+String _priorityLabel(String p) => switch (p) {
+  'urgent' => 'Urgente',
+  'high'   => 'Alta',
+  'medium' => 'Media',
+  'low'    => 'Baja',
+  _        => p,
+};
+
+String _budgetText(CrmLead lead) {
+  final sym = lead.budgetCurrency == 'USD' ? '\$' : '₡';
+  if (lead.budgetMin != null && lead.budgetMax != null) {
+    return '$sym${_fmtNum(lead.budgetMin!)} – $sym${_fmtNum(lead.budgetMax!)}';
+  }
+  if (lead.budgetMin != null) return 'Desde $sym${_fmtNum(lead.budgetMin!)}';
+  return 'Hasta $sym${_fmtNum(lead.budgetMax!)}';
+}
+
+String _fmtNum(double v) {
+  final s = v.toStringAsFixed(0);
+  final buf = StringBuffer();
+  int c = 0;
+  for (int i = s.length - 1; i >= 0; i--) {
+    if (c > 0 && c % 3 == 0) buf.write(',');
+    buf.write(s[i]);
+    c++;
+  }
+  return buf.toString().split('').reversed.join();
+}
+
+String _fmt(String iso) {
+  try {
+    final dt = DateTime.parse(iso).toLocal();
+    return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} '
+        '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  } catch (_) {
+    return iso;
   }
 }
 
@@ -874,6 +1256,369 @@ class _LogActivitySheetState extends State<_LogActivitySheet> {
       Fluttertoast.showToast(msg: 'Actividad registrada', backgroundColor: const Color(0xFF2E7D32));
       widget.onLogged();
     } else if (r is AppError<bool>) {
+      Fluttertoast.showToast(msg: r.message, backgroundColor: Colors.red[700]);
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Edit lead sheet
+// ═══════════════════════════════════════════════════════════════════════════════
+
+Future<bool?> showEditLeadSheet(BuildContext context, CrmLead lead) {
+  return showModalBottomSheet<bool>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: _kSurface,
+    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+    builder: (_) => _EditLeadSheet(lead: lead),
+  );
+}
+
+class _EditLeadSheet extends StatefulWidget {
+  final CrmLead lead;
+  const _EditLeadSheet({required this.lead});
+
+  @override
+  State<_EditLeadSheet> createState() => _EditLeadSheetState();
+}
+
+class _EditLeadSheetState extends State<_EditLeadSheet> {
+  late final TextEditingController _nameCtrl;
+  late final TextEditingController _phoneCtrl;
+  late final TextEditingController _emailCtrl;
+  late final TextEditingController _whatsappCtrl;
+  late final TextEditingController _notesCtrl;
+  late String _priority;
+  bool _saving = false;
+
+  static const _priorities = [
+    ('low',    'Baja',    Color(0xFF2E7D32)),
+    ('medium', 'Media',   Color(0xFFF57F17)),
+    ('high',   'Alta',    Color(0xFFE65100)),
+    ('urgent', 'Urgente', Color(0xFFC62828)),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    final l = widget.lead;
+    _nameCtrl     = TextEditingController(text: l.name);
+    _phoneCtrl    = TextEditingController(text: l.phone);
+    _emailCtrl    = TextEditingController(text: l.email ?? '');
+    _whatsappCtrl = TextEditingController(text: l.whatsapp ?? '');
+    _notesCtrl    = TextEditingController(text: l.notes ?? '');
+    _priority     = l.priority;
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose(); _phoneCtrl.dispose(); _emailCtrl.dispose();
+    _whatsappCtrl.dispose(); _notesCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 20),
+      child: SingleChildScrollView(
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            const Expanded(child: Text('Editar lead',
+                style: TextStyle(color: _kText, fontSize: 17, fontWeight: FontWeight.bold))),
+            IconButton(icon: const Icon(Icons.close_rounded, color: _kSubtext),
+                onPressed: () => Navigator.pop(context)),
+          ]),
+          const SizedBox(height: 14),
+          _EditField(controller: _nameCtrl, hint: 'Nombre', icon: Icons.person_rounded),
+          const SizedBox(height: 10),
+          _EditField(controller: _phoneCtrl, hint: 'Teléfono', icon: Icons.phone_rounded,
+              keyboardType: TextInputType.phone),
+          const SizedBox(height: 10),
+          _EditField(controller: _emailCtrl, hint: 'Email', icon: Icons.email_rounded,
+              keyboardType: TextInputType.emailAddress),
+          const SizedBox(height: 10),
+          _EditField(controller: _whatsappCtrl, hint: 'WhatsApp', icon: Icons.chat_rounded,
+              keyboardType: TextInputType.phone),
+          const SizedBox(height: 14),
+          const Text('Prioridad', style: TextStyle(color: _kSubtext, fontSize: 11)),
+          const SizedBox(height: 6),
+          Row(children: _priorities.map((p) {
+            final sel = _priority == p.$1;
+            return Expanded(child: GestureDetector(
+              onTap: () => setState(() => _priority = p.$1),
+              child: Container(
+                margin: const EdgeInsets.only(right: 6),
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: sel ? p.$3.withOpacity(0.2) : _kCard,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: sel ? p.$3 : Colors.white12),
+                ),
+                child: Center(child: Text(p.$2, style: TextStyle(
+                  color: sel ? p.$3 : _kSubtext, fontSize: 12,
+                  fontWeight: sel ? FontWeight.bold : FontWeight.normal,
+                ))),
+              ),
+            ));
+          }).toList()),
+          const SizedBox(height: 10),
+          _EditField(controller: _notesCtrl, hint: 'Notas', icon: Icons.note_rounded, maxLines: 3),
+          const SizedBox(height: 16),
+          SizedBox(width: double.infinity, child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _kGold, foregroundColor: Colors.black,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: _saving ? null : _save,
+            child: _saving
+                ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
+                : const Text('Guardar cambios', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+          )),
+        ]),
+      ),
+    );
+  }
+
+  Future<void> _save() async {
+    if (_nameCtrl.text.trim().isEmpty || _phoneCtrl.text.trim().isEmpty) {
+      Fluttertoast.showToast(msg: 'Nombre y teléfono son requeridos', backgroundColor: Colors.orange[700]);
+      return;
+    }
+    setState(() => _saving = true);
+    final r = await CrmService().updateLead(widget.lead.id, {
+      'name':     _nameCtrl.text.trim(),
+      'phone':    _phoneCtrl.text.trim(),
+      'email':    _emailCtrl.text.trim().isEmpty ? null : _emailCtrl.text.trim(),
+      'whatsapp': _whatsappCtrl.text.trim().isEmpty ? null : _whatsappCtrl.text.trim(),
+      'priority': _priority,
+      'notes':    _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
+    });
+    if (!mounted) return;
+    if (r is Success<bool>) {
+      Navigator.pop(context, true);
+      Fluttertoast.showToast(msg: 'Lead actualizado', backgroundColor: const Color(0xFF2E7D32));
+    } else if (r is AppError<bool>) {
+      setState(() => _saving = false);
+      Fluttertoast.showToast(msg: r.message, backgroundColor: Colors.red[700]);
+    }
+  }
+}
+
+class _EditField extends StatelessWidget {
+  final TextEditingController controller;
+  final String hint;
+  final IconData icon;
+  final TextInputType? keyboardType;
+  final int maxLines;
+  const _EditField({
+    required this.controller, required this.hint, required this.icon,
+    this.keyboardType, this.maxLines = 1,
+  });
+
+  @override
+  Widget build(BuildContext context) => TextField(
+        controller: controller,
+        style: const TextStyle(color: _kText, fontSize: 13),
+        keyboardType: keyboardType,
+        maxLines: maxLines,
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: const TextStyle(color: _kSubtext, fontSize: 13),
+          prefixIcon: Icon(icon, size: 18, color: _kSubtext),
+          filled: true, fillColor: _kCard,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+          contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+        ),
+      );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Create appointment sheet
+// ═══════════════════════════════════════════════════════════════════════════════
+
+Future<bool?> showCreateAppointmentSheet(BuildContext context, CrmLead lead) {
+  return showModalBottomSheet<bool>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: _kSurface,
+    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+    builder: (_) => _CreateAppointmentSheet(lead: lead),
+  );
+}
+
+class _CreateAppointmentSheet extends StatefulWidget {
+  final CrmLead lead;
+  const _CreateAppointmentSheet({required this.lead});
+
+  @override
+  State<_CreateAppointmentSheet> createState() => _CreateAppointmentSheetState();
+}
+
+class _CreateAppointmentSheetState extends State<_CreateAppointmentSheet> {
+  static const _types = [
+    ('vehicle_visit',  'Visita vehículo', Icons.directions_car_rounded),
+    ('meeting',        'Reunión',         Icons.groups_rounded),
+    ('call',           'Llamada',         Icons.phone_rounded),
+    ('video_call',     'Videollamada',    Icons.videocam_rounded),
+    ('signing',        'Firma',           Icons.draw_rounded),
+    ('other',          'Otro',            Icons.event_rounded),
+  ];
+
+  String _type = 'meeting';
+  final _titleCtrl    = TextEditingController();
+  final _locationCtrl = TextEditingController();
+  final _descCtrl     = TextEditingController();
+  DateTime _startsAt  = DateTime.now().add(const Duration(hours: 1));
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _titleCtrl.dispose(); _locationCtrl.dispose(); _descCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 20),
+      child: SingleChildScrollView(
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            const Expanded(child: Text('Nueva cita',
+                style: TextStyle(color: _kText, fontSize: 17, fontWeight: FontWeight.bold))),
+            IconButton(icon: const Icon(Icons.close_rounded, color: _kSubtext),
+                onPressed: () => Navigator.pop(context)),
+          ]),
+          Text('con ${widget.lead.name}',
+              style: const TextStyle(color: _kSubtext, fontSize: 13)),
+          const SizedBox(height: 14),
+          // Type selector
+          SizedBox(height: 40, child: ListView(
+            scrollDirection: Axis.horizontal,
+            children: _types.map((t) {
+              final sel = _type == t.$1;
+              return GestureDetector(
+                onTap: () => setState(() => _type = t.$1),
+                child: Container(
+                  margin: const EdgeInsets.only(right: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: sel ? _kGold.withOpacity(0.15) : _kCard,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: sel ? _kGold : Colors.white12),
+                  ),
+                  child: Row(children: [
+                    Icon(t.$3, size: 13, color: sel ? _kGold : _kSubtext),
+                    const SizedBox(width: 5),
+                    Text(t.$2, style: TextStyle(
+                      color: sel ? _kGold : _kSubtext, fontSize: 12,
+                      fontWeight: sel ? FontWeight.bold : FontWeight.normal,
+                    )),
+                  ]),
+                ),
+              );
+            }).toList(),
+          )),
+          const SizedBox(height: 12),
+          _EditField(controller: _titleCtrl, hint: 'Título *', icon: Icons.title_rounded),
+          const SizedBox(height: 10),
+          // Date & time picker
+          GestureDetector(
+            onTap: _pickDateTime,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+              decoration: BoxDecoration(
+                color: _kCard,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(children: [
+                const Icon(Icons.access_time_rounded, size: 18, color: _kSubtext),
+                const SizedBox(width: 10),
+                Text(_fmtDatetimeLocal(_startsAt),
+                    style: const TextStyle(color: _kText, fontSize: 13)),
+              ]),
+            ),
+          ),
+          const SizedBox(height: 10),
+          _EditField(controller: _locationCtrl, hint: 'Ubicación (opcional)', icon: Icons.location_on_rounded),
+          const SizedBox(height: 10),
+          _EditField(controller: _descCtrl, hint: 'Descripción (opcional)', icon: Icons.notes_rounded, maxLines: 2),
+          const SizedBox(height: 16),
+          SizedBox(width: double.infinity, child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _kGold, foregroundColor: Colors.black,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: _saving ? null : _save,
+            child: _saving
+                ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
+                : const Text('Programar cita', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+          )),
+        ]),
+      ),
+    );
+  }
+
+  Future<void> _pickDateTime() async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _startsAt,
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (ctx, child) => Theme(
+        data: ThemeData.dark().copyWith(
+          colorScheme: const ColorScheme.dark(primary: _kGold, surface: _kSurface),
+        ),
+        child: child!,
+      ),
+    );
+    if (date == null || !mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_startsAt),
+      builder: (ctx, child) => Theme(
+        data: ThemeData.dark().copyWith(
+          colorScheme: const ColorScheme.dark(primary: _kGold, surface: _kSurface),
+        ),
+        child: child!,
+      ),
+    );
+    if (time == null) return;
+    setState(() {
+      _startsAt = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    });
+  }
+
+  String _fmtDatetimeLocal(DateTime dt) {
+    const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Set','Oct','Nov','Dic'];
+    return '${dt.day} ${months[dt.month - 1]} ${dt.year}  '
+        '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _save() async {
+    if (_titleCtrl.text.trim().isEmpty) {
+      Fluttertoast.showToast(msg: 'Ingresá un título', backgroundColor: Colors.orange[700]);
+      return;
+    }
+    setState(() => _saving = true);
+    final r = await CrmService().createAppointment(
+      leadId:      widget.lead.id,
+      title:       _titleCtrl.text.trim(),
+      type:        _type,
+      startsAt:    _startsAt.toIso8601String(),
+      location:    _locationCtrl.text.trim().isEmpty ? null : _locationCtrl.text.trim(),
+      description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
+    );
+    if (!mounted) return;
+    if (r is Success<int>) {
+      Navigator.pop(context, true);
+      Fluttertoast.showToast(msg: 'Cita programada', backgroundColor: const Color(0xFF2E7D32));
+    } else if (r is AppError<int>) {
+      setState(() => _saving = false);
       Fluttertoast.showToast(msg: r.message, backgroundColor: Colors.red[700]);
     }
   }

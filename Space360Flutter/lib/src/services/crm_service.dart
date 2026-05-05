@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:space360_flutter/src/models/appointment_model.dart';
 import 'package:space360_flutter/src/models/crm_lead_model.dart';
 import 'package:space360_flutter/src/services/api_service.dart';
 import 'package:space360_flutter/src/utils/resource.dart';
@@ -195,6 +196,128 @@ class CrmService {
         final data  = jsonDecode(res.body) as Map<String, dynamic>;
         final list  = (data['quotes'] as List<dynamic>)
             .map((e) => VehicleQuoteModel.fromJson(e as Map<String, dynamic>))
+            .toList();
+        return Success(list);
+      }
+      return AppError('Error ${res.statusCode}');
+    } catch (e) {
+      return AppError(e.toString());
+    }
+  }
+
+  // ─── Update lead ──────────────────────────────────────────────────────────
+
+  Future<Resource<bool>> updateLead(int id, Map<String, dynamic> fields) async {
+    try {
+      final headers = await _api.authHeaders();
+      final res = await http.patch(
+        Uri.https(_kHost, '/api/crm/leads/$id'),
+        headers: headers,
+        body: jsonEncode(fields),
+      );
+      if (res.statusCode == 200) return Success(true);
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return AppError(data['message']?.toString() ?? 'Error al actualizar');
+    } catch (e) {
+      return AppError(e.toString());
+    }
+  }
+
+  // ─── Appointments ─────────────────────────────────────────────────────────
+
+  Future<Resource<List<AppointmentModel>>> getLeadAppointments(int leadId) async {
+    try {
+      final headers = await _api.authHeaders();
+      final res = await http.get(
+        Uri.https(_kHost, '/api/crm/leads/$leadId/appointments'),
+        headers: headers,
+      );
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        final list = (data['appointments'] as List<dynamic>)
+            .map((e) => AppointmentModel.fromJson(e as Map<String, dynamic>))
+            .toList();
+        return Success(list);
+      }
+      return AppError('Error ${res.statusCode}');
+    } catch (e) {
+      return AppError(e.toString());
+    }
+  }
+
+  Future<Resource<int>> createAppointment({
+    required int leadId,
+    required String title,
+    required String type,
+    required String startsAt,
+    String? endsAt,
+    String? location,
+    String? description,
+  }) async {
+    try {
+      final headers = await _api.authHeaders();
+      final res = await http.post(
+        Uri.https(_kHost, '/api/crm/appointments'),
+        headers: headers,
+        body: jsonEncode({
+          'lead_id':    leadId,
+          'title':      title,
+          'type':       type,
+          'starts_at':  startsAt,
+          if (endsAt      != null) 'ends_at':     endsAt,
+          if (location    != null) 'location':    location,
+          if (description != null) 'description': description,
+        }),
+      );
+      if (res.statusCode == 201) {
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        return Success((data['appointment_id'] as num).toInt());
+      }
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return AppError(data['message']?.toString() ?? 'Error al crear cita');
+    } catch (e) {
+      return AppError(e.toString());
+    }
+  }
+
+  Future<Resource<bool>> updateAppointmentStatus(
+    int appointmentId,
+    String status, {
+    String? outcome,
+    String? outcomeNotes,
+    String? cancellationReason,
+  }) async {
+    try {
+      final headers = await _api.authHeaders();
+      final res = await http.patch(
+        Uri.https(_kHost, '/api/crm/appointments/$appointmentId/status'),
+        headers: headers,
+        body: jsonEncode({
+          'status': status,
+          if (outcome            != null) 'outcome':              outcome,
+          if (outcomeNotes       != null) 'outcome_notes':        outcomeNotes,
+          if (cancellationReason != null) 'cancellation_reason':  cancellationReason,
+        }),
+      );
+      if (res.statusCode == 200) return Success(true);
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return AppError(data['message']?.toString() ?? 'Error');
+    } catch (e) {
+      return AppError(e.toString());
+    }
+  }
+
+  Future<Resource<List<AppointmentModel>>> getAgenda({int days = 14}) async {
+    try {
+      final headers = await _api.authHeaders();
+      final res = await http.get(
+        Uri.https(_kHost, '/api/crm/agenda', {'days': '$days'}),
+        headers: headers,
+      );
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        final list = (data['appointments'] as List<dynamic>)
+            .map((e) => AppointmentModel.fromJson(e as Map<String, dynamic>))
             .toList();
         return Success(list);
       }
