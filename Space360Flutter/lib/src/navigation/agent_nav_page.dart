@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:space360_flutter/src/models/auth_response.dart';
+import 'package:space360_flutter/src/pages/agent/crm/crm_page.dart';
 import 'package:space360_flutter/src/pages/agent/dashboard/event_dashboard_page.dart';
 import 'package:space360_flutter/src/pages/agent/kiosk/kiosk_vehicles_page.dart';
 import 'package:space360_flutter/src/services/api_service.dart';
@@ -30,16 +31,19 @@ class _AgentNavPageState extends State<AgentNavPage> {
 
     final canKiosk     = widget.user.canAccess('kiosk', 'view');
     final canDashboard = widget.user.canAccess('event_dashboard', 'view');
+    final canCrm       = canDashboard || widget.user.isAdmin;
 
     _pages = [
       if (canKiosk)     KioskVehiclesPage(user: widget.user),
       if (canDashboard) EventDashboardPage(user: widget.user),
+      if (canCrm)       CrmPage(user: widget.user),
       _ProfileTab(user: widget.user, onLogout: _logout),
     ];
 
     _items = [
-      if (canKiosk)     const _NavItem(icon: Icons.tablet_rounded,        label: 'Kiosko'),
-      if (canDashboard) const _NavItem(icon: Icons.bar_chart_rounded,     label: 'Evento'),
+      if (canKiosk)     const _NavItem(icon: Icons.tablet_rounded,          label: 'Kiosko'),
+      if (canDashboard) const _NavItem(icon: Icons.bar_chart_rounded,       label: 'Eventos'),
+      if (canCrm)       const _NavItem(icon: Icons.people_alt_rounded,      label: 'CRM'),
       const _NavItem(icon: Icons.person_outline_rounded, label: 'Perfil'),
     ];
   }

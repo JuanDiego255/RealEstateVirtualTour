@@ -773,3 +773,381 @@ Route::middleware('auth:api')->group(function () {
         })->name('api.kiosk.leads.followup');
     });
 });
+
+// ═══════════════════════════════════════════════════════
+// CRM API — authenticated, requires event_dashboard.view
+// ═══════════════════════════════════════════════════════
+
+Route::middleware(['auth:api', 'api.permission:event_dashboard,view'])->group(function () {
+
+    // ── Listar leads CRM ──────────────────────────────────
+    Route::get('/crm/leads', function (\Illuminate\Http\Request $request) {
+        $user      = $request->user();
+        $companyId = $user->isSuperAdmin() ? null : $user->company_id;
+
+        $query = \App\Lead::with(['user:id,name', 'vehicle:id,brand,model,year,image'])
+            ->when($companyId, fn($q) => $q->where('company_id', $companyId));
+
+        if ($request->filled('status'))   $query->where('status', $request->status);
+        if ($request->filled('priority')) $query->where('priority', $request->priority);
+        if ($request->filled('source'))   $query->where('source', $request->source);
+        if ($request->filled('origin')) {
+            if ($request->origin === 'event') $query->fromEvent();
+            if ($request->origin === 'agency') $query->fromAgency();
+        }
+        if ($request->filled('search')) {
+            $s = $request->search;
+            $query->where(fn($q) => $q->where('name','like',"%$s%")
+                ->orWhere('email','like',"%$s%")
+                ->orWhere('phone','like',"%$s%"));
+        }
+
+        $query->orderByRaw("CASE WHEN status IN ('won','lost') THEN 1 ELSE 0 END")
+              ->orderBy('next_follow_up','asc')
+              ->orderByDesc('created_at');
+
+        $paginated = $query->paginate(25);
+
+        $statsQ = \App\Lead::when($companyId, fn($q) => $q->where('company_id', $companyId));
+        $stats = [
+            'total'           => (clone $statsQ)->count(),
+            'new'             => (clone $statsQ)->where('status','new')->count(),
+            'active'          => (clone $statsQ)->whereNotIn('status',['won','lost'])->count(),
+            'won'             => (clone $statsQ)->where('status','won')->count(),
+            'from_events'     => (clone $statsQ)->fromEvent()->count(),
+            'needs_follow_up' => (clone $statsQ)->needsFollowUp()->count(),
+        ];
+
+        $mapLead = fn($l) => [
+            'id'             => $l->id,
+            'name'           => $l->name,
+            'phone'          => $l->phone,
+            'email'          => $l->email,
+            'status'         => $l->status,
+            'status_label'   => $l->status_label,
+            'priority'       => $l->priority,
+            'source'         => $l->source,
+            'source_label'   => $l->source_label,
+            'interest_type'  => $l->interest_type,
+            'next_follow_up' => $l->next_follow_up?->toDateString(),
+            'event_lead_id'  => $l->event_lead_id,
+            'event_name'     => $l->event_name,
+            'created_at'     => $l->created_at->toIso8601String(),
+            'agent'          => $l->user ? ['id' => $l->user->id, 'name' => $l->user->name] : null,
+            'vehicle'        => $l->vehicle ? [
+                'id'    => $l->vehicle->id,
+                'name'  => trim("{$l->vehicle->brand} {$l->vehicle->model} {$l->vehicle->year}"),
+                'image' => $l->vehicle->image ? apiFileUrl($l->vehicle->image) : null,
+            ] : null,
+        ];
+
+        return response()->json([
+            'leads'        => $paginated->map($mapLead),
+            'total'        => $paginated->total(),
+            'current_page' => $paginated->currentPage(),
+            'last_page'    => $paginated->lastPage(),
+            'stats'        => $stats,
+        ]);
+    })->name('api.crm.leads.index');
+
+    // ── Detalle de lead CRM ───────────────────────────────
+    Route::get('/crm/leads/{id}', function (\Illuminate\Http\Request $request, int $id) {
+        $user      = $request->user();
+        $companyId = $user->isSuperAdmin() ? null : $user->company_id;
+
+        $lead = \App\Lead::with([
+            'user:id,name',
+            'vehicle:id,brand,model,year,image,price,currency',
+            'activities' => fn($q) => $q->with('user:id,name')->orderByDesc('activity_at')->limit(30),
+        ])
+        ->when($companyId, fn($q) => $q->where('company_id', $companyId))
+        ->findOrFail($id);
+
+        return response()->json([
+            'id'              => $lead->id,
+            'name'            => $lead->name,
+            'phone'           => $lead->phone,
+            'whatsapp'        => $lead->whatsapp,
+            'email'           => $lead->email,
+            'status'          => $lead->status,
+            'status_label'    => $lead->status_label,
+            'priority'        => $lead->priority,
+            'source'          => $lead->source,
+            'source_label'    => $lead->source_label,
+            'interest_type'   => $lead->interest_type,
+            'budget_min'      => $lead->budget_min,
+            'budget_max'      => $lead->budget_max,
+            'budget_currency' => $lead->budget_currency ?? 'CRC',
+            'notes'           => $lead->notes,
+            'requirements'    => $lead->requirements,
+            'next_follow_up'  => $lead->next_follow_up?->toDateString(),
+            'first_contact_at'=> $lead->first_contact_at?->toIso8601String(),
+            'last_contact_at' => $lead->last_contact_at?->toIso8601String(),
+            'event_lead_id'   => $lead->event_lead_id,
+            'event_name'      => $lead->event_name,
+            'created_at'      => $lead->created_at->toIso8601String(),
+            'agent'           => $lead->user ? ['id' => $lead->user->id, 'name' => $lead->user->name] : null,
+            'vehicle'         => $lead->vehicle ? [
+                'id'    => $lead->vehicle->id,
+                'name'  => trim("{$lead->vehicle->brand} {$lead->vehicle->model} {$lead->vehicle->year}"),
+                'price' => ($lead->vehicle->currency === 'USD' ? '$' : '₡') . number_format((float)($lead->vehicle->price ?? 0)),
+                'image' => $lead->vehicle->image ? apiFileUrl($lead->vehicle->image) : null,
+            ] : null,
+            'activities' => $lead->activities->map(fn($a) => [
+                'id'          => $a->id,
+                'type'        => $a->type,
+                'type_label'  => $a->type_label,
+                'subject'     => $a->subject,
+                'description' => $a->description,
+                'call_result' => $a->call_result,
+                'old_status'  => $a->old_status,
+                'new_status'  => $a->new_status,
+                'activity_at' => $a->activity_at->toIso8601String(),
+                'agent'       => $a->user ? ['id' => $a->user->id, 'name' => $a->user->name] : null,
+            ]),
+        ]);
+    })->name('api.crm.leads.show');
+
+    // ── Crear lead CRM ────────────────────────────────────
+    Route::post('/crm/leads', function (\Illuminate\Http\Request $request) {
+        $data = $request->validate([
+            'name'          => 'required|string|max:255',
+            'phone'         => 'required|string|max:20',
+            'email'         => 'nullable|email|max:255',
+            'whatsapp'      => 'nullable|string|max:20',
+            'source'        => 'nullable|in:website,whatsapp,phone,referral,social_media,walk_in,event,kiosk,qr,quote,other',
+            'priority'      => 'nullable|in:low,medium,high,urgent',
+            'interest_type' => 'nullable|in:buy,rent,sell,other',
+            'notes'         => 'nullable|string|max:2000',
+            'vehicle_id'    => 'nullable|exists:properties,id',
+        ]);
+
+        $user = $request->user();
+        $lead = \App\Lead::create([
+            'company_id'       => $user->company_id,
+            'user_id'          => $user->id,
+            'name'             => $data['name'],
+            'phone'            => $data['phone'],
+            'email'            => $data['email'] ?? null,
+            'whatsapp'         => $data['whatsapp'] ?? null,
+            'source'           => $data['source'] ?? 'other',
+            'priority'         => $data['priority'] ?? 'medium',
+            'interest_type'    => $data['interest_type'] ?? 'buy',
+            'vehicle_id'       => $data['vehicle_id'] ?? null,
+            'notes'            => $data['notes'] ?? null,
+            'status'           => 'new',
+            'first_contact_at' => now(),
+        ]);
+
+        $lead->logActivity('note', [
+            'user_id'     => $user->id,
+            'subject'     => 'Lead creado desde app móvil',
+            'description' => 'Lead creado manualmente desde la aplicación móvil.',
+            'activity_at' => now(),
+        ]);
+
+        return response()->json(['success' => true, 'lead_id' => $lead->id], 201);
+    })->name('api.crm.leads.store');
+
+    // ── Cambiar estado de lead CRM ────────────────────────
+    Route::patch('/crm/leads/{id}/status', function (\Illuminate\Http\Request $request, int $id) {
+        $data = $request->validate([
+            'status' => 'required|in:new,contacted,qualified,proposal,negotiation,won,lost',
+            'note'   => 'nullable|string|max:1000',
+        ]);
+        $user      = $request->user();
+        $companyId = $user->isSuperAdmin() ? null : $user->company_id;
+
+        $lead = \App\Lead::when($companyId, fn($q) => $q->where('company_id', $companyId))->findOrFail($id);
+        $lead->changeStatus($data['status'], $data['note'] ?? null);
+
+        return response()->json(['success' => true]);
+    })->name('api.crm.leads.status');
+
+    // ── Registrar actividad en lead CRM ───────────────────
+    Route::post('/crm/leads/{id}/activity', function (\Illuminate\Http\Request $request, int $id) {
+        $data = $request->validate([
+            'type'        => 'required|in:call,email,whatsapp,visit,meeting,note,other',
+            'subject'     => 'required|string|max:255',
+            'description' => 'nullable|string|max:2000',
+            'call_result' => 'nullable|in:answered,no_answer,busy,voicemail,callback_requested',
+        ]);
+        $user      = $request->user();
+        $companyId = $user->isSuperAdmin() ? null : $user->company_id;
+
+        $lead = \App\Lead::when($companyId, fn($q) => $q->where('company_id', $companyId))->findOrFail($id);
+
+        $lead->logActivity($data['type'], [
+            'user_id'     => $user->id,
+            'subject'     => $data['subject'],
+            'description' => $data['description'] ?? null,
+            'call_result' => $data['call_result'] ?? null,
+            'activity_at' => now(),
+        ]);
+
+        return response()->json(['success' => true]);
+    })->name('api.crm.leads.activity');
+
+    // ── Agregar EventLead al CRM ──────────────────────────
+    Route::post('/event-leads/{id}/add-to-crm', function (\Illuminate\Http\Request $request, int $id) {
+        $user      = $request->user();
+        $companyId = $user->isSuperAdmin() ? null : $user->company_id;
+
+        $eventLead = \App\Models\EventLead::when($companyId, fn($q) => $q->where('company_id', $companyId))
+            ->findOrFail($id);
+
+        // Check duplicate
+        $dup = \App\Lead::where('company_id', $user->company_id)
+            ->where(function ($q) use ($eventLead) {
+                if ($eventLead->phone) $q->orWhere('phone', $eventLead->phone);
+                if ($eventLead->email) $q->orWhere('email', $eventLead->email);
+            })->first();
+
+        if ($dup) {
+            return response()->json([
+                'success' => false, 'duplicate' => true,
+                'message' => 'Ya existe un lead en el CRM con este contacto.',
+                'lead_id' => $dup->id,
+            ], 409);
+        }
+
+        $priority = match($eventLead->interest_level) {
+            'hot' => 'urgent', 'high' => 'high', 'medium' => 'medium', default => 'low',
+        };
+        $source = match($eventLead->source) {
+            'kiosk' => 'kiosk', 'qr' => 'qr', 'compare' => 'event', 'quote' => 'quote', default => 'event',
+        };
+
+        $notes = 'Importado desde Dashboard Evento'
+            . ($eventLead->event_name ? " ({$eventLead->event_name})" : '')
+            . ". Fuente: {$eventLead->source}. Interés: {$eventLead->interest_level}."
+            . ($eventLead->notes ? " Notas: {$eventLead->notes}" : '');
+
+        $lead = \App\Lead::create([
+            'company_id'       => $user->company_id,
+            'user_id'          => $user->id,
+            'property_id'      => $eventLead->property_id,
+            'name'             => $eventLead->name,
+            'email'            => $eventLead->email,
+            'phone'            => $eventLead->phone ?? '',
+            'status'           => 'new',
+            'source'           => $source,
+            'priority'         => $priority,
+            'interest_type'    => 'buy',
+            'notes'            => $notes,
+            'first_contact_at' => $eventLead->created_at,
+            'event_name'       => $eventLead->event_name,
+            'event_lead_id'    => $eventLead->id,
+        ]);
+
+        $lead->logActivity('note', [
+            'user_id'     => $user->id,
+            'subject'     => 'Importado desde app móvil',
+            'description' => "EventLead ID: {$eventLead->id} migrado al CRM.",
+            'activity_at' => now(),
+        ]);
+
+        return response()->json(['success' => true, 'lead_id' => $lead->id], 201);
+    })->name('api.crm.event-leads.add');
+
+    // ── Agregar Cotización al CRM ─────────────────────────
+    Route::post('/quotes/{id}/add-to-crm', function (\Illuminate\Http\Request $request, int $id) {
+        $user      = $request->user();
+        $companyId = $user->isSuperAdmin() ? null : $user->company_id;
+
+        $quote = \App\Models\VehicleQuote::with('property')
+            ->when($companyId, fn($q) => $q->where('company_id', $companyId))
+            ->findOrFail($id);
+
+        if (!$quote->customer_name && !$quote->customer_phone) {
+            return response()->json(['success' => false, 'message' => 'Cotización sin datos del cliente'], 422);
+        }
+
+        if ($quote->customer_phone) {
+            $dup = \App\Lead::where('company_id', $user->company_id)->where('phone', $quote->customer_phone)->first();
+            if ($dup) {
+                return response()->json([
+                    'success' => false, 'duplicate' => true,
+                    'message' => 'Ya existe un lead con este teléfono.',
+                    'lead_id' => $dup->id,
+                ], 409);
+            }
+        }
+
+        $vehiclePrice = (float)($quote->vehicle_price ?? 0);
+        $vehicleName  = $quote->property ? trim("{$quote->property->brand} {$quote->property->model} {$quote->property->year}") : 'N/A';
+        $sym          = ($quote->currency ?? 'CRC') === 'USD' ? '$' : '₡';
+        $notes = "Lead desde cotización" . ($quote->event_name ? " ({$quote->event_name})" : '')
+            . ". Vehículo: {$vehicleName}."
+            . " Cuota: {$sym}" . number_format((float)$quote->monthly_payment)
+            . ". Prima: {$quote->down_payment_percent}%. Plazo: {$quote->term_months} meses. Tasa: {$quote->interest_rate}%.";
+
+        $lead = \App\Lead::create([
+            'company_id'       => $user->company_id,
+            'user_id'          => $user->id,
+            'property_id'      => $quote->property_id,
+            'name'             => $quote->customer_name ?? 'Sin nombre',
+            'email'            => $quote->customer_email,
+            'phone'            => $quote->customer_phone ?? '',
+            'status'           => 'new',
+            'source'           => 'quote',
+            'priority'         => 'high',
+            'interest_type'    => 'buy',
+            'budget_min'       => $vehiclePrice * 0.8,
+            'budget_max'       => $vehiclePrice * 1.2,
+            'budget_currency'  => $quote->currency ?? 'CRC',
+            'notes'            => $notes,
+            'first_contact_at' => $quote->created_at,
+            'event_name'       => $quote->event_name,
+        ]);
+
+        $lead->logActivity('note', [
+            'user_id'     => $user->id,
+            'subject'     => 'Lead creado desde cotización',
+            'description' => $notes,
+            'activity_at' => now(),
+        ]);
+
+        return response()->json(['success' => true, 'lead_id' => $lead->id], 201);
+    })->name('api.crm.quotes.add');
+
+    // ── Listado de cotizaciones (tab Cotizaciones en Eventos) ─
+    Route::get('/kiosk/quotes', function (\Illuminate\Http\Request $request) {
+        $user      = $request->user();
+        $companyId = $user->isSuperAdmin() ? null : $user->company_id;
+
+        $quotes = \App\Models\VehicleQuote::with(['property:id,brand,model,year,image', 'capturedBy:id,name'])
+            ->when($companyId, fn($q) => $q->where('company_id', $companyId))
+            ->latest()
+            ->paginate(25);
+
+        return response()->json([
+            'quotes' => $quotes->map(fn($q) => [
+                'id'                   => $q->id,
+                'customer_name'        => $q->customer_name,
+                'customer_phone'       => $q->customer_phone,
+                'customer_email'       => $q->customer_email,
+                'vehicle_price'        => (float)$q->vehicle_price,
+                'down_payment'         => (float)$q->down_payment,
+                'down_payment_percent' => (float)$q->down_payment_percent,
+                'term_months'          => $q->term_months,
+                'interest_rate'        => (float)$q->interest_rate,
+                'monthly_payment'      => (float)$q->monthly_payment,
+                'total_amount'         => (float)$q->total_amount,
+                'currency'             => $q->currency ?? 'CRC',
+                'event_name'           => $q->event_name,
+                'vehicle'              => $q->property ? [
+                    'id'    => $q->property->id,
+                    'name'  => trim("{$q->property->brand} {$q->property->model} {$q->property->year}"),
+                    'image' => $q->property->image ? apiFileUrl($q->property->image) : null,
+                ] : null,
+                'agent'      => $q->capturedBy ? ['id' => $q->capturedBy->id, 'name' => $q->capturedBy->name] : null,
+                'created_at' => $q->created_at->toIso8601String(),
+            ]),
+            'total'        => $quotes->total(),
+            'current_page' => $quotes->currentPage(),
+            'last_page'    => $quotes->lastPage(),
+        ]);
+    })->name('api.crm.quotes.index');
+});
+

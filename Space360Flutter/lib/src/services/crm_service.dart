@@ -1,0 +1,206 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:space360_flutter/src/models/crm_lead_model.dart';
+import 'package:space360_flutter/src/services/api_service.dart';
+import 'package:space360_flutter/src/utils/resource.dart';
+
+const _kHost = 'space360cr.com';
+
+class CrmService {
+  final _api = ApiService();
+
+  // ─── Leads ────────────────────────────────────────────────────────────────
+
+  Future<Resource<CrmLeadPage>> getLeads({
+    String? status,
+    String? priority,
+    String? origin, // all | event | agency
+    String? search,
+    int page = 1,
+  }) async {
+    try {
+      final headers = await _api.authHeaders();
+      final params  = <String, String>{'page': '$page'};
+      if (status   != null && status   != 'all') params['status']   = status;
+      if (priority  != null && priority  != 'all') params['priority']  = priority;
+      if (origin    != null && origin    != 'all') params['origin']    = origin;
+      if (search    != null && search.isNotEmpty)  params['search']    = search;
+
+      final res = await http.get(
+        Uri.https(_kHost, '/api/crm/leads', params),
+        headers: headers,
+      );
+      if (res.statusCode == 200) {
+        return Success(CrmLeadPage.fromJson(jsonDecode(res.body) as Map<String, dynamic>));
+      }
+      if (res.statusCode == 403) return AppError('Sin permiso para acceder al CRM.');
+      return AppError('Error ${res.statusCode}');
+    } catch (e) {
+      return AppError(e.toString());
+    }
+  }
+
+  Future<Resource<CrmLead>> getLead(int id) async {
+    try {
+      final headers = await _api.authHeaders();
+      final res = await http.get(Uri.https(_kHost, '/api/crm/leads/$id'), headers: headers);
+      if (res.statusCode == 200) {
+        return Success(CrmLead.fromJson(jsonDecode(res.body) as Map<String, dynamic>));
+      }
+      return AppError('Error ${res.statusCode}');
+    } catch (e) {
+      return AppError(e.toString());
+    }
+  }
+
+  Future<Resource<int>> createLead({
+    required String name,
+    required String phone,
+    String? email,
+    String? whatsapp,
+    String source = 'other',
+    String priority = 'medium',
+    String interestType = 'buy',
+    String? notes,
+    int? vehicleId,
+  }) async {
+    try {
+      final headers = await _api.authHeaders();
+      final res = await http.post(
+        Uri.https(_kHost, '/api/crm/leads'),
+        headers: headers,
+        body: jsonEncode({
+          'name':          name,
+          'phone':         phone,
+          if (email     != null) 'email':         email,
+          if (whatsapp  != null) 'whatsapp':      whatsapp,
+          'source':        source,
+          'priority':      priority,
+          'interest_type': interestType,
+          if (notes     != null) 'notes':         notes,
+          if (vehicleId != null) 'vehicle_id':    vehicleId,
+        }),
+      );
+      if (res.statusCode == 201) {
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        return Success((data['lead_id'] as num).toInt());
+      }
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return AppError(data['message']?.toString() ?? 'Error al crear lead');
+    } catch (e) {
+      return AppError(e.toString());
+    }
+  }
+
+  Future<Resource<bool>> changeStatus(int leadId, String status, {String? note}) async {
+    try {
+      final headers = await _api.authHeaders();
+      final res = await http.patch(
+        Uri.https(_kHost, '/api/crm/leads/$leadId/status'),
+        headers: headers,
+        body: jsonEncode({'status': status, if (note != null) 'note': note}),
+      );
+      if (res.statusCode == 200) return Success(true);
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return AppError(data['message']?.toString() ?? 'Error');
+    } catch (e) {
+      return AppError(e.toString());
+    }
+  }
+
+  Future<Resource<bool>> logActivity({
+    required int leadId,
+    required String type,
+    required String subject,
+    String? description,
+    String? callResult,
+  }) async {
+    try {
+      final headers = await _api.authHeaders();
+      final res = await http.post(
+        Uri.https(_kHost, '/api/crm/leads/$leadId/activity'),
+        headers: headers,
+        body: jsonEncode({
+          'type':    type,
+          'subject': subject,
+          if (description != null) 'description': description,
+          if (callResult  != null) 'call_result':  callResult,
+        }),
+      );
+      if (res.statusCode == 200) return Success(true);
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return AppError(data['message']?.toString() ?? 'Error');
+    } catch (e) {
+      return AppError(e.toString());
+    }
+  }
+
+  // ─── Event integration ────────────────────────────────────────────────────
+
+  /// Returns: Success(leadId) | AppError with duplicate=true and leadId when conflict
+  Future<Resource<int>> addEventLeadToCrm(int eventLeadId) async {
+    try {
+      final headers = await _api.authHeaders();
+      final res = await http.post(
+        Uri.https(_kHost, '/api/event-leads/$eventLeadId/add-to-crm'),
+        headers: headers,
+      );
+      if (res.statusCode == 201) {
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        return Success((data['lead_id'] as num).toInt());
+      }
+      if (res.statusCode == 409) {
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        return AppError(data['message']?.toString() ?? 'Duplicado');
+      }
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return AppError(data['message']?.toString() ?? 'Error');
+    } catch (e) {
+      return AppError(e.toString());
+    }
+  }
+
+  Future<Resource<int>> addQuoteToCrm(int quoteId) async {
+    try {
+      final headers = await _api.authHeaders();
+      final res = await http.post(
+        Uri.https(_kHost, '/api/quotes/$quoteId/add-to-crm'),
+        headers: headers,
+      );
+      if (res.statusCode == 201) {
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        return Success((data['lead_id'] as num).toInt());
+      }
+      if (res.statusCode == 409) {
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        return AppError(data['message']?.toString() ?? 'Ya existe en CRM');
+      }
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return AppError(data['message']?.toString() ?? 'Error');
+    } catch (e) {
+      return AppError(e.toString());
+    }
+  }
+
+  // ─── Quotes (Cotizaciones tab) ────────────────────────────────────────────
+
+  Future<Resource<List<VehicleQuoteModel>>> getQuotes({int page = 1}) async {
+    try {
+      final headers = await _api.authHeaders();
+      final res = await http.get(
+        Uri.https(_kHost, '/api/kiosk/quotes', {'page': '$page'}),
+        headers: headers,
+      );
+      if (res.statusCode == 200) {
+        final data  = jsonDecode(res.body) as Map<String, dynamic>;
+        final list  = (data['quotes'] as List<dynamic>)
+            .map((e) => VehicleQuoteModel.fromJson(e as Map<String, dynamic>))
+            .toList();
+        return Success(list);
+      }
+      return AppError('Error ${res.statusCode}');
+    } catch (e) {
+      return AppError(e.toString());
+    }
+  }
+}
