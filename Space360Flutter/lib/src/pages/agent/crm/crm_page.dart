@@ -6,6 +6,7 @@ import 'package:space360_flutter/src/models/auth_response.dart';
 import 'package:space360_flutter/src/models/crm_lead_model.dart';
 import 'package:space360_flutter/src/models/reminder_model.dart';
 import 'package:space360_flutter/src/pages/agent/crm/crm_agenda_page.dart';
+import 'package:space360_flutter/src/pages/agent/crm/crm_analytics_page.dart';
 import 'package:space360_flutter/src/pages/agent/crm/crm_lead_detail_page.dart';
 import 'package:space360_flutter/src/pages/agent/crm/crm_pipeline_page.dart';
 import 'package:space360_flutter/src/pages/agent/crm/create_lead_sheet.dart';
@@ -35,7 +36,7 @@ class _CrmPageState extends State<CrmPage> with SingleTickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    _tab = TabController(length: 3, vsync: this);
+    _tab = TabController(length: 4, vsync: this);
     _load(reset: true);
   }
 
@@ -166,6 +167,7 @@ class _CrmPageState extends State<CrmPage> with SingleTickerProviderStateMixin {
             Tab(text: 'Leads'),
             Tab(text: 'Pipeline'),
             Tab(text: 'Agenda'),
+            Tab(text: 'Analytics'),
           ],
         ),
       ),
@@ -215,6 +217,8 @@ class _CrmPageState extends State<CrmPage> with SingleTickerProviderStateMixin {
           CrmPipelinePage(user: widget.user),
           // ── Tab 3: Agenda ──────────────────────────────────────
           CrmAgendaPage(user: widget.user),
+          // ── Tab 4: Analytics ───────────────────────────────────
+          CrmAnalyticsPage(user: widget.user),
         ],
       ),
     );

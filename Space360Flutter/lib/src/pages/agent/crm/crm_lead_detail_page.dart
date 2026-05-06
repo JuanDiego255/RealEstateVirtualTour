@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:space360_flutter/src/models/appointment_model.dart';
 import 'package:space360_flutter/src/models/auth_response.dart';
@@ -178,11 +179,11 @@ class _InfoTab extends StatelessWidget {
           title: 'Contacto',
           children: [
             _InfoRow(icon: Icons.person_rounded, label: lead.name),
-            _InfoRow(icon: Icons.phone_rounded, label: lead.phone),
+            _InfoRow(icon: Icons.phone_rounded,  label: lead.phone,      copyValue: lead.phone),
             if (lead.email != null)
-              _InfoRow(icon: Icons.email_rounded, label: lead.email!),
+              _InfoRow(icon: Icons.email_rounded, label: lead.email!,    copyValue: lead.email),
             if (lead.whatsapp != null)
-              _InfoRow(icon: Icons.chat_rounded, label: lead.whatsapp!),
+              _InfoRow(icon: Icons.chat_rounded,  label: lead.whatsapp!, copyValue: lead.whatsapp),
             if (lead.agent != null)
               _InfoRow(icon: Icons.badge_rounded, label: lead.agent!.name, sublabel: 'Agente'),
           ],
@@ -793,7 +794,8 @@ class _InfoRow extends StatelessWidget {
   final IconData icon;
   final String label;
   final String? sublabel;
-  const _InfoRow({required this.icon, required this.label, this.sublabel});
+  final String? copyValue;
+  const _InfoRow({required this.icon, required this.label, this.sublabel, this.copyValue});
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -808,6 +810,21 @@ class _InfoRow extends StatelessWidget {
                 Text(sublabel!, style: const TextStyle(color: _kSubtext, fontSize: 11)),
             ]),
           ),
+          if (copyValue != null)
+            GestureDetector(
+              onTap: () {
+                Clipboard.setData(ClipboardData(text: copyValue!));
+                Fluttertoast.showToast(
+                  msg: 'Copiado',
+                  backgroundColor: const Color(0xFF2E7D32),
+                  toastLength: Toast.LENGTH_SHORT,
+                );
+              },
+              child: const Padding(
+                padding: EdgeInsets.only(left: 8),
+                child: Icon(Icons.copy_rounded, size: 14, color: _kSubtext),
+              ),
+            ),
         ]),
       );
 }
@@ -1292,7 +1309,13 @@ class _EditLeadSheetState extends State<_EditLeadSheet> {
   late final TextEditingController _emailCtrl;
   late final TextEditingController _whatsappCtrl;
   late final TextEditingController _notesCtrl;
+  late final TextEditingController _budgetMinCtrl;
+  late final TextEditingController _budgetMaxCtrl;
+  late final TextEditingController _requirementsCtrl;
   late String _priority;
+  late String _currency;
+  late String _interestType;
+  DateTime? _nextFollowUp;
   bool _saving = false;
 
   static const _priorities = [
@@ -1302,22 +1325,39 @@ class _EditLeadSheetState extends State<_EditLeadSheet> {
     ('urgent', 'Urgente', Color(0xFFC62828)),
   ];
 
+  static const _interestTypes = [
+    ('buy',   'Compra'),
+    ('rent',  'Arriendo'),
+    ('trade', 'Canje'),
+  ];
+
   @override
   void initState() {
     super.initState();
     final l = widget.lead;
-    _nameCtrl     = TextEditingController(text: l.name);
-    _phoneCtrl    = TextEditingController(text: l.phone);
-    _emailCtrl    = TextEditingController(text: l.email ?? '');
-    _whatsappCtrl = TextEditingController(text: l.whatsapp ?? '');
-    _notesCtrl    = TextEditingController(text: l.notes ?? '');
-    _priority     = l.priority;
+    _nameCtrl         = TextEditingController(text: l.name);
+    _phoneCtrl        = TextEditingController(text: l.phone);
+    _emailCtrl        = TextEditingController(text: l.email ?? '');
+    _whatsappCtrl     = TextEditingController(text: l.whatsapp ?? '');
+    _notesCtrl        = TextEditingController(text: l.notes ?? '');
+    _budgetMinCtrl    = TextEditingController(
+        text: l.budgetMin != null ? l.budgetMin!.toStringAsFixed(0) : '');
+    _budgetMaxCtrl    = TextEditingController(
+        text: l.budgetMax != null ? l.budgetMax!.toStringAsFixed(0) : '');
+    _requirementsCtrl = TextEditingController(text: l.requirements ?? '');
+    _priority         = l.priority;
+    _currency         = l.budgetCurrency ?? 'CRC';
+    _interestType     = l.interestType;
+    if (l.nextFollowUp != null) {
+      try { _nextFollowUp = DateTime.parse(l.nextFollowUp!).toLocal(); } catch (_) {}
+    }
   }
 
   @override
   void dispose() {
     _nameCtrl.dispose(); _phoneCtrl.dispose(); _emailCtrl.dispose();
     _whatsappCtrl.dispose(); _notesCtrl.dispose();
+    _budgetMinCtrl.dispose(); _budgetMaxCtrl.dispose(); _requirementsCtrl.dispose();
     super.dispose();
   }
 
@@ -1366,8 +1406,112 @@ class _EditLeadSheetState extends State<_EditLeadSheet> {
               ),
             ));
           }).toList()),
+          const SizedBox(height: 14),
+          // Interest type
+          const Text('Tipo de interés', style: TextStyle(color: _kSubtext, fontSize: 11)),
+          const SizedBox(height: 6),
+          Row(children: _interestTypes.map((t) {
+            final sel = _interestType == t.$1;
+            return Expanded(child: GestureDetector(
+              onTap: () => setState(() => _interestType = t.$1),
+              child: Container(
+                margin: const EdgeInsets.only(right: 6),
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: sel ? _kGold.withOpacity(0.15) : _kCard,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: sel ? _kGold : Colors.white12),
+                ),
+                child: Center(child: Text(t.$2, style: TextStyle(
+                  color: sel ? _kGold : _kSubtext, fontSize: 12,
+                  fontWeight: sel ? FontWeight.bold : FontWeight.normal,
+                ))),
+              ),
+            ));
+          }).toList()),
+          const SizedBox(height: 14),
+          // Budget
+          const Text('Presupuesto', style: TextStyle(color: _kSubtext, fontSize: 11)),
+          const SizedBox(height: 6),
+          Row(children: [
+            // Currency toggle
+            GestureDetector(
+              onTap: () => setState(() => _currency = _currency == 'CRC' ? 'USD' : 'CRC'),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: _kGold.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: _kGold.withOpacity(0.4)),
+                ),
+                child: Text(_currency,
+                    style: const TextStyle(color: _kGold, fontSize: 13, fontWeight: FontWeight.bold)),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: TextField(
+                controller: _budgetMinCtrl,
+                style: const TextStyle(color: _kText, fontSize: 13),
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  hintText: 'Mínimo',
+                  hintStyle: const TextStyle(color: _kSubtext, fontSize: 13),
+                  filled: true, fillColor: _kCard,
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: TextField(
+                controller: _budgetMaxCtrl,
+                style: const TextStyle(color: _kText, fontSize: 13),
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  hintText: 'Máximo',
+                  hintStyle: const TextStyle(color: _kSubtext, fontSize: 13),
+                  filled: true, fillColor: _kCard,
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                ),
+              ),
+            ),
+          ]),
+          const SizedBox(height: 10),
+          _EditField(controller: _requirementsCtrl, hint: 'Requerimientos', icon: Icons.checklist_rounded, maxLines: 2),
           const SizedBox(height: 10),
           _EditField(controller: _notesCtrl, hint: 'Notas', icon: Icons.note_rounded, maxLines: 3),
+          const SizedBox(height: 10),
+          // Next follow-up date picker
+          GestureDetector(
+            onTap: _pickFollowUp,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+              decoration: BoxDecoration(color: _kCard, borderRadius: BorderRadius.circular(10)),
+              child: Row(children: [
+                const Icon(Icons.alarm_rounded, size: 18, color: _kSubtext),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    _nextFollowUp != null ? _fmtFollowUp(_nextFollowUp!) : 'Próximo seguimiento (opcional)',
+                    style: TextStyle(
+                      color: _nextFollowUp != null ? _kText : _kSubtext,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+                if (_nextFollowUp != null)
+                  GestureDetector(
+                    onTap: () => setState(() => _nextFollowUp = null),
+                    child: const Icon(Icons.clear_rounded, size: 16, color: _kSubtext),
+                  ),
+              ]),
+            ),
+          ),
           const SizedBox(height: 16),
           SizedBox(width: double.infinity, child: ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -1385,19 +1529,65 @@ class _EditLeadSheetState extends State<_EditLeadSheet> {
     );
   }
 
+  Future<void> _pickFollowUp() async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _nextFollowUp ?? DateTime.now().add(const Duration(days: 1)),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (ctx, child) => Theme(
+        data: ThemeData.dark().copyWith(
+          colorScheme: const ColorScheme.dark(primary: _kGold, surface: _kSurface),
+        ),
+        child: child!,
+      ),
+    );
+    if (date == null || !mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: _nextFollowUp != null
+          ? TimeOfDay.fromDateTime(_nextFollowUp!)
+          : const TimeOfDay(hour: 9, minute: 0),
+      builder: (ctx, child) => Theme(
+        data: ThemeData.dark().copyWith(
+          colorScheme: const ColorScheme.dark(primary: _kGold, surface: _kSurface),
+        ),
+        child: child!,
+      ),
+    );
+    if (time == null) return;
+    setState(() {
+      _nextFollowUp = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    });
+  }
+
+  String _fmtFollowUp(DateTime dt) {
+    const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Set','Oct','Nov','Dic'];
+    return '${dt.day} ${months[dt.month - 1]} ${dt.year}  '
+        '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  }
+
   Future<void> _save() async {
     if (_nameCtrl.text.trim().isEmpty || _phoneCtrl.text.trim().isEmpty) {
       Fluttertoast.showToast(msg: 'Nombre y teléfono son requeridos', backgroundColor: Colors.orange[700]);
       return;
     }
     setState(() => _saving = true);
+    final budgetMin = double.tryParse(_budgetMinCtrl.text.trim());
+    final budgetMax = double.tryParse(_budgetMaxCtrl.text.trim());
     final r = await CrmService().updateLead(widget.lead.id, {
-      'name':     _nameCtrl.text.trim(),
-      'phone':    _phoneCtrl.text.trim(),
-      'email':    _emailCtrl.text.trim().isEmpty ? null : _emailCtrl.text.trim(),
-      'whatsapp': _whatsappCtrl.text.trim().isEmpty ? null : _whatsappCtrl.text.trim(),
-      'priority': _priority,
-      'notes':    _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
+      'name':            _nameCtrl.text.trim(),
+      'phone':           _phoneCtrl.text.trim(),
+      if (_emailCtrl.text.trim().isNotEmpty)    'email':         _emailCtrl.text.trim(),
+      if (_whatsappCtrl.text.trim().isNotEmpty) 'whatsapp':      _whatsappCtrl.text.trim(),
+      'priority':        _priority,
+      'interest_type':   _interestType,
+      'budget_currency': _currency,
+      if (budgetMin != null) 'budget_min': budgetMin,
+      if (budgetMax != null) 'budget_max': budgetMax,
+      if (_requirementsCtrl.text.trim().isNotEmpty) 'requirements': _requirementsCtrl.text.trim(),
+      if (_notesCtrl.text.trim().isNotEmpty)         'notes':        _notesCtrl.text.trim(),
+      if (_nextFollowUp != null) 'next_follow_up': _nextFollowUp!.toIso8601String(),
     });
     if (!mounted) return;
     if (r is Success<bool>) {

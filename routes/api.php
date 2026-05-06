@@ -1391,5 +1391,62 @@ Route::middleware(['auth:api', 'api.permission:event_dashboard,view'])->group(fu
         $reminder->snooze($minutes);
         return response()->json(['success' => true, 'remind_at' => $reminder->remind_at->toIso8601String()]);
     })->name('api.crm.reminders.snooze');
+
+    // ── Analytics ──────────────────────────────────────────────────────────────
+    Route::get('/crm/analytics', function (\Illuminate\Http\Request $request) {
+        $user      = $request->user();
+        $companyId = $user->isSuperAdmin() ? null : $user->company_id;
+
+        $base = \App\Lead::when($companyId, fn($q) => $q->where('company_id', $companyId));
+
+        // Pipeline funnel: count per status
+        $statuses  = ['new','contacted','qualified','proposal','negotiation','won','lost'];
+        $pipeline  = [];
+        $totalBase = (clone $base)->count();
+        foreach ($statuses as $s) {
+            $pipeline[$s] = (clone $base)->where('status', $s)->count();
+        }
+
+        // This month
+        $thisMonth     = (clone $base)->whereMonth('created_at', now()->month)->whereYear('created_at', now()->year);
+        $wonMonth      = (clone $thisMonth)->where('status', 'won')->count();
+        $lostMonth     = (clone $thisMonth)->where('status', 'lost')->count();
+        $newThisMonth  = (clone $thisMonth)->count();
+        $convRate      = $newThisMonth > 0 ? round(($wonMonth / $newThisMonth) * 100, 1) : 0;
+
+        // Activities today (per type)
+        $todayActs = \App\LeadActivity::when($companyId, function($q) use ($companyId) {
+                return $q->whereHas('lead', fn($lq) => $lq->where('company_id', $companyId));
+            })
+            ->whereDate('activity_at', now())
+            ->selectRaw('type, count(*) as cnt')
+            ->groupBy('type')
+            ->pluck('cnt', 'type');
+
+        // Top agents by closed (won) this month
+        $topAgents = \App\Lead::selectRaw('user_id, count(*) as won_count')
+            ->when($companyId, fn($q) => $q->where('company_id', $companyId))
+            ->where('status', 'won')
+            ->whereMonth('converted_at', now()->month)
+            ->whereYear('converted_at', now()->year)
+            ->whereNotNull('user_id')
+            ->groupBy('user_id')
+            ->orderByDesc('won_count')
+            ->take(5)
+            ->with('user:id,name')
+            ->get()
+            ->map(fn($r) => ['name' => $r->user?->name ?? 'Desconocido', 'won' => $r->won_count]);
+
+        return response()->json([
+            'pipeline'         => $pipeline,
+            'total'            => $totalBase,
+            'won_this_month'   => $wonMonth,
+            'lost_this_month'  => $lostMonth,
+            'new_this_month'   => $newThisMonth,
+            'conversion_rate'  => $convRate,
+            'activities_today' => $todayActs,
+            'top_agents'       => $topAgents,
+        ]);
+    })->name('api.crm.analytics');
 });
 

@@ -4,6 +4,9 @@ import 'package:space360_flutter/src/pages/agent/crm/crm_page.dart';
 import 'package:space360_flutter/src/pages/agent/dashboard/event_dashboard_page.dart';
 import 'package:space360_flutter/src/pages/agent/kiosk/kiosk_vehicles_page.dart';
 import 'package:space360_flutter/src/services/api_service.dart';
+import 'package:space360_flutter/src/services/crm_service.dart';
+import 'package:space360_flutter/src/models/reminder_model.dart';
+import 'package:space360_flutter/src/utils/resource.dart';
 
 const _kGold    = Color(0xFFD4A843);
 const _kSurface = Color(0xFF1A1A1A);
@@ -21,9 +24,11 @@ class AgentNavPage extends StatefulWidget {
 
 class _AgentNavPageState extends State<AgentNavPage> {
   int _index = 0;
+  int _crmBadge = 0;
 
   late final List<Widget> _pages;
   late final List<_NavItem> _items;
+  late final bool _canCrm;
 
   @override
   void initState() {
@@ -31,21 +36,32 @@ class _AgentNavPageState extends State<AgentNavPage> {
 
     final canKiosk     = widget.user.canAccess('kiosk', 'view');
     final canDashboard = widget.user.canAccess('event_dashboard', 'view');
-    final canCrm       = canDashboard || widget.user.isAdmin;
+    _canCrm            = canDashboard || widget.user.isAdmin;
 
     _pages = [
       if (canKiosk)     KioskVehiclesPage(user: widget.user),
       if (canDashboard) EventDashboardPage(user: widget.user),
-      if (canCrm)       CrmPage(user: widget.user),
+      if (_canCrm)      CrmPage(user: widget.user),
       _ProfileTab(user: widget.user, onLogout: _logout),
     ];
 
     _items = [
-      if (canKiosk)     const _NavItem(icon: Icons.tablet_rounded,          label: 'Kiosko'),
-      if (canDashboard) const _NavItem(icon: Icons.bar_chart_rounded,       label: 'Eventos'),
-      if (canCrm)       const _NavItem(icon: Icons.people_alt_rounded,      label: 'CRM'),
+      if (canKiosk)     const _NavItem(icon: Icons.tablet_rounded,     label: 'Kiosko'),
+      if (canDashboard) const _NavItem(icon: Icons.bar_chart_rounded,  label: 'Eventos'),
+      if (_canCrm)      const _NavItem(icon: Icons.people_alt_rounded, label: 'CRM'),
       const _NavItem(icon: Icons.person_outline_rounded, label: 'Perfil'),
     ];
+
+    if (_canCrm) _loadCrmBadge();
+  }
+
+  Future<void> _loadCrmBadge() async {
+    final r = await CrmService().getReminders();
+    if (!mounted) return;
+    if (r is Success<List<ReminderModel>>) {
+      final overdue = r.data.where((rem) => rem.isOverdue).length;
+      if (overdue != _crmBadge) setState(() => _crmBadge = overdue);
+    }
   }
 
   Future<void> _logout() async {
@@ -61,6 +77,10 @@ class _AgentNavPageState extends State<AgentNavPage> {
         items: _items,
         currentIndex: _index,
         onTap: (i) => setState(() => _index = i),
+        crmBadge: _crmBadge,
+        crmIndex: _canCrm
+            ? _items.indexWhere((it) => it.label == 'CRM')
+            : -1,
       ),
     );
   }
@@ -78,8 +98,16 @@ class _NavBar extends StatelessWidget {
   final List<_NavItem> items;
   final int currentIndex;
   final ValueChanged<int> onTap;
+  final int crmBadge;
+  final int crmIndex;
 
-  const _NavBar({required this.items, required this.currentIndex, required this.onTap});
+  const _NavBar({
+    required this.items,
+    required this.currentIndex,
+    required this.onTap,
+    this.crmBadge = 0,
+    this.crmIndex = -1,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -93,7 +121,9 @@ class _NavBar extends StatelessWidget {
         child: Row(
           children: List.generate(items.length, (i) {
             final selected = i == currentIndex;
-            final color = selected ? _kGold : _kSubtext;
+            final color    = selected ? _kGold : _kSubtext;
+            final hasBadge = i == crmIndex && crmBadge > 0;
+
             return Expanded(
               child: InkWell(
                 onTap: () => onTap(i),
@@ -107,7 +137,30 @@ class _NavBar extends StatelessWidget {
                         color: selected ? _kGold.withOpacity(0.12) : Colors.transparent,
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: Icon(items[i].icon, color: color, size: 22),
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Icon(items[i].icon, color: color, size: 22),
+                          if (hasBadge)
+                            Positioned(
+                              top: -4,
+                              right: -6,
+                              child: Container(
+                                padding: const EdgeInsets.all(3),
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFE74C3C),
+                                  shape: BoxShape.circle,
+                                ),
+                                constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                                child: Text(
+                                  crmBadge > 9 ? '9+' : '$crmBadge',
+                                  style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(items[i].label,

@@ -8,6 +8,46 @@ import 'package:space360_flutter/src/utils/resource.dart';
 
 const _kHost = 'space360cr.com';
 
+// ─── Analytics model ──────────────────────────────────────────────────────────
+
+class CrmAnalyticsModel {
+  final Map<String, int> pipeline;
+  final int total;
+  final int wonThisMonth;
+  final int lostThisMonth;
+  final int newThisMonth;
+  final double conversionRate;
+  final Map<String, int> activitiesToday;
+  final List<Map<String, dynamic>> topAgents;
+
+  const CrmAnalyticsModel({
+    required this.pipeline,
+    required this.total,
+    required this.wonThisMonth,
+    required this.lostThisMonth,
+    required this.newThisMonth,
+    required this.conversionRate,
+    required this.activitiesToday,
+    required this.topAgents,
+  });
+
+  factory CrmAnalyticsModel.fromJson(Map<String, dynamic> j) {
+    final pipelineRaw  = j['pipeline'] as Map<String, dynamic>? ?? {};
+    final activitiesRaw = j['activities_today'] as Map<String, dynamic>? ?? {};
+    final agentsRaw    = j['top_agents'] as List<dynamic>? ?? [];
+    return CrmAnalyticsModel(
+      pipeline: pipelineRaw.map((k, v) => MapEntry(k, (v as num).toInt())),
+      total:           (j['total']           as num? ?? 0).toInt(),
+      wonThisMonth:    (j['won_this_month']   as num? ?? 0).toInt(),
+      lostThisMonth:   (j['lost_this_month']  as num? ?? 0).toInt(),
+      newThisMonth:    (j['new_this_month']   as num? ?? 0).toInt(),
+      conversionRate:  (j['conversion_rate']  as num? ?? 0).toDouble(),
+      activitiesToday: activitiesRaw.map((k, v) => MapEntry(k, (v as num).toInt())),
+      topAgents:       agentsRaw.cast<Map<String, dynamic>>(),
+    );
+  }
+}
+
 class CrmService {
   final _api = ApiService();
 
@@ -400,6 +440,21 @@ class CrmService {
         body: jsonEncode({'minutes': minutes}),
       );
       if (res.statusCode == 200) return Success(true);
+      return AppError('Error ${res.statusCode}');
+    } catch (e) {
+      return AppError(e.toString());
+    }
+  }
+
+  // ─── Analytics ────────────────────────────────────────────────────────────
+
+  Future<Resource<CrmAnalyticsModel>> getAnalytics() async {
+    try {
+      final headers = await _api.authHeaders();
+      final res = await http.get(Uri.https(_kHost, '/api/crm/analytics'), headers: headers);
+      if (res.statusCode == 200) {
+        return Success(CrmAnalyticsModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>));
+      }
       return AppError('Error ${res.statusCode}');
     } catch (e) {
       return AppError(e.toString());
