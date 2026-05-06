@@ -76,7 +76,10 @@ class _AgentNavPageState extends State<AgentNavPage> {
       bottomNavigationBar: _NavBar(
         items: _items,
         currentIndex: _index,
-        onTap: (i) => setState(() => _index = i),
+        onTap: (i) {
+          setState(() => _index = i);
+          if (_canCrm) _loadCrmBadge();
+        },
         crmBadge: _crmBadge,
         crmIndex: _canCrm
             ? _items.indexWhere((it) => it.label == 'CRM')

@@ -59,10 +59,11 @@ class CrmService {
     String? origin, // all | event | agency
     String? search,
     int page = 1,
+    int perPage = 25,
   }) async {
     try {
       final headers = await _api.authHeaders();
-      final params  = <String, String>{'page': '$page'};
+      final params  = <String, String>{'page': '$page', 'per_page': '$perPage'};
       if (status   != null && status   != 'all') params['status']   = status;
       if (priority  != null && priority  != 'all') params['priority']  = priority;
       if (origin    != null && origin    != 'all') params['origin']    = origin;
@@ -179,7 +180,7 @@ class CrmService {
 
   // ─── Event integration ────────────────────────────────────────────────────
 
-  /// Returns: Success(leadId) | AppError with duplicate=true and leadId when conflict
+  /// Returns Success(leadId) on create, Duplicate(msg, leadId) on conflict, AppError otherwise.
   Future<Resource<int>> addEventLeadToCrm(int eventLeadId) async {
     try {
       final headers = await _api.authHeaders();
@@ -193,7 +194,8 @@ class CrmService {
       }
       if (res.statusCode == 409) {
         final data = jsonDecode(res.body) as Map<String, dynamic>;
-        return AppError(data['message']?.toString() ?? 'Duplicado');
+        final leadId = (data['lead_id'] as num?)?.toInt() ?? 0;
+        return Duplicate(data['message']?.toString() ?? 'Ya existe en CRM', leadId);
       }
       final data = jsonDecode(res.body) as Map<String, dynamic>;
       return AppError(data['message']?.toString() ?? 'Error');
@@ -215,7 +217,8 @@ class CrmService {
       }
       if (res.statusCode == 409) {
         final data = jsonDecode(res.body) as Map<String, dynamic>;
-        return AppError(data['message']?.toString() ?? 'Ya existe en CRM');
+        final leadId = (data['lead_id'] as num?)?.toInt() ?? 0;
+        return Duplicate(data['message']?.toString() ?? 'Ya existe en CRM', leadId);
       }
       final data = jsonDecode(res.body) as Map<String, dynamic>;
       return AppError(data['message']?.toString() ?? 'Error');
@@ -446,12 +449,32 @@ class CrmService {
     }
   }
 
-  // ─── Analytics ────────────────────────────────────────────────────────────
-
-  Future<Resource<CrmAnalyticsModel>> getAnalytics() async {
+  Future<Resource<bool>> deleteReminder(int reminderId) async {
     try {
       final headers = await _api.authHeaders();
-      final res = await http.get(Uri.https(_kHost, '/api/crm/analytics'), headers: headers);
+      final res = await http.delete(
+        Uri.https(_kHost, '/api/crm/reminders/$reminderId'),
+        headers: headers,
+      );
+      if (res.statusCode == 200) return Success(true);
+      return AppError('Error ${res.statusCode}');
+    } catch (e) {
+      return AppError(e.toString());
+    }
+  }
+
+  // ─── Analytics ────────────────────────────────────────────────────────────
+
+  Future<Resource<CrmAnalyticsModel>> getAnalytics({int? month, int? year}) async {
+    try {
+      final headers = await _api.authHeaders();
+      final params  = <String, String>{};
+      if (month != null) params['month'] = '$month';
+      if (year  != null) params['year']  = '$year';
+      final res = await http.get(
+        Uri.https(_kHost, '/api/crm/analytics', params.isEmpty ? null : params),
+        headers: headers,
+      );
       if (res.statusCode == 200) {
         return Success(CrmAnalyticsModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>));
       }

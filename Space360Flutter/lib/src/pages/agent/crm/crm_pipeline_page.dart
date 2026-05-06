@@ -6,7 +6,6 @@ import 'package:space360_flutter/src/services/crm_service.dart';
 import 'package:space360_flutter/src/utils/resource.dart';
 
 const _kGold    = Color(0xFFD4A843);
-const _kBg      = Color(0xFF0D0D0D);
 const _kSurface = Color(0xFF1A1A1A);
 const _kCard    = Color(0xFF222222);
 const _kText    = Color(0xFFF0F0F0);
@@ -30,11 +29,18 @@ class CrmPipelinePage extends StatefulWidget {
   State<CrmPipelinePage> createState() => _CrmPipelinePageState();
 }
 
-class _CrmPipelinePageState extends State<CrmPipelinePage> {
-  final _service = CrmService();
+class _CrmPipelinePageState extends State<CrmPipelinePage>
+    with AutomaticKeepAliveClientMixin {
+  final _service    = CrmService();
+  final _searchCtrl = TextEditingController();
+
   Map<String, List<CrmLead>>? _pipeline;
   bool _loading = true;
   String? _error;
+  String _query = '';
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -42,26 +48,28 @@ class _CrmPipelinePageState extends State<CrmPipelinePage> {
     _load();
   }
 
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
   Future<void> _load() async {
     setState(() { _loading = true; _error = null; });
-
-    // Load all leads (all statuses), up to 200
-    final futures = <Future<Resource<CrmLeadPage>>>[];
-    for (final s in _kStatuses) {
-      futures.add(_service.getLeads(status: s.$1, page: 1));
-    }
+    final futures = _kStatuses
+        .map((s) => _service.getLeads(status: s.$1, page: 1, perPage: 200))
+        .toList();
     final results = await Future.wait(futures);
     if (!mounted) return;
 
     final map = <String, List<CrmLead>>{};
     bool hasError = false;
     for (int i = 0; i < _kStatuses.length; i++) {
-      final status = _kStatuses[i].$1;
       final r = results[i];
       if (r is Success<CrmLeadPage>) {
-        map[status] = r.data.leads;
+        map[_kStatuses[i].$1] = r.data.leads;
       } else {
-        map[status] = [];
+        map[_kStatuses[i].$1] = [];
         hasError = true;
       }
     }
@@ -72,48 +80,94 @@ class _CrmPipelinePageState extends State<CrmPipelinePage> {
     });
   }
 
+  List<CrmLead> _filter(List<CrmLead> leads) {
+    if (_query.isEmpty) return leads;
+    final q = _query.toLowerCase();
+    return leads.where((l) =>
+      l.name.toLowerCase().contains(q) ||
+      l.phone.contains(q) ||
+      (l.email?.toLowerCase().contains(q) ?? false)
+    ).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     if (_loading) {
       return const Center(
         child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation(_kGold)),
       );
     }
-    return RefreshIndicator(
-      color: _kGold,
-      backgroundColor: _kSurface,
-      onRefresh: _load,
-      child: Column(
-        children: [
-          if (_error != null)
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: Text(_error!, style: const TextStyle(color: Colors.orange, fontSize: 12)),
+    return Column(
+      children: [
+        // ── Search bar ─────────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+          child: TextField(
+            controller: _searchCtrl,
+            style: const TextStyle(color: _kText, fontSize: 13),
+            decoration: InputDecoration(
+              hintText: 'Filtrar por nombre, teléfono...',
+              hintStyle: const TextStyle(color: _kSubtext, fontSize: 13),
+              prefixIcon: const Icon(Icons.search_rounded, color: _kSubtext, size: 18),
+              suffixIcon: ValueListenableBuilder(
+                valueListenable: _searchCtrl,
+                builder: (_, v, __) => v.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear_rounded, color: _kSubtext, size: 16),
+                        onPressed: () {
+                          _searchCtrl.clear();
+                          setState(() => _query = '');
+                        },
+                      )
+                    : const SizedBox(),
+              ),
+              filled: true,
+              fillColor: _kSurface,
+              contentPadding: const EdgeInsets.symmetric(vertical: 8),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide.none,
+              ),
             ),
-          Expanded(
+            onChanged: (v) => setState(() => _query = v.trim()),
+          ),
+        ),
+        if (_error != null)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+            child: Text(_error!, style: const TextStyle(color: Colors.orange, fontSize: 11)),
+          ),
+        // ── Kanban board ───────────────────────────────────────
+        Expanded(
+          child: RefreshIndicator(
+            color: _kGold,
+            backgroundColor: _kSurface,
+            onRefresh: _load,
             child: ListView(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
-              children: _kStatuses.map((s) => _KanbanColumn(
-                status: s.$1,
-                label:  s.$2,
-                color:  s.$3,
-                leads:  _pipeline?[s.$1] ?? [],
-                user:   widget.user,
-                onLeadTap: (lead) async {
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => CrmLeadDetailPage(leadId: lead.id, user: widget.user),
-                    ),
-                  );
-                  _load();
-                },
-              )).toList(),
+              padding: const EdgeInsets.fromLTRB(12, 4, 12, 24),
+              children: _kStatuses.map((s) {
+                final leads = _filter(_pipeline?[s.$1] ?? []);
+                return _KanbanColumn(
+                  label:     s.$2,
+                  color:     s.$3,
+                  leads:     leads,
+                  onLeadTap: (lead) async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => CrmLeadDetailPage(leadId: lead.id, user: widget.user),
+                      ),
+                    );
+                    _load();
+                  },
+                );
+              }).toList(),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -121,19 +175,15 @@ class _CrmPipelinePageState extends State<CrmPipelinePage> {
 // ─── Kanban column ────────────────────────────────────────────────────────────
 
 class _KanbanColumn extends StatelessWidget {
-  final String status;
   final String label;
   final Color color;
   final List<CrmLead> leads;
-  final AuthUser user;
   final void Function(CrmLead) onLeadTap;
 
   const _KanbanColumn({
-    required this.status,
     required this.label,
     required this.color,
     required this.leads,
-    required this.user,
     required this.onLeadTap,
   });
 
@@ -145,7 +195,6 @@ class _KanbanColumn extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Column header
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
@@ -156,11 +205,7 @@ class _KanbanColumn extends StatelessWidget {
             child: Row(children: [
               Expanded(
                 child: Text(label,
-                    style: TextStyle(
-                      color: color,
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                    )),
+                    style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.bold)),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
@@ -173,14 +218,13 @@ class _KanbanColumn extends StatelessWidget {
               ),
             ]),
           ),
-          // Cards
           Expanded(
             child: Container(
               decoration: BoxDecoration(
                 color: _kSurface,
                 border: Border(
-                  left:  BorderSide(color: color.withOpacity(0.3)),
-                  right: BorderSide(color: Colors.white10),
+                  left:   BorderSide(color: color.withOpacity(0.3)),
+                  right:  const BorderSide(color: Colors.white10),
                   bottom: const BorderSide(color: Colors.white10),
                 ),
                 borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
@@ -193,8 +237,8 @@ class _KanbanColumn extends StatelessWidget {
                   : ListView.builder(
                       padding: const EdgeInsets.all(8),
                       itemCount: leads.length,
-                      itemBuilder: (context, i) => _MiniLeadCard(
-                        lead: leads[i],
+                      itemBuilder: (_, i) => _MiniLeadCard(
+                        lead:  leads[i],
                         color: color,
                         onTap: () => onLeadTap(leads[i]),
                       ),
@@ -236,39 +280,32 @@ class _MiniLeadCard extends StatelessWidget {
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(lead.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+              maxLines: 1, overflow: TextOverflow.ellipsis,
               style: const TextStyle(color: _kText, fontSize: 13, fontWeight: FontWeight.bold)),
           const SizedBox(height: 3),
           Text(lead.phone, style: const TextStyle(color: _kSubtext, fontSize: 11)),
           if (lead.vehicle != null) ...[
             const SizedBox(height: 3),
             Text(lead.vehicle!.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+                maxLines: 1, overflow: TextOverflow.ellipsis,
                 style: const TextStyle(color: _kSubtext, fontSize: 10)),
           ],
           const SizedBox(height: 6),
           Row(children: [
-            Container(
-              width: 7, height: 7,
-              decoration: BoxDecoration(color: pColor, shape: BoxShape.circle),
-            ),
+            Container(width: 7, height: 7,
+                decoration: BoxDecoration(color: pColor, shape: BoxShape.circle)),
             const Spacer(),
-            Text(_formatDate(lead.createdAt),
-                style: const TextStyle(color: _kSubtext, fontSize: 10)),
+            Text(_fmtDate(lead.createdAt), style: const TextStyle(color: _kSubtext, fontSize: 10)),
           ]),
         ]),
       ),
     );
   }
 
-  String _formatDate(String iso) {
+  String _fmtDate(String iso) {
     try {
       final dt = DateTime.parse(iso).toLocal();
       return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}';
-    } catch (_) {
-      return '';
-    }
+    } catch (_) { return ''; }
   }
 }

@@ -29,14 +29,22 @@ class _CreateLeadSheet extends StatefulWidget {
 }
 
 class _CreateLeadSheetState extends State<_CreateLeadSheet> {
-  final _nameCtrl  = TextEditingController();
-  final _phoneCtrl = TextEditingController();
-  final _emailCtrl = TextEditingController();
-  final _notesCtrl = TextEditingController();
+  final _nameCtrl     = TextEditingController();
+  final _phoneCtrl    = TextEditingController();
+  final _emailCtrl    = TextEditingController();
+  final _whatsappCtrl = TextEditingController();
+  final _notesCtrl    = TextEditingController();
 
-  String _source   = 'other';
-  String _priority = 'medium';
+  String _source       = 'other';
+  String _priority     = 'medium';
+  String _interestType = 'buy';
   bool _saving = false;
+
+  static const _interestTypes = [
+    ('buy',   'Compra'),
+    ('rent',  'Arriendo'),
+    ('trade', 'Canje'),
+  ];
 
   static const _sources = [
     ('website',     'Web'),
@@ -59,6 +67,7 @@ class _CreateLeadSheetState extends State<_CreateLeadSheet> {
     _nameCtrl.dispose();
     _phoneCtrl.dispose();
     _emailCtrl.dispose();
+    _whatsappCtrl.dispose();
     _notesCtrl.dispose();
     super.dispose();
   }
@@ -89,6 +98,33 @@ class _CreateLeadSheetState extends State<_CreateLeadSheet> {
             const SizedBox(height: 10),
             _Field(controller: _emailCtrl, hint: 'Email (opcional)', icon: Icons.email_rounded,
                 keyboardType: TextInputType.emailAddress),
+            const SizedBox(height: 10),
+            _Field(controller: _whatsappCtrl, hint: 'WhatsApp (opcional)', icon: Icons.chat_rounded,
+                keyboardType: TextInputType.phone),
+            const SizedBox(height: 14),
+            const Text('Tipo de interés', style: TextStyle(color: _kSubtext, fontSize: 11)),
+            const SizedBox(height: 6),
+            Row(
+              children: _interestTypes.map((t) {
+                final sel = _interestType == t.$1;
+                return Expanded(child: GestureDetector(
+                  onTap: () => setState(() => _interestType = t.$1),
+                  child: Container(
+                    margin: const EdgeInsets.only(right: 6),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: sel ? _kGold.withOpacity(0.15) : _kCard,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: sel ? _kGold : Colors.white12),
+                    ),
+                    child: Center(child: Text(t.$2, style: TextStyle(
+                      color: sel ? _kGold : _kSubtext, fontSize: 12,
+                      fontWeight: sel ? FontWeight.bold : FontWeight.normal,
+                    ))),
+                  ),
+                ));
+              }).toList(),
+            ),
             const SizedBox(height: 14),
             const Text('Origen', style: TextStyle(color: _kSubtext, fontSize: 11)),
             const SizedBox(height: 6),
@@ -178,12 +214,14 @@ class _CreateLeadSheetState extends State<_CreateLeadSheet> {
     }
     setState(() => _saving = true);
     final r = await CrmService().createLead(
-      name:     name,
-      phone:    phone,
-      email:    _emailCtrl.text.trim().isEmpty ? null : _emailCtrl.text.trim(),
-      notes:    _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
-      source:   _source,
-      priority: _priority,
+      name:         name,
+      phone:        phone,
+      email:        _emailCtrl.text.trim().isEmpty    ? null : _emailCtrl.text.trim(),
+      whatsapp:     _whatsappCtrl.text.trim().isEmpty ? null : _whatsappCtrl.text.trim(),
+      notes:        _notesCtrl.text.trim().isEmpty    ? null : _notesCtrl.text.trim(),
+      source:       _source,
+      priority:     _priority,
+      interestType: _interestType,
     );
     if (!mounted) return;
     if (r is Success<int>) {

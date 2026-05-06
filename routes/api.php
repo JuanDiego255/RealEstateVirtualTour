@@ -806,7 +806,8 @@ Route::middleware(['auth:api', 'api.permission:event_dashboard,view'])->group(fu
               ->orderBy('next_follow_up','asc')
               ->orderByDesc('created_at');
 
-        $paginated = $query->paginate(25);
+        $perPage   = min((int) $request->input('per_page', 25), 200);
+        $paginated = $query->paginate($perPage);
 
         $statsQ = \App\Lead::when($companyId, fn($q) => $q->where('company_id', $companyId));
         $stats = [
@@ -1383,6 +1384,20 @@ Route::middleware(['auth:api', 'api.permission:event_dashboard,view'])->group(fu
         return response()->json(['success' => true]);
     })->name('api.crm.reminders.complete');
 
+    Route::delete('/crm/reminders/{id}', function (\Illuminate\Http\Request $request, int $id) {
+        $user      = $request->user();
+        $companyId = $user->isSuperAdmin() ? null : $user->company_id;
+
+        $reminder = \App\Models\Reminder::whereHasMorph(
+            'remindable', [\App\Lead::class],
+            fn($q) => $q->when($companyId, fn($lq) => $lq->where('company_id', $companyId))
+        )->findOrFail($id);
+
+        $reminder->delete();
+
+        return response()->json(['success' => true]);
+    })->name('api.crm.reminders.delete');
+
     Route::patch('/crm/reminders/{id}/snooze', function (\Illuminate\Http\Request $request, int $id) {
         $user     = $request->user();
         $reminder = \App\Reminder::where('id', $id)->where('user_id', $user->id)->firstOrFail();
@@ -1397,6 +1412,9 @@ Route::middleware(['auth:api', 'api.permission:event_dashboard,view'])->group(fu
         $user      = $request->user();
         $companyId = $user->isSuperAdmin() ? null : $user->company_id;
 
+        $month = (int) $request->input('month', now()->month);
+        $year  = (int) $request->input('year',  now()->year);
+
         $base = \App\Lead::when($companyId, fn($q) => $q->where('company_id', $companyId));
 
         // Pipeline funnel: count per status
@@ -1407,28 +1425,31 @@ Route::middleware(['auth:api', 'api.permission:event_dashboard,view'])->group(fu
             $pipeline[$s] = (clone $base)->where('status', $s)->count();
         }
 
-        // This month
-        $thisMonth     = (clone $base)->whereMonth('created_at', now()->month)->whereYear('created_at', now()->year);
-        $wonMonth      = (clone $thisMonth)->where('status', 'won')->count();
-        $lostMonth     = (clone $thisMonth)->where('status', 'lost')->count();
-        $newThisMonth  = (clone $thisMonth)->count();
-        $convRate      = $newThisMonth > 0 ? round(($wonMonth / $newThisMonth) * 100, 1) : 0;
+        // Selected month stats
+        $selMonth     = (clone $base)->whereMonth('created_at', $month)->whereYear('created_at', $year);
+        $wonMonth     = (clone $selMonth)->where('status', 'won')->count();
+        $lostMonth    = (clone $selMonth)->where('status', 'lost')->count();
+        $newThisMonth = (clone $selMonth)->count();
+        $convRate     = $newThisMonth > 0 ? round(($wonMonth / $newThisMonth) * 100, 1) : 0;
 
-        // Activities today (per type)
-        $todayActs = \App\LeadActivity::when($companyId, function($q) use ($companyId) {
+        // Activities for selected month (per type) — use today if current month, else whole month
+        $isCurrentMonth = ($month === (int) now()->month && $year === (int) now()->year);
+        $actsQuery = \App\LeadActivity::when($companyId, function($q) use ($companyId) {
                 return $q->whereHas('lead', fn($lq) => $lq->where('company_id', $companyId));
-            })
-            ->whereDate('activity_at', now())
-            ->selectRaw('type, count(*) as cnt')
-            ->groupBy('type')
-            ->pluck('cnt', 'type');
+            });
+        if ($isCurrentMonth) {
+            $actsQuery->whereDate('activity_at', now());
+        } else {
+            $actsQuery->whereMonth('activity_at', $month)->whereYear('activity_at', $year);
+        }
+        $todayActs = $actsQuery->selectRaw('type, count(*) as cnt')->groupBy('type')->pluck('cnt', 'type');
 
-        // Top agents by closed (won) this month
+        // Top agents by closed (won) in selected month
         $topAgents = \App\Lead::selectRaw('user_id, count(*) as won_count')
             ->when($companyId, fn($q) => $q->where('company_id', $companyId))
             ->where('status', 'won')
-            ->whereMonth('converted_at', now()->month)
-            ->whereYear('converted_at', now()->year)
+            ->whereMonth('converted_at', $month)
+            ->whereYear('converted_at', $year)
             ->whereNotNull('user_id')
             ->groupBy('user_id')
             ->orderByDesc('won_count')
@@ -1446,6 +1467,8 @@ Route::middleware(['auth:api', 'api.permission:event_dashboard,view'])->group(fu
             'conversion_rate'  => $convRate,
             'activities_today' => $todayActs,
             'top_agents'       => $topAgents,
+            'month'            => $month,
+            'year'             => $year,
         ]);
     })->name('api.crm.analytics');
 });

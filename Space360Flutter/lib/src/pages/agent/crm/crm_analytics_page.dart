@@ -67,18 +67,30 @@ class _CrmAnalyticsPageState extends State<CrmAnalyticsPage>
   bool _loading = true;
   String? _error;
 
+  late DateTime _selectedMonth;
+
+  static const _monthNames = [
+    '', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Setiembre', 'Octubre', 'Noviembre', 'Diciembre',
+  ];
+
   @override
   bool get wantKeepAlive => true;
 
   @override
   void initState() {
     super.initState();
+    final now = DateTime.now();
+    _selectedMonth = DateTime(now.year, now.month, 1);
     _load();
   }
 
   Future<void> _load() async {
     setState(() { _loading = true; _error = null; });
-    final r = await _service.getAnalytics();
+    final r = await _service.getAnalytics(
+      month: _selectedMonth.month,
+      year:  _selectedMonth.year,
+    );
     if (!mounted) return;
     setState(() {
       _loading = false;
@@ -88,6 +100,26 @@ class _CrmAnalyticsPageState extends State<CrmAnalyticsPage>
         _error = r.message;
       }
     });
+  }
+
+  void _prevMonth() {
+    setState(() {
+      _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month - 1, 1);
+    });
+    _load();
+  }
+
+  void _nextMonth() {
+    final now   = DateTime.now();
+    final next  = DateTime(_selectedMonth.year, _selectedMonth.month + 1, 1);
+    if (next.isAfter(DateTime(now.year, now.month, 1))) return;
+    setState(() => _selectedMonth = next);
+    _load();
+  }
+
+  bool get _isCurrentMonth {
+    final now = DateTime.now();
+    return _selectedMonth.month == now.month && _selectedMonth.year == now.year;
   }
 
   @override
@@ -118,12 +150,49 @@ class _CrmAnalyticsPageState extends State<CrmAnalyticsPage>
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
         children: [
-          _MonthStatsSection(data: d),
+          // ── Month navigator ──────────────────────────────────
+          Container(
+            margin: const EdgeInsets.only(bottom: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+            decoration: BoxDecoration(
+              color: _kSurface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white10),
+            ),
+            child: Row(children: [
+              IconButton(
+                icon: const Icon(Icons.chevron_left_rounded, color: _kSubtext),
+                onPressed: _prevMonth,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+              ),
+              Expanded(
+                child: Center(
+                  child: Text(
+                    '${_monthNames[_selectedMonth.month]} ${_selectedMonth.year}',
+                    style: TextStyle(
+                      color: _isCurrentMonth ? _kGold : _kText,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+              IconButton(
+                icon: Icon(Icons.chevron_right_rounded,
+                    color: _isCurrentMonth ? _kSubtext.withOpacity(0.3) : _kSubtext),
+                onPressed: _isCurrentMonth ? null : _nextMonth,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+              ),
+            ]),
+          ),
+          _MonthStatsSection(data: d, isCurrentMonth: _isCurrentMonth),
           const SizedBox(height: 16),
           _PipelineFunnelSection(data: d),
           if (d.activitiesToday.isNotEmpty) ...[
             const SizedBox(height: 16),
-            _ActivitiesTodaySection(data: d),
+            _ActivitiesTodaySection(data: d, isCurrentMonth: _isCurrentMonth),
           ],
           if (d.topAgents.isNotEmpty) ...[
             const SizedBox(height: 16),
@@ -139,7 +208,8 @@ class _CrmAnalyticsPageState extends State<CrmAnalyticsPage>
 
 class _MonthStatsSection extends StatelessWidget {
   final CrmAnalyticsModel data;
-  const _MonthStatsSection({required this.data});
+  final bool isCurrentMonth;
+  const _MonthStatsSection({required this.data, this.isCurrentMonth = true});
 
   @override
   Widget build(BuildContext context) {
@@ -312,7 +382,8 @@ class _PipelineFunnelSection extends StatelessWidget {
 
 class _ActivitiesTodaySection extends StatelessWidget {
   final CrmAnalyticsModel data;
-  const _ActivitiesTodaySection({required this.data});
+  final bool isCurrentMonth;
+  const _ActivitiesTodaySection({required this.data, this.isCurrentMonth = true});
 
   @override
   Widget build(BuildContext context) {
@@ -327,7 +398,8 @@ class _ActivitiesTodaySection extends StatelessWidget {
         border: Border.all(color: Colors.white10),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('ACTIVIDAD HOY', style: TextStyle(color: _kSubtext, fontSize: 10, letterSpacing: 1.2, fontWeight: FontWeight.w600)),
+        Text(isCurrentMonth ? 'ACTIVIDAD HOY' : 'ACTIVIDADES DEL MES',
+            style: const TextStyle(color: _kSubtext, fontSize: 10, letterSpacing: 1.2, fontWeight: FontWeight.w600)),
         const SizedBox(height: 12),
         Wrap(
           spacing: 8,

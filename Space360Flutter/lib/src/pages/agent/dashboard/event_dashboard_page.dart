@@ -140,15 +140,30 @@ class _LeadsTabState extends State<_LeadsTab> with AutomaticKeepAliveClientMixin
     if (r is Success<int>) {
       setState(() => _addedToCrm.add(lead.id));
       Fluttertoast.showToast(msg: 'Lead agregado al CRM', backgroundColor: const Color(0xFF2E7D32));
+    } else if (r is Duplicate<int>) {
+      setState(() => _addedToCrm.add(lead.id));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: _kSurface,
+        content: Text(r.message, style: const TextStyle(color: _kText, fontSize: 13)),
+        action: SnackBarAction(
+          label: 'Ver lead',
+          textColor: _kGold,
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => CrmLeadDetailPage(leadId: r.leadId, user: widget.user),
+            ),
+          ),
+        ),
+        duration: const Duration(seconds: 5),
+      ));
     } else if (r is AppError<int>) {
-      // Check for duplicate (409) — show option to navigate to existing lead
-      final msg = r.message;
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          backgroundColor: _kSurface,
-          content: Text(msg, style: const TextStyle(color: _kText, fontSize: 13)),
-        ));
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: _kSurface,
+        content: Text(r.message, style: const TextStyle(color: _kText, fontSize: 13)),
+      ));
     }
   }
 
@@ -310,16 +325,33 @@ class _QuotesTabState extends State<_QuotesTab> with AutomaticKeepAliveClientMix
     if (r is Success<int>) {
       setState(() => _addedToCrm.add(quote.id));
       Fluttertoast.showToast(msg: 'Cotización agregada al CRM', backgroundColor: const Color(0xFF2E7D32));
-      // Navigate to the new lead detail
-      if (mounted) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => CrmLeadDetailPage(leadId: r.data, user: widget.user),
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => CrmLeadDetailPage(leadId: r.data, user: widget.user),
+        ),
+      );
+    } else if (r is Duplicate<int>) {
+      setState(() => _addedToCrm.add(quote.id));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: _kSurface,
+        content: Text(r.message, style: const TextStyle(color: _kText, fontSize: 13)),
+        action: SnackBarAction(
+          label: 'Ver lead',
+          textColor: _kGold,
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => CrmLeadDetailPage(leadId: r.leadId, user: widget.user),
+            ),
           ),
-        );
-      }
+        ),
+        duration: const Duration(seconds: 5),
+      ));
     } else if (r is AppError<int>) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         backgroundColor: _kSurface,
         content: Text(r.message, style: const TextStyle(color: _kText, fontSize: 13)),

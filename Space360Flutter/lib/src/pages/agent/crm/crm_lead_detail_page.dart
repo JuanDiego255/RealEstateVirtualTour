@@ -1962,13 +1962,14 @@ class _ReminderCard extends StatelessWidget {
                 fontSize: 12,
               )),
           const Spacer(),
-          // Snooze 15 min
           _ActionBtn(Icons.snooze_rounded, 'Posponer', _kSubtext,
               () => _snooze(context)),
           const SizedBox(width: 8),
-          // Complete
           _ActionBtn(Icons.check_rounded, 'Listo', const Color(0xFF27AE60),
               () => _complete(context)),
+          const SizedBox(width: 8),
+          _ActionBtn(Icons.delete_outline_rounded, 'Borrar', const Color(0xFFE74C3C),
+              () => _delete(context)),
         ]),
       ]),
     );
@@ -2013,6 +2014,36 @@ class _ReminderCard extends StatelessWidget {
     final r = await CrmService().snoozeReminder(reminder.id, minutes: minutes);
     if (r is Success<bool>) {
       Fluttertoast.showToast(msg: 'Pospuesto', backgroundColor: const Color(0xFF2E7D32));
+      onAction();
+    } else if (r is AppError<bool>) {
+      Fluttertoast.showToast(msg: r.message, backgroundColor: Colors.red[700]);
+    }
+  }
+
+  Future<void> _delete(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: _kSurface,
+        title: const Text('Borrar recordatorio', style: TextStyle(color: _kText, fontSize: 16)),
+        content: Text('¿Eliminar "${reminder.title}"?',
+            style: const TextStyle(color: _kSubtext, fontSize: 13)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar', style: TextStyle(color: _kSubtext)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Borrar', style: TextStyle(color: Color(0xFFE74C3C))),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    final r = await CrmService().deleteReminder(reminder.id);
+    if (r is Success<bool>) {
+      Fluttertoast.showToast(msg: 'Recordatorio eliminado', backgroundColor: const Color(0xFF2E7D32));
       onAction();
     } else if (r is AppError<bool>) {
       Fluttertoast.showToast(msg: r.message, backgroundColor: Colors.red[700]);
