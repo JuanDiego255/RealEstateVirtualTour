@@ -1322,5 +1322,74 @@ Route::middleware(['auth:api', 'api.permission:event_dashboard,view'])->group(fu
             ]),
         ]);
     })->name('api.crm.agenda');
+
+    // ── Recordatorios ──────────────────────────────────────────────────────────
+
+    Route::get('/crm/reminders', function (\Illuminate\Http\Request $request) {
+        $user = $request->user();
+
+        $reminders = \App\Reminder::with(['remindable'])
+            ->where('user_id', $user->id)
+            ->pending()
+            ->orderBy('remind_at', 'asc')
+            ->take(50)
+            ->get();
+
+        return response()->json([
+            'reminders' => $reminders->map(fn($r) => [
+                'id'          => $r->id,
+                'title'       => $r->title,
+                'description' => $r->description,
+                'priority'    => $r->priority,
+                'priority_label' => $r->priority_label,
+                'remind_at'   => $r->remind_at->toIso8601String(),
+                'is_overdue'  => $r->isOverdue(),
+                'lead_id'     => $r->remindable_type === 'App\\Lead' ? $r->remindable_id : null,
+                'lead_name'   => ($r->remindable_type === 'App\\Lead' && $r->remindable)
+                    ? $r->remindable->name : null,
+            ]),
+        ]);
+    })->name('api.crm.reminders.index');
+
+    Route::post('/crm/leads/{id}/reminders', function (\Illuminate\Http\Request $request, int $id) {
+        $user = $request->user();
+        $lead = \App\Lead::where('id', $id)
+            ->when(!$user->isSuperAdmin(), fn($q) => $q->where('company_id', $user->company_id))
+            ->firstOrFail();
+
+        $data = $request->validate([
+            'title'       => 'required|string|max:200',
+            'description' => 'nullable|string|max:500',
+            'priority'    => 'in:low,medium,high,urgent',
+            'remind_at'   => 'required|date',
+        ]);
+
+        $reminder = $lead->reminders()->create([
+            'user_id'    => $user->id,
+            'company_id' => $user->company_id ?? $lead->company_id,
+            'title'      => $data['title'],
+            'description'=> $data['description'] ?? null,
+            'priority'   => $data['priority'] ?? 'medium',
+            'remind_at'  => $data['remind_at'],
+        ]);
+
+        return response()->json(['success' => true, 'reminder_id' => $reminder->id], 201);
+    })->name('api.crm.reminders.store');
+
+    Route::patch('/crm/reminders/{id}/complete', function (\Illuminate\Http\Request $request, int $id) {
+        $user     = $request->user();
+        $reminder = \App\Reminder::where('id', $id)->where('user_id', $user->id)->firstOrFail();
+        $reminder->complete();
+        return response()->json(['success' => true]);
+    })->name('api.crm.reminders.complete');
+
+    Route::patch('/crm/reminders/{id}/snooze', function (\Illuminate\Http\Request $request, int $id) {
+        $user     = $request->user();
+        $reminder = \App\Reminder::where('id', $id)->where('user_id', $user->id)->firstOrFail();
+        $minutes  = (int) $request->input('minutes', 15);
+        $minutes  = max(5, min(1440, $minutes));
+        $reminder->snooze($minutes);
+        return response()->json(['success' => true, 'remind_at' => $reminder->remind_at->toIso8601String()]);
+    })->name('api.crm.reminders.snooze');
 });
 

@@ -3,6 +3,7 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:space360_flutter/src/models/appointment_model.dart';
 import 'package:space360_flutter/src/models/auth_response.dart';
 import 'package:space360_flutter/src/models/crm_lead_model.dart';
+import 'package:space360_flutter/src/models/reminder_model.dart';
 import 'package:space360_flutter/src/services/crm_service.dart';
 import 'package:space360_flutter/src/utils/resource.dart';
 
@@ -64,7 +65,7 @@ class _CrmLeadDetailPageState extends State<CrmLeadDetailPage>
   @override
   void initState() {
     super.initState();
-    _tab = TabController(length: 3, vsync: this);
+    _tab = TabController(length: 4, vsync: this);
     _load();
   }
 
@@ -125,6 +126,7 @@ class _CrmLeadDetailPageState extends State<CrmLeadDetailPage>
             Tab(text: 'Info'),
             Tab(text: 'Actividad'),
             Tab(text: 'Citas'),
+            Tab(text: 'Recordatorios'),
           ],
         ),
       ),
@@ -144,6 +146,7 @@ class _CrmLeadDetailPageState extends State<CrmLeadDetailPage>
                     _InfoTab(lead: _lead!),
                     _ActivityTab(lead: _lead!),
                     _AppointmentsTab(lead: _lead!, user: widget.user),
+                    _RemindersTab(lead: _lead!),
                   ],
                 ),
       bottomNavigationBar: _lead == null
@@ -1623,3 +1626,436 @@ class _CreateAppointmentSheetState extends State<_CreateAppointmentSheet> {
     }
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Reminders tab
+// ═══════════════════════════════════════════════════════════════════════════════
+
+class _RemindersTab extends StatefulWidget {
+  final CrmLead lead;
+  const _RemindersTab({required this.lead});
+
+  @override
+  State<_RemindersTab> createState() => _RemindersTabState();
+}
+
+class _RemindersTabState extends State<_RemindersTab> with AutomaticKeepAliveClientMixin {
+  final _service = CrmService();
+  List<ReminderModel> _reminders = [];
+  bool _loading = true;
+  String? _error;
+
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() { _loading = true; _error = null; });
+    final r = await _service.getReminders();
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      if (r is Success<List<ReminderModel>>) {
+        // Only show reminders that belong to this lead
+        _reminders = r.data.where((rem) => rem.leadId == widget.lead.id).toList();
+      } else if (r is AppError<List<ReminderModel>>) {
+        _error = r.message;
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return Scaffold(
+      backgroundColor: _kBg,
+      floatingActionButton: FloatingActionButton(
+        mini: true,
+        backgroundColor: _kGold,
+        foregroundColor: Colors.black,
+        child: const Icon(Icons.add_rounded),
+        onPressed: () async {
+          final created = await showCreateReminderSheet(context, widget.lead);
+          if (created == true) _load();
+        },
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation(_kGold)))
+          : _error != null
+              ? Center(child: Text(_error!, style: const TextStyle(color: _kSubtext)))
+              : _reminders.isEmpty
+                  ? const Center(
+                      child: Column(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(Icons.alarm_off_rounded, color: _kSubtext, size: 48),
+                        SizedBox(height: 10),
+                        Text('Sin recordatorios', style: TextStyle(color: _kSubtext)),
+                        SizedBox(height: 4),
+                        Text('Toca + para agregar uno', style: TextStyle(color: _kSubtext, fontSize: 12)),
+                      ]),
+                    )
+                  : RefreshIndicator(
+                      color: _kGold,
+                      backgroundColor: _kSurface,
+                      onRefresh: _load,
+                      child: ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
+                        itemCount: _reminders.length,
+                        itemBuilder: (_, i) => _ReminderCard(
+                          reminder: _reminders[i],
+                          onAction: _load,
+                        ),
+                      ),
+                    ),
+    );
+  }
+}
+
+class _ReminderCard extends StatelessWidget {
+  final ReminderModel reminder;
+  final VoidCallback onAction;
+  const _ReminderCard({required this.reminder, required this.onAction});
+
+  static const _priorityColors = {
+    'urgent': Color(0xFFC62828), 'high': Color(0xFFE65100),
+    'medium': Color(0xFFF57F17), 'low':  Color(0xFF2E7D32),
+  };
+
+  Color get _color => _priorityColors[reminder.priority] ?? _kSubtext;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: _kSurface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: reminder.isOverdue ? const Color(0xFFE74C3C).withOpacity(0.5) : _color.withOpacity(0.25),
+        ),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Icon(Icons.alarm_rounded, size: 16, color: _color),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(reminder.title,
+                style: const TextStyle(color: _kText, fontSize: 14, fontWeight: FontWeight.bold)),
+          ),
+          if (reminder.isOverdue)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE74C3C).withOpacity(0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Text('Vencido',
+                  style: TextStyle(color: Color(0xFFE74C3C), fontSize: 10, fontWeight: FontWeight.bold)),
+            ),
+        ]),
+        if (reminder.description != null && reminder.description!.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Text(reminder.description!, style: const TextStyle(color: _kSubtext, fontSize: 12, height: 1.4)),
+        ],
+        const SizedBox(height: 8),
+        Row(children: [
+          const Icon(Icons.access_time_rounded, size: 12, color: _kSubtext),
+          const SizedBox(width: 4),
+          Text(_fmtRemindAt(reminder.remindAt),
+              style: TextStyle(
+                color: reminder.isOverdue ? const Color(0xFFE74C3C) : _kSubtext,
+                fontSize: 12,
+              )),
+          const Spacer(),
+          // Snooze 15 min
+          _ActionBtn(Icons.snooze_rounded, 'Posponer', _kSubtext,
+              () => _snooze(context)),
+          const SizedBox(width: 8),
+          // Complete
+          _ActionBtn(Icons.check_rounded, 'Listo', const Color(0xFF27AE60),
+              () => _complete(context)),
+        ]),
+      ]),
+    );
+  }
+
+  Future<void> _complete(BuildContext context) async {
+    final r = await CrmService().completeReminder(reminder.id);
+    if (r is Success<bool>) {
+      Fluttertoast.showToast(msg: 'Recordatorio completado', backgroundColor: const Color(0xFF2E7D32));
+      onAction();
+    } else if (r is AppError<bool>) {
+      Fluttertoast.showToast(msg: r.message, backgroundColor: Colors.red[700]);
+    }
+  }
+
+  Future<void> _snooze(BuildContext context) async {
+    // Show snooze options
+    final minutes = await showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: _kSurface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (_) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Padding(
+            padding: EdgeInsets.all(16),
+            child: Text('Posponer por...', style: TextStyle(color: _kText, fontSize: 15, fontWeight: FontWeight.bold)),
+          ),
+          ...[
+            (15, '15 minutos'), (30, '30 minutos'), (60, '1 hora'),
+            (180, '3 horas'), (1440, '1 día'),
+          ].map((o) => ListTile(
+            leading: const Icon(Icons.snooze_rounded, color: _kSubtext, size: 18),
+            title: Text(o.$2, style: const TextStyle(color: _kText, fontSize: 14)),
+            onTap: () => Navigator.pop(context, o.$1),
+          )),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+    if (minutes == null) return;
+    final r = await CrmService().snoozeReminder(reminder.id, minutes: minutes);
+    if (r is Success<bool>) {
+      Fluttertoast.showToast(msg: 'Pospuesto', backgroundColor: const Color(0xFF2E7D32));
+      onAction();
+    } else if (r is AppError<bool>) {
+      Fluttertoast.showToast(msg: r.message, backgroundColor: Colors.red[700]);
+    }
+  }
+
+  String _fmtRemindAt(String iso) {
+    try {
+      final dt = DateTime.parse(iso).toLocal();
+      const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Set','Oct','Nov','Dic'];
+      return '${dt.day} ${months[dt.month - 1]}  '
+          '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    } catch (_) { return iso; }
+  }
+}
+
+class _ActionBtn extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+  const _ActionBtn(this.icon, this.label, this.color, this.onTap);
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: color.withOpacity(0.35)),
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(icon, size: 13, color: color),
+            const SizedBox(width: 4),
+            Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold)),
+          ]),
+        ),
+      );
+}
+
+// ─── Create reminder sheet ────────────────────────────────────────────────────
+
+Future<bool?> showCreateReminderSheet(BuildContext context, CrmLead lead) {
+  return showModalBottomSheet<bool>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: _kSurface,
+    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+    builder: (_) => _CreateReminderSheet(lead: lead),
+  );
+}
+
+class _CreateReminderSheet extends StatefulWidget {
+  final CrmLead lead;
+  const _CreateReminderSheet({required this.lead});
+
+  @override
+  State<_CreateReminderSheet> createState() => _CreateReminderSheetState();
+}
+
+class _CreateReminderSheetState extends State<_CreateReminderSheet> {
+  final _titleCtrl = TextEditingController();
+  final _descCtrl  = TextEditingController();
+  String _priority  = 'medium';
+  DateTime _remindAt = DateTime.now().add(const Duration(hours: 1));
+  bool _saving = false;
+
+  static const _priorities = [
+    ('low',    'Baja',    Color(0xFF2E7D32)),
+    ('medium', 'Media',   Color(0xFFF57F17)),
+    ('high',   'Alta',    Color(0xFFE65100)),
+    ('urgent', 'Urgente', Color(0xFFC62828)),
+  ];
+
+  @override
+  void dispose() {
+    _titleCtrl.dispose();
+    _descCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 20),
+      child: SingleChildScrollView(
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            const Expanded(child: Text('Nuevo recordatorio',
+                style: TextStyle(color: _kText, fontSize: 17, fontWeight: FontWeight.bold))),
+            IconButton(icon: const Icon(Icons.close_rounded, color: _kSubtext),
+                onPressed: () => Navigator.pop(context)),
+          ]),
+          Text('para ${widget.lead.name}', style: const TextStyle(color: _kSubtext, fontSize: 13)),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _titleCtrl,
+            style: const TextStyle(color: _kText, fontSize: 13),
+            decoration: const InputDecoration(
+              hintText: 'Título *',
+              hintStyle: TextStyle(color: _kSubtext, fontSize: 13),
+              prefixIcon: Icon(Icons.alarm_rounded, size: 18, color: _kSubtext),
+              filled: true, fillColor: _kCard,
+              border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(10)), borderSide: BorderSide.none),
+              contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+            ),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _descCtrl,
+            style: const TextStyle(color: _kText, fontSize: 13),
+            maxLines: 2,
+            decoration: const InputDecoration(
+              hintText: 'Descripción (opcional)',
+              hintStyle: TextStyle(color: _kSubtext, fontSize: 13),
+              filled: true, fillColor: _kCard,
+              border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(10)), borderSide: BorderSide.none),
+              contentPadding: EdgeInsets.all(12),
+            ),
+          ),
+          const SizedBox(height: 14),
+          const Text('Prioridad', style: TextStyle(color: _kSubtext, fontSize: 11)),
+          const SizedBox(height: 6),
+          Row(children: _priorities.map((p) {
+            final sel = _priority == p.$1;
+            return Expanded(child: GestureDetector(
+              onTap: () => setState(() => _priority = p.$1),
+              child: Container(
+                margin: const EdgeInsets.only(right: 6),
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: sel ? p.$3.withOpacity(0.2) : _kCard,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: sel ? p.$3 : Colors.white12),
+                ),
+                child: Center(child: Text(p.$2, style: TextStyle(
+                  color: sel ? p.$3 : _kSubtext, fontSize: 12,
+                  fontWeight: sel ? FontWeight.bold : FontWeight.normal,
+                ))),
+              ),
+            ));
+          }).toList()),
+          const SizedBox(height: 12),
+          GestureDetector(
+            onTap: _pickDateTime,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+              decoration: BoxDecoration(color: _kCard, borderRadius: BorderRadius.circular(10)),
+              child: Row(children: [
+                const Icon(Icons.access_time_rounded, size: 18, color: _kSubtext),
+                const SizedBox(width: 10),
+                Text(_fmtDt(_remindAt), style: const TextStyle(color: _kText, fontSize: 13)),
+              ]),
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(width: double.infinity, child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _kGold, foregroundColor: Colors.black,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: _saving ? null : _save,
+            child: _saving
+                ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
+                : const Text('Crear recordatorio', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+          )),
+        ]),
+      ),
+    );
+  }
+
+  Future<void> _pickDateTime() async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _remindAt,
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (ctx, child) => Theme(
+        data: ThemeData.dark().copyWith(
+          colorScheme: const ColorScheme.dark(primary: _kGold, surface: _kSurface),
+        ),
+        child: child!,
+      ),
+    );
+    if (date == null || !mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_remindAt),
+      builder: (ctx, child) => Theme(
+        data: ThemeData.dark().copyWith(
+          colorScheme: const ColorScheme.dark(primary: _kGold, surface: _kSurface),
+        ),
+        child: child!,
+      ),
+    );
+    if (time == null) return;
+    setState(() {
+      _remindAt = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    });
+  }
+
+  String _fmtDt(DateTime dt) {
+    const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Set','Oct','Nov','Dic'];
+    return '${dt.day} ${months[dt.month - 1]} ${dt.year}  '
+        '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _save() async {
+    if (_titleCtrl.text.trim().isEmpty) {
+      Fluttertoast.showToast(msg: 'Ingresá un título', backgroundColor: Colors.orange[700]);
+      return;
+    }
+    setState(() => _saving = true);
+    final r = await CrmService().createReminder(
+      leadId:      widget.lead.id,
+      title:       _titleCtrl.text.trim(),
+      remindAt:    _remindAt.toIso8601String(),
+      priority:    _priority,
+      description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
+    );
+    if (!mounted) return;
+    if (r is Success<int>) {
+      Navigator.pop(context, true);
+      Fluttertoast.showToast(msg: 'Recordatorio creado', backgroundColor: const Color(0xFF2E7D32));
+    } else if (r is AppError<int>) {
+      setState(() => _saving = false);
+      Fluttertoast.showToast(msg: r.message, backgroundColor: Colors.red[700]);
+    }
+  }
+}
+
+// ─── Missing import for ReminderModel ─────────────────────────────────────────
+// (resolved via top-level import in file header)

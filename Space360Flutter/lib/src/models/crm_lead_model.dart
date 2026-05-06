@@ -1,3 +1,18 @@
+// Laravel decimal cast serialises as String ("1500000.00") — handle both
+double? _toDouble(dynamic v) {
+  if (v == null) return null;
+  if (v is num)    return v.toDouble();
+  if (v is String) return double.tryParse(v);
+  return null;
+}
+
+int? _toInt(dynamic v) {
+  if (v == null) return null;
+  if (v is num)    return v.toInt();
+  if (v is String) return int.tryParse(v);
+  return null;
+}
+
 class CrmAgent {
   final int id;
   final String name;
@@ -126,8 +141,8 @@ class CrmLead {
         source:        j['source'] as String? ?? '',
         sourceLabel:   j['source_label'] as String? ?? j['source'] as String? ?? '',
         interestType:  j['interest_type'] as String? ?? 'buy',
-        budgetMin:     (j['budget_min'] as num?)?.toDouble(),
-        budgetMax:     (j['budget_max'] as num?)?.toDouble(),
+        budgetMin:     _toDouble(j['budget_min']),
+        budgetMax:     _toDouble(j['budget_max']),
         budgetCurrency: j['budget_currency'] as String? ?? 'CRC',
         notes:         j['notes'] as String?,
         requirements:  j['requirements'] as String?,
@@ -259,13 +274,13 @@ class VehicleQuoteModel {
         customerName:         j['customer_name'] as String?,
         customerPhone:        j['customer_phone'] as String?,
         customerEmail:        j['customer_email'] as String?,
-        vehiclePrice:         (j['vehicle_price'] as num?)?.toDouble() ?? 0,
-        downPayment:          (j['down_payment'] as num?)?.toDouble() ?? 0,
-        downPaymentPercent:   (j['down_payment_percent'] as num?)?.toDouble() ?? 0,
-        termMonths:           (j['term_months'] as num?)?.toInt(),
-        interestRate:         (j['interest_rate'] as num?)?.toDouble(),
-        monthlyPayment:       (j['monthly_payment'] as num?)?.toDouble() ?? 0,
-        totalAmount:          (j['total_amount'] as num?)?.toDouble() ?? 0,
+        vehiclePrice:         _toDouble(j['vehicle_price']) ?? 0,
+        downPayment:          _toDouble(j['down_payment']) ?? 0,
+        downPaymentPercent:   _toDouble(j['down_payment_percent']) ?? 0,
+        termMonths:           _toInt(j['term_months']),
+        interestRate:         _toDouble(j['interest_rate']),
+        monthlyPayment:       _toDouble(j['monthly_payment']) ?? 0,
+        totalAmount:          _toDouble(j['total_amount']) ?? 0,
         currency:             j['currency'] as String? ?? 'CRC',
         eventName:            j['event_name'] as String?,
         vehicle:              j['vehicle'] != null ? CrmVehicle.fromJson(j['vehicle'] as Map<String, dynamic>) : null,

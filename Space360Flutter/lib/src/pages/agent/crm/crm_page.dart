@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:space360_flutter/src/models/appointment_model.dart';
 import 'package:space360_flutter/src/models/auth_response.dart';
 import 'package:space360_flutter/src/models/crm_lead_model.dart';
+import 'package:space360_flutter/src/models/reminder_model.dart';
 import 'package:space360_flutter/src/pages/agent/crm/crm_agenda_page.dart';
 import 'package:space360_flutter/src/pages/agent/crm/crm_lead_detail_page.dart';
 import 'package:space360_flutter/src/pages/agent/crm/crm_pipeline_page.dart';
@@ -52,6 +55,10 @@ class _CrmPageState extends State<CrmPage> with SingleTickerProviderStateMixin {
   CrmStats? _stats;
   int _lastPage = 1;
 
+  // Today summary
+  List<AppointmentModel> _todayAppts = [];
+  List<ReminderModel> _overdueReminders = [];
+
   static const _statusOptions = [
     ('all',         'Todos'),
     ('new',         'Nuevos'),
@@ -75,20 +82,35 @@ class _CrmPageState extends State<CrmPage> with SingleTickerProviderStateMixin {
       _leads.clear();
     }
     setState(() => _result = null);
-    final r = await _service.getLeads(
-      status:   _filterStatus  == 'all' ? null : _filterStatus,
-      origin:   _filterOrigin  == 'all' ? null : _filterOrigin,
-      search:   _searchCtrl.text.trim().isEmpty ? null : _searchCtrl.text.trim(),
-      page:     _page,
-    );
+    final results = await Future.wait([
+      _service.getLeads(
+        status: _filterStatus == 'all' ? null : _filterStatus,
+        origin: _filterOrigin == 'all' ? null : _filterOrigin,
+        search: _searchCtrl.text.trim().isEmpty ? null : _searchCtrl.text.trim(),
+        page:   _page,
+      ),
+      if (reset) ...[
+        _service.getAgenda(days: 1),
+        _service.getReminders(),
+      ],
+    ]);
     if (!mounted) return;
     setState(() {
+      final r = results[0] as Resource<CrmLeadPage>;
       _result = r;
       if (r is Success<CrmLeadPage>) {
         if (reset) _leads.clear();
         _leads.addAll(r.data.leads);
         _stats    = r.data.stats;
         _lastPage = r.data.lastPage;
+      }
+      if (reset && results.length > 1) {
+        final agendaR = results[1] as Resource<List<AppointmentModel>>;
+        if (agendaR is Success<List<AppointmentModel>>) _todayAppts = agendaR.data;
+        final remR = results[2] as Resource<List<ReminderModel>>;
+        if (remR is Success<List<ReminderModel>>) {
+          _overdueReminders = remR.data.where((r) => r.isOverdue).toList();
+        }
       }
     });
   }
@@ -171,6 +193,12 @@ class _CrmPageState extends State<CrmPage> with SingleTickerProviderStateMixin {
                 controller: _searchCtrl,
                 onSubmitted: (_) => _load(reset: true),
               ),
+              if (_todayAppts.isNotEmpty || _overdueReminders.isNotEmpty)
+                _TodaySummaryBanner(
+                  appointments: _todayAppts,
+                  overdueReminders: _overdueReminders,
+                  onTapAgenda: () => _tab.animateTo(2),
+                ),
               if (_stats != null) _StatsRow(stats: _stats!),
               _FilterBar(
                 statusOptions: _statusOptions,
@@ -535,9 +563,39 @@ class _LeadCard extends StatelessWidget {
             const SizedBox(width: 4),
             const Icon(Icons.chevron_right_rounded, color: _kSubtext, size: 16),
           ]),
+          // Quick contact buttons
+          const SizedBox(height: 8),
+          Row(children: [
+            _QuickBtn(
+              icon: Icons.phone_rounded,
+              label: 'Llamar',
+              color: const Color(0xFF2ECC71),
+              onTap: () => _launch('tel:${lead.phone}'),
+            ),
+            const SizedBox(width: 8),
+            if (lead.whatsapp != null || lead.phone.isNotEmpty)
+              _QuickBtn(
+                icon: Icons.chat_rounded,
+                label: 'WhatsApp',
+                color: const Color(0xFF25D366),
+                onTap: () {
+                  final num = (lead.whatsapp ?? lead.phone).replaceAll(RegExp(r'[^0-9+]'), '');
+                  _launch('https://wa.me/$num');
+                },
+              ),
+          ]),
         ]),
       ),
     );
+  }
+
+  Future<void> _launch(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      Fluttertoast.showToast(msg: 'No se pudo abrir la app', backgroundColor: Colors.red[700]);
+    }
   }
 
   String _priorityLabel(String p) => switch (p) {
@@ -555,5 +613,84 @@ class _LeadCard extends StatelessWidget {
     } catch (_) {
       return '';
     }
+  }
+}
+
+// ─── Quick contact button ─────────────────────────────────────────────────────
+
+class _QuickBtn extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+  const _QuickBtn({required this.icon, required this.label, required this.color, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: color.withOpacity(0.35)),
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(icon, size: 12, color: color),
+            const SizedBox(width: 4),
+            Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold)),
+          ]),
+        ),
+      );
+}
+
+// ─── Today summary banner ─────────────────────────────────────────────────────
+
+class _TodaySummaryBanner extends StatelessWidget {
+  final List<AppointmentModel> appointments;
+  final List<ReminderModel> overdueReminders;
+  final VoidCallback onTapAgenda;
+
+  const _TodaySummaryBanner({
+    required this.appointments,
+    required this.overdueReminders,
+    required this.onTapAgenda,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTapAgenda,
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: _kSurface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: overdueReminders.isNotEmpty
+                ? const Color(0xFFE74C3C).withOpacity(0.4)
+                : _kGold.withOpacity(0.3),
+          ),
+        ),
+        child: Row(children: [
+          Icon(
+            overdueReminders.isNotEmpty ? Icons.warning_amber_rounded : Icons.today_rounded,
+            size: 18,
+            color: overdueReminders.isNotEmpty ? const Color(0xFFE74C3C) : _kGold,
+          ),
+          const SizedBox(width: 10),
+          Expanded(child: Wrap(spacing: 12, children: [
+            if (appointments.isNotEmpty)
+              Text('${appointments.length} cita${appointments.length > 1 ? 's' : ''} hoy',
+                  style: const TextStyle(color: _kText, fontSize: 12, fontWeight: FontWeight.bold)),
+            if (overdueReminders.isNotEmpty)
+              Text('${overdueReminders.length} recordatorio${overdueReminders.length > 1 ? 's' : ''} vencido${overdueReminders.length > 1 ? 's' : ''}',
+                  style: const TextStyle(color: Color(0xFFE74C3C), fontSize: 12, fontWeight: FontWeight.bold)),
+          ])),
+          const Icon(Icons.chevron_right_rounded, color: _kSubtext, size: 16),
+        ]),
+      ),
+    );
   }
 }
