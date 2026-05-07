@@ -801,6 +801,7 @@ Route::middleware(['auth:api', 'api.permission:event_dashboard,view'])->group(fu
                 ->orWhere('email','like',"%$s%")
                 ->orWhere('phone','like',"%$s%"));
         }
+        if ($request->filled('agent_id')) $query->where('user_id', (int) $request->agent_id);
 
         $query->orderByRaw("CASE WHEN status IN ('won','lost') THEN 1 ELSE 0 END")
               ->orderBy('next_follow_up','asc')
@@ -1171,6 +1172,7 @@ Route::middleware(['auth:api', 'api.permission:event_dashboard,view'])->group(fu
             'notes'           => 'sometimes|nullable|string|max:2000',
             'requirements'    => 'sometimes|nullable|string|max:2000',
             'next_follow_up'  => 'sometimes|nullable|date',
+            'user_id'         => 'sometimes|nullable|integer|exists:users,id',
         ]);
 
         $lead->update($data);
@@ -1290,6 +1292,27 @@ Route::middleware(['auth:api', 'api.permission:event_dashboard,view'])->group(fu
         return response()->json(['success' => true]);
     })->name('api.crm.appointments.status');
 
+    // ── Editar cita ────────────────────────────────────────────────────────────
+    Route::patch('/crm/appointments/{id}', function (\Illuminate\Http\Request $request, int $id) {
+        $user = $request->user();
+        $appointment = \App\Appointment::where('id', $id)
+            ->when(!$user->isSuperAdmin(), fn($q) => $q->where('company_id', $user->company_id))
+            ->firstOrFail();
+
+        $data = $request->validate([
+            'title'       => 'sometimes|required|string|max:200',
+            'type'        => 'sometimes|in:property_visit,vehicle_visit,meeting,call,video_call,signing,other',
+            'starts_at'   => 'sometimes|date',
+            'ends_at'     => 'nullable|date',
+            'location'    => 'nullable|string|max:300',
+            'description' => 'nullable|string|max:1000',
+        ]);
+
+        $appointment->update($data);
+
+        return response()->json(['success' => true]);
+    })->name('api.crm.appointments.update');
+
     // ── Agenda: próximas citas ─────────────────────────────────────────────────
     Route::get('/crm/agenda', function (\Illuminate\Http\Request $request) {
         $user      = $request->user();
@@ -1376,6 +1399,33 @@ Route::middleware(['auth:api', 'api.permission:event_dashboard,view'])->group(fu
 
         return response()->json(['success' => true, 'reminder_id' => $reminder->id], 201);
     })->name('api.crm.reminders.store');
+
+    // ── Recordatorios por lead ─────────────────────────────────────────────────
+    Route::get('/crm/leads/{id}/reminders', function (\Illuminate\Http\Request $request, int $id) {
+        $user = $request->user();
+        $lead = \App\Lead::where('id', $id)
+            ->when(!$user->isSuperAdmin(), fn($q) => $q->where('company_id', $user->company_id))
+            ->firstOrFail();
+
+        $reminders = $lead->reminders()
+            ->pending()
+            ->orderBy('remind_at', 'asc')
+            ->get();
+
+        return response()->json([
+            'reminders' => $reminders->map(fn($r) => [
+                'id'             => $r->id,
+                'title'          => $r->title,
+                'description'    => $r->description,
+                'priority'       => $r->priority,
+                'priority_label' => $r->priority_label,
+                'remind_at'      => $r->remind_at->toIso8601String(),
+                'is_overdue'     => $r->isOverdue(),
+                'lead_id'        => $id,
+                'lead_name'      => $lead->name,
+            ]),
+        ]);
+    })->name('api.crm.lead.reminders');
 
     Route::patch('/crm/reminders/{id}/complete', function (\Illuminate\Http\Request $request, int $id) {
         $user     = $request->user();
@@ -1471,5 +1521,26 @@ Route::middleware(['auth:api', 'api.permission:event_dashboard,view'])->group(fu
             'year'             => $year,
         ]);
     })->name('api.crm.analytics');
+
+    // ── Agentes de la empresa ──────────────────────────────────────────────────
+    Route::get('/crm/agents', function (\Illuminate\Http\Request $request) {
+        $user      = $request->user();
+        $companyId = $user->isSuperAdmin() ? null : $user->company_id;
+
+        $agents = \App\User::when($companyId, fn($q) => $q->where('company_id', $companyId))
+            ->whereIn('role', ['agent', 'company_admin'])
+            ->select('id', 'name', 'email', 'role')
+            ->orderBy('name')
+            ->get();
+
+        return response()->json([
+            'agents' => $agents->map(fn($a) => [
+                'id'    => $a->id,
+                'name'  => $a->name,
+                'email' => $a->email,
+                'role'  => $a->role,
+            ]),
+        ]);
+    })->name('api.crm.agents');
 });
 

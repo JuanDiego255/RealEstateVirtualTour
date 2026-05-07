@@ -48,6 +48,21 @@ class CrmAnalyticsModel {
   }
 }
 
+class CrmAgentModel {
+  final int id;
+  final String name;
+  final String? email;
+  final String role;
+  const CrmAgentModel({required this.id, required this.name, this.email, required this.role});
+
+  factory CrmAgentModel.fromJson(Map<String, dynamic> j) => CrmAgentModel(
+    id:    (j['id'] as num).toInt(),
+    name:  j['name'] as String,
+    email: j['email'] as String?,
+    role:  j['role'] as String,
+  );
+}
+
 class CrmService {
   final _api = ApiService();
 
@@ -58,6 +73,7 @@ class CrmService {
     String? priority,
     String? origin, // all | event | agency
     String? search,
+    int? agentId,
     int page = 1,
     int perPage = 25,
   }) async {
@@ -68,6 +84,7 @@ class CrmService {
       if (priority  != null && priority  != 'all') params['priority']  = priority;
       if (origin    != null && origin    != 'all') params['origin']    = origin;
       if (search    != null && search.isNotEmpty)  params['search']    = search;
+      if (agentId   != null)                       params['agent_id']  = '$agentId';
 
       final res = await http.get(
         Uri.https(_kHost, '/api/crm/leads', params),
@@ -390,6 +407,26 @@ class CrmService {
     }
   }
 
+  Future<Resource<List<ReminderModel>>> getLeadReminders(int leadId) async {
+    try {
+      final headers = await _api.authHeaders();
+      final res = await http.get(
+        Uri.https(_kHost, '/api/crm/leads/$leadId/reminders'),
+        headers: headers,
+      );
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        final list = (data['reminders'] as List<dynamic>)
+            .map((e) => ReminderModel.fromJson(e as Map<String, dynamic>))
+            .toList();
+        return Success(list);
+      }
+      return AppError('Error ${res.statusCode}');
+    } catch (e) {
+      return AppError(e.toString());
+    }
+  }
+
   Future<Resource<int>> createReminder({
     required int leadId,
     required String title,
@@ -457,6 +494,39 @@ class CrmService {
         headers: headers,
       );
       if (res.statusCode == 200) return Success(true);
+      return AppError('Error ${res.statusCode}');
+    } catch (e) {
+      return AppError(e.toString());
+    }
+  }
+
+  Future<Resource<bool>> updateAppointment(int id, Map<String, dynamic> fields) async {
+    try {
+      final headers = await _api.authHeaders();
+      final res = await http.patch(
+        Uri.https(_kHost, '/api/crm/appointments/$id'),
+        headers: headers,
+        body: jsonEncode(fields),
+      );
+      if (res.statusCode == 200) return Success(true);
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return AppError(data['message']?.toString() ?? 'Error al actualizar');
+    } catch (e) {
+      return AppError(e.toString());
+    }
+  }
+
+  Future<Resource<List<CrmAgentModel>>> getAgents() async {
+    try {
+      final headers = await _api.authHeaders();
+      final res = await http.get(Uri.https(_kHost, '/api/crm/agents'), headers: headers);
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        final list = (data['agents'] as List<dynamic>)
+            .map((e) => CrmAgentModel.fromJson(e as Map<String, dynamic>))
+            .toList();
+        return Success(list);
+      }
       return AppError('Error ${res.statusCode}');
     } catch (e) {
       return AppError(e.toString());

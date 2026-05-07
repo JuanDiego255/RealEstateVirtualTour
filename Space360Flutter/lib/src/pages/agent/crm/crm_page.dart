@@ -38,6 +38,13 @@ class _CrmPageState extends State<CrmPage> with SingleTickerProviderStateMixin {
     super.initState();
     _tab = TabController(length: 4, vsync: this);
     _load(reset: true);
+    if (widget.user.isAdmin) _loadAgents();
+  }
+
+  Future<void> _loadAgents() async {
+    final r = await _service.getAgents();
+    if (!mounted) return;
+    if (r is Success<List<CrmAgentModel>>) setState(() => _agents = r.data);
   }
 
   @override
@@ -50,11 +57,13 @@ class _CrmPageState extends State<CrmPage> with SingleTickerProviderStateMixin {
   Resource<CrmLeadPage>? _result;
   String _filterStatus = 'all';
   String _filterOrigin = 'all'; // all | event | agency
+  int? _filterAgentId;
   int _page = 1;
   bool _loadingMore = false;
   final List<CrmLead> _leads = [];
   CrmStats? _stats;
   int _lastPage = 1;
+  List<CrmAgentModel> _agents = [];
 
   // Today summary
   List<AppointmentModel> _todayAppts = [];
@@ -85,10 +94,11 @@ class _CrmPageState extends State<CrmPage> with SingleTickerProviderStateMixin {
     setState(() => _result = null);
     final results = await Future.wait([
       _service.getLeads(
-        status: _filterStatus == 'all' ? null : _filterStatus,
-        origin: _filterOrigin == 'all' ? null : _filterOrigin,
-        search: _searchCtrl.text.trim().isEmpty ? null : _searchCtrl.text.trim(),
-        page:   _page,
+        status:  _filterStatus == 'all' ? null : _filterStatus,
+        origin:  _filterOrigin == 'all' ? null : _filterOrigin,
+        search:  _searchCtrl.text.trim().isEmpty ? null : _searchCtrl.text.trim(),
+        agentId: _filterAgentId,
+        page:    _page,
       ),
       if (reset) ...[
         _service.getAgenda(days: 1),
@@ -121,10 +131,11 @@ class _CrmPageState extends State<CrmPage> with SingleTickerProviderStateMixin {
     setState(() => _loadingMore = true);
     _page++;
     final r = await _service.getLeads(
-      status: _filterStatus == 'all' ? null : _filterStatus,
-      origin: _filterOrigin == 'all' ? null : _filterOrigin,
-      search: _searchCtrl.text.trim().isEmpty ? null : _searchCtrl.text.trim(),
-      page:   _page,
+      status:  _filterStatus == 'all' ? null : _filterStatus,
+      origin:  _filterOrigin == 'all' ? null : _filterOrigin,
+      search:  _searchCtrl.text.trim().isEmpty ? null : _searchCtrl.text.trim(),
+      agentId: _filterAgentId,
+      page:    _page,
     );
     if (!mounted) return;
     setState(() {
@@ -209,6 +220,9 @@ class _CrmPageState extends State<CrmPage> with SingleTickerProviderStateMixin {
                 filterOrigin: _filterOrigin,
                 onStatusChanged: (v) { setState(() => _filterStatus = v); _load(reset: true); },
                 onOriginChanged: (v) { setState(() => _filterOrigin = v); _load(reset: true); },
+                agents: _agents,
+                filterAgentId: _filterAgentId,
+                onAgentChanged: (v) { setState(() => _filterAgentId = v); _load(reset: true); },
               ),
               Expanded(child: _buildBody()),
             ],
@@ -374,6 +388,9 @@ class _FilterBar extends StatelessWidget {
   final String filterOrigin;
   final ValueChanged<String> onStatusChanged;
   final ValueChanged<String> onOriginChanged;
+  final List<CrmAgentModel> agents;
+  final int? filterAgentId;
+  final ValueChanged<int?> onAgentChanged;
 
   const _FilterBar({
     required this.statusOptions,
@@ -382,6 +399,9 @@ class _FilterBar extends StatelessWidget {
     required this.filterOrigin,
     required this.onStatusChanged,
     required this.onOriginChanged,
+    this.agents = const [],
+    this.filterAgentId,
+    required this.onAgentChanged,
   });
 
   static const _statusColors = {
@@ -459,6 +479,65 @@ class _FilterBar extends StatelessWidget {
               }).toList(),
             ),
           ),
+          // Agent filter (admins only, when agents are loaded)
+          if (agents.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            SizedBox(
+              height: 34,
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                scrollDirection: Axis.horizontal,
+                children: [
+                  GestureDetector(
+                    onTap: () => onAgentChanged(null),
+                    child: Container(
+                      margin: const EdgeInsets.only(right: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: filterAgentId == null ? const Color(0xFF9B59B6).withOpacity(0.15) : _kSurface,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                            color: filterAgentId == null ? const Color(0xFF9B59B6) : Colors.white12),
+                      ),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        const Icon(Icons.people_alt_rounded, size: 12,
+                            color: Color(0xFF9B59B6)),
+                        const SizedBox(width: 4),
+                        Text('Todos',
+                            style: TextStyle(
+                              color: filterAgentId == null ? const Color(0xFF9B59B6) : _kSubtext,
+                              fontSize: 11,
+                              fontWeight: filterAgentId == null ? FontWeight.bold : FontWeight.normal,
+                            )),
+                      ]),
+                    ),
+                  ),
+                  ...agents.map((a) {
+                    final sel = filterAgentId == a.id;
+                    return GestureDetector(
+                      onTap: () => onAgentChanged(a.id),
+                      child: Container(
+                        margin: const EdgeInsets.only(right: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: sel ? const Color(0xFF9B59B6).withOpacity(0.15) : _kSurface,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                              color: sel ? const Color(0xFF9B59B6) : Colors.white12),
+                        ),
+                        child: Text(a.name,
+                            style: TextStyle(
+                              color: sel ? const Color(0xFF9B59B6) : _kSubtext,
+                              fontSize: 11,
+                              fontWeight: sel ? FontWeight.bold : FontWeight.normal,
+                            )),
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 6),
         ],
       );

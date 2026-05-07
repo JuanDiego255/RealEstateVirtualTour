@@ -107,7 +107,7 @@ class _CrmLeadDetailPageState extends State<CrmLeadDetailPage>
             IconButton(
               icon: const Icon(Icons.edit_rounded, color: _kSubtext),
               onPressed: () async {
-                final updated = await showEditLeadSheet(context, _lead!);
+                final updated = await showEditLeadSheet(context, _lead!, user: widget.user);
                 if (updated == true) _load();
               },
             ),
@@ -375,6 +375,10 @@ class _AppointmentsTabState extends State<_AppointmentsTab> with AutomaticKeepAl
                         itemBuilder: (_, i) => _AppointmentCard(
                           appointment: _appointments[i],
                           onStatusUpdate: _load,
+                          onEdit: () async {
+                            final updated = await showEditAppointmentSheet(context, _appointments[i]);
+                            if (updated == true) _load();
+                          },
                         ),
                       ),
                     ),
@@ -387,7 +391,8 @@ class _AppointmentsTabState extends State<_AppointmentsTab> with AutomaticKeepAl
 class _AppointmentCard extends StatelessWidget {
   final AppointmentModel appointment;
   final VoidCallback onStatusUpdate;
-  const _AppointmentCard({required this.appointment, required this.onStatusUpdate});
+  final VoidCallback onEdit;
+  const _AppointmentCard({required this.appointment, required this.onStatusUpdate, required this.onEdit});
 
   static const _typeColors = {
     'property_visit': Color(0xFF4CAF50), 'vehicle_visit': Color(0xFF2196F3),
@@ -457,13 +462,12 @@ class _AppointmentCard extends StatelessWidget {
         ],
         if (_canUpdateStatus) ...[
           const SizedBox(height: 10),
-          Row(children: [
+          Wrap(spacing: 6, runSpacing: 6, children: [
+            _StatusBtn('Editar', _kGold, () => onEdit()),
             if (appointment.status == 'scheduled')
               _StatusBtn('Confirmar', const Color(0xFF2ECC71), () => _updateStatus(context, 'confirmed')),
             if (appointment.status != 'completed' && appointment.status != 'no_show') ...[
-              const SizedBox(width: 8),
               _StatusBtn('Completar', const Color(0xFF27AE60), () => _showCompleteDialog(context)),
-              const SizedBox(width: 8),
               _StatusBtn('Cancelar', const Color(0xFFE74C3C), () => _updateStatus(context, 'cancelled')),
             ],
           ]),
@@ -1285,19 +1289,20 @@ class _LogActivitySheetState extends State<_LogActivitySheet> {
 // Edit lead sheet
 // ═══════════════════════════════════════════════════════════════════════════════
 
-Future<bool?> showEditLeadSheet(BuildContext context, CrmLead lead) {
+Future<bool?> showEditLeadSheet(BuildContext context, CrmLead lead, {AuthUser? user}) {
   return showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
     backgroundColor: _kSurface,
     shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-    builder: (_) => _EditLeadSheet(lead: lead),
+    builder: (_) => _EditLeadSheet(lead: lead, user: user),
   );
 }
 
 class _EditLeadSheet extends StatefulWidget {
   final CrmLead lead;
-  const _EditLeadSheet({required this.lead});
+  final AuthUser? user;
+  const _EditLeadSheet({required this.lead, this.user});
 
   @override
   State<_EditLeadSheet> createState() => _EditLeadSheetState();
@@ -1317,6 +1322,9 @@ class _EditLeadSheetState extends State<_EditLeadSheet> {
   late String _interestType;
   DateTime? _nextFollowUp;
   bool _saving = false;
+
+  List<CrmAgentModel> _agents = [];
+  int? _selectedAgentId;
 
   static const _priorities = [
     ('low',    'Baja',    Color(0xFF2E7D32)),
@@ -1348,9 +1356,17 @@ class _EditLeadSheetState extends State<_EditLeadSheet> {
     _priority         = l.priority;
     _currency         = l.budgetCurrency ?? 'CRC';
     _interestType     = l.interestType;
+    _selectedAgentId  = l.agent?.id;
     if (l.nextFollowUp != null) {
       try { _nextFollowUp = DateTime.parse(l.nextFollowUp!).toLocal(); } catch (_) {}
     }
+    if (widget.user != null && (widget.user!.isAdmin)) _loadAgents();
+  }
+
+  Future<void> _loadAgents() async {
+    final r = await CrmService().getAgents();
+    if (!mounted) return;
+    if (r is Success<List<CrmAgentModel>>) setState(() => _agents = r.data);
   }
 
   @override
@@ -1486,6 +1502,37 @@ class _EditLeadSheetState extends State<_EditLeadSheet> {
           const SizedBox(height: 10),
           _EditField(controller: _notesCtrl, hint: 'Notas', icon: Icons.note_rounded, maxLines: 3),
           const SizedBox(height: 10),
+          // Agent selector (admins only)
+          if (widget.user != null && widget.user!.isAdmin && _agents.isNotEmpty) ...[
+            const Text('Agente asignado', style: TextStyle(color: _kSubtext, fontSize: 11)),
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: _kCard,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<int?>(
+                  value: _selectedAgentId,
+                  dropdownColor: _kCard,
+                  style: const TextStyle(color: _kText, fontSize: 13),
+                  icon: const Icon(Icons.keyboard_arrow_down_rounded, color: _kSubtext),
+                  isExpanded: true,
+                  hint: const Text('Sin asignar', style: TextStyle(color: _kSubtext, fontSize: 13)),
+                  items: [
+                    const DropdownMenuItem<int?>(value: null, child: Text('Sin asignar', style: TextStyle(color: _kSubtext, fontSize: 13))),
+                    ..._agents.map((a) => DropdownMenuItem<int?>(
+                      value: a.id,
+                      child: Text(a.name, style: const TextStyle(color: _kText, fontSize: 13)),
+                    )),
+                  ],
+                  onChanged: (v) => setState(() => _selectedAgentId = v),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+          ],
           // Next follow-up date picker
           GestureDetector(
             onTap: _pickFollowUp,
@@ -1588,6 +1635,8 @@ class _EditLeadSheetState extends State<_EditLeadSheet> {
       if (_requirementsCtrl.text.trim().isNotEmpty) 'requirements': _requirementsCtrl.text.trim(),
       if (_notesCtrl.text.trim().isNotEmpty)         'notes':        _notesCtrl.text.trim(),
       if (_nextFollowUp != null) 'next_follow_up': _nextFollowUp!.toIso8601String(),
+      if (widget.user != null && widget.user!.isAdmin)
+        'user_id': _selectedAgentId,
     });
     if (!mounted) return;
     if (r is Success<bool>) {
@@ -1818,6 +1867,202 @@ class _CreateAppointmentSheetState extends State<_CreateAppointmentSheet> {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// Edit appointment sheet
+// ═══════════════════════════════════════════════════════════════════════════════
+
+Future<bool?> showEditAppointmentSheet(BuildContext context, AppointmentModel appointment) {
+  return showModalBottomSheet<bool>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: _kSurface,
+    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+    builder: (_) => _EditAppointmentSheet(appointment: appointment),
+  );
+}
+
+class _EditAppointmentSheet extends StatefulWidget {
+  final AppointmentModel appointment;
+  const _EditAppointmentSheet({required this.appointment});
+
+  @override
+  State<_EditAppointmentSheet> createState() => _EditAppointmentSheetState();
+}
+
+class _EditAppointmentSheetState extends State<_EditAppointmentSheet> {
+  static const _types = [
+    ('vehicle_visit',  'Visita vehículo', Icons.directions_car_rounded),
+    ('meeting',        'Reunión',         Icons.groups_rounded),
+    ('call',           'Llamada',         Icons.phone_rounded),
+    ('video_call',     'Videollamada',    Icons.videocam_rounded),
+    ('signing',        'Firma',           Icons.draw_rounded),
+    ('other',          'Otro',            Icons.event_rounded),
+  ];
+
+  late String _type;
+  late final TextEditingController _titleCtrl;
+  late final TextEditingController _locationCtrl;
+  late final TextEditingController _descCtrl;
+  late DateTime _startsAt;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final a = widget.appointment;
+    _type        = a.type;
+    _titleCtrl    = TextEditingController(text: a.title);
+    _locationCtrl = TextEditingController(text: a.location ?? '');
+    _descCtrl     = TextEditingController(text: a.description ?? '');
+    try {
+      _startsAt = DateTime.parse(a.startsAt).toLocal();
+    } catch (_) {
+      _startsAt = DateTime.now().add(const Duration(hours: 1));
+    }
+  }
+
+  @override
+  void dispose() {
+    _titleCtrl.dispose(); _locationCtrl.dispose(); _descCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 20),
+      child: SingleChildScrollView(
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            const Expanded(child: Text('Editar cita',
+                style: TextStyle(color: _kText, fontSize: 17, fontWeight: FontWeight.bold))),
+            IconButton(icon: const Icon(Icons.close_rounded, color: _kSubtext),
+                onPressed: () => Navigator.pop(context)),
+          ]),
+          const SizedBox(height: 14),
+          SizedBox(height: 40, child: ListView(
+            scrollDirection: Axis.horizontal,
+            children: _types.map((t) {
+              final sel = _type == t.$1;
+              return GestureDetector(
+                onTap: () => setState(() => _type = t.$1),
+                child: Container(
+                  margin: const EdgeInsets.only(right: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: sel ? _kGold.withOpacity(0.15) : _kCard,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: sel ? _kGold : Colors.white12),
+                  ),
+                  child: Row(children: [
+                    Icon(t.$3, size: 13, color: sel ? _kGold : _kSubtext),
+                    const SizedBox(width: 5),
+                    Text(t.$2, style: TextStyle(
+                      color: sel ? _kGold : _kSubtext, fontSize: 12,
+                      fontWeight: sel ? FontWeight.bold : FontWeight.normal,
+                    )),
+                  ]),
+                ),
+              );
+            }).toList(),
+          )),
+          const SizedBox(height: 12),
+          _EditField(controller: _titleCtrl, hint: 'Título *', icon: Icons.title_rounded),
+          const SizedBox(height: 10),
+          GestureDetector(
+            onTap: _pickDateTime,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+              decoration: BoxDecoration(color: _kCard, borderRadius: BorderRadius.circular(10)),
+              child: Row(children: [
+                const Icon(Icons.access_time_rounded, size: 18, color: _kSubtext),
+                const SizedBox(width: 10),
+                Text(_fmtDatetimeLocal(_startsAt),
+                    style: const TextStyle(color: _kText, fontSize: 13)),
+              ]),
+            ),
+          ),
+          const SizedBox(height: 10),
+          _EditField(controller: _locationCtrl, hint: 'Ubicación (opcional)', icon: Icons.location_on_rounded),
+          const SizedBox(height: 10),
+          _EditField(controller: _descCtrl, hint: 'Descripción (opcional)', icon: Icons.notes_rounded, maxLines: 2),
+          const SizedBox(height: 16),
+          SizedBox(width: double.infinity, child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _kGold, foregroundColor: Colors.black,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: _saving ? null : _save,
+            child: _saving
+                ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
+                : const Text('Guardar cambios', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+          )),
+        ]),
+      ),
+    );
+  }
+
+  Future<void> _pickDateTime() async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _startsAt,
+      firstDate: DateTime.now().subtract(const Duration(days: 1)),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (ctx, child) => Theme(
+        data: ThemeData.dark().copyWith(
+          colorScheme: const ColorScheme.dark(primary: _kGold, surface: _kSurface),
+        ),
+        child: child!,
+      ),
+    );
+    if (date == null || !mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_startsAt),
+      builder: (ctx, child) => Theme(
+        data: ThemeData.dark().copyWith(
+          colorScheme: const ColorScheme.dark(primary: _kGold, surface: _kSurface),
+        ),
+        child: child!,
+      ),
+    );
+    if (time == null) return;
+    setState(() {
+      _startsAt = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    });
+  }
+
+  String _fmtDatetimeLocal(DateTime dt) {
+    const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Set','Oct','Nov','Dic'];
+    return '${dt.day} ${months[dt.month - 1]} ${dt.year}  '
+        '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _save() async {
+    if (_titleCtrl.text.trim().isEmpty) {
+      Fluttertoast.showToast(msg: 'Ingresá un título', backgroundColor: Colors.orange[700]);
+      return;
+    }
+    setState(() => _saving = true);
+    final r = await CrmService().updateAppointment(widget.appointment.id, {
+      'title':       _titleCtrl.text.trim(),
+      'type':        _type,
+      'starts_at':   _startsAt.toIso8601String(),
+      'location':    _locationCtrl.text.trim().isEmpty ? null : _locationCtrl.text.trim(),
+      'description': _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
+    });
+    if (!mounted) return;
+    if (r is Success<bool>) {
+      Navigator.pop(context, true);
+      Fluttertoast.showToast(msg: 'Cita actualizada', backgroundColor: const Color(0xFF2E7D32));
+    } else if (r is AppError<bool>) {
+      setState(() => _saving = false);
+      Fluttertoast.showToast(msg: r.message, backgroundColor: Colors.red[700]);
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // Reminders tab
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -1846,13 +2091,12 @@ class _RemindersTabState extends State<_RemindersTab> with AutomaticKeepAliveCli
 
   Future<void> _load() async {
     setState(() { _loading = true; _error = null; });
-    final r = await _service.getReminders();
+    final r = await _service.getLeadReminders(widget.lead.id);
     if (!mounted) return;
     setState(() {
       _loading = false;
       if (r is Success<List<ReminderModel>>) {
-        // Only show reminders that belong to this lead
-        _reminders = r.data.where((rem) => rem.leadId == widget.lead.id).toList();
+        _reminders = r.data;
       } else if (r is AppError<List<ReminderModel>>) {
         _error = r.message;
       }
