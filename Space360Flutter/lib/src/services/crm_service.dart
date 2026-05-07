@@ -334,8 +334,12 @@ class CrmService {
         final data = jsonDecode(res.body) as Map<String, dynamic>;
         return Success((data['appointment_id'] as num).toInt());
       }
-      final data = jsonDecode(res.body) as Map<String, dynamic>;
-      return AppError(data['message']?.toString() ?? 'Error al crear cita');
+      try {
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        return AppError(data['message']?.toString() ?? 'Error ${res.statusCode}');
+      } catch (_) {
+        return AppError('[${res.statusCode}] ${res.body.substring(0, res.body.length.clamp(0, 300))}');
+      }
     } catch (e) {
       return AppError(e.toString());
     }
@@ -494,7 +498,12 @@ class CrmService {
         headers: headers,
       );
       if (res.statusCode == 200) return Success(true);
-      return AppError('Error ${res.statusCode}');
+      try {
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        return AppError(data['message']?.toString() ?? 'Error ${res.statusCode}');
+      } catch (_) {
+        return AppError('[${res.statusCode}] ${res.body.substring(0, res.body.length.clamp(0, 300))}');
+      }
     } catch (e) {
       return AppError(e.toString());
     }

@@ -1238,7 +1238,7 @@ Route::middleware(['auth:api', 'api.permission:event_dashboard,view'])->group(fu
             'title'       => $data['title'],
             'type'        => $data['type'],
             'starts_at'   => $data['starts_at'],
-            'ends_at'     => $data['ends_at'] ?? null,
+            'ends_at'     => $data['ends_at'] ?? \Carbon\Carbon::parse($data['starts_at'])->addHour(),
             'location'    => $data['location'] ?? null,
             'description' => $data['description'] ?? null,
             'status'      => 'scheduled',
@@ -1438,7 +1438,7 @@ Route::middleware(['auth:api', 'api.permission:event_dashboard,view'])->group(fu
         $user      = $request->user();
         $companyId = $user->isSuperAdmin() ? null : $user->company_id;
 
-        $reminder = \App\Models\Reminder::whereHasMorph(
+        $reminder = \App\Reminder::whereHasMorph(
             'remindable', [\App\Lead::class],
             fn($q) => $q->when($companyId, fn($lq) => $lq->where('company_id', $companyId))
         )->findOrFail($id);
