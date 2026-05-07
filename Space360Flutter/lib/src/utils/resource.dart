@@ -17,5 +17,5 @@ class AppError<T> extends Resource<T> {
 class Duplicate<T> extends Resource<T> {
   final String message;
   final int leadId;
-  const Duplicate(this.message, this.leadId);
+  Duplicate(this.message, this.leadId);
 }
