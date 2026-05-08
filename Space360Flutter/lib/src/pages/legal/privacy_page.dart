@@ -80,7 +80,7 @@ class PrivacyPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 const Text(
-                  'Space 360 CR · Versión 1.0',
+                  'Space 360 CR · Versión 2.0 · Mayo 2026',
                   style: TextStyle(color: _kSubtext, fontSize: 12),
                 ),
                 const SizedBox(height: 14),
@@ -91,7 +91,7 @@ class PrivacyPage extends StatelessWidget {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Text(
-                    'Esta política explica qué información recopilamos cuando usás nuestra aplicación, cómo la usamos y cuáles son tus derechos.',
+                    'Esta política explica qué información recopilamos cuando usás nuestra aplicación y sitio web, cómo la usamos, con quién la compartimos y cuáles son tus derechos según la Ley N.° 8968 de Costa Rica.',
                     style: TextStyle(color: _kSubtext, fontSize: 13, height: 1.55),
                   ),
                 ),
@@ -107,62 +107,119 @@ class PrivacyPage extends StatelessWidget {
           ),
 
           _Section(
-            icon: Icons.storage_rounded,
-            title: '2. Datos que recopilamos',
+            icon: Icons.people_alt_rounded,
+            title: '2. Tipos de usuarios y alcance',
             content:
-                'Únicamente recopilamos los datos que vos nos proporcionás voluntariamente al completar el formulario de contacto:\n\n'
-                '• Nombre completo (obligatorio)\n'
-                '• Teléfono / WhatsApp (obligatorio)\n'
+                'Esta política aplica a dos tipos de usuarios:\n\n'
+                '• Usuarios públicos — personas que visitan el sitio web o envían el formulario de contacto para solicitar un Tour Virtual 360°.\n\n'
+                '• Agentes / usuarios internos — colaboradores que acceden al panel CRM, módulo Kiosko o herramientas administrativas de Space 360 CR para gestionar clientes, citas, propiedades y vehículos.',
+          ),
+
+          _Section(
+            icon: Icons.storage_rounded,
+            title: '3. Datos que recopilamos',
+            content:
+                'A. Usuarios públicos (formulario de contacto)\n\n'
+                '• Nombre completo\n'
+                '• Teléfono / WhatsApp\n'
                 '• Correo electrónico (opcional)\n'
-                '• Descripción del vehículo o mensaje (obligatorio)\n'
-                '• Tipo de tour solicitado (opcional)\n\n'
-                'No recopilamos datos de ubicación, contactos, fotos, identificadores de dispositivo ni información de pago.',
+                '• Descripción del vehículo o mensaje\n'
+                '• Tipo de tour solicitado (opcional)\n'
+                '• Dirección IP (registro automático de seguridad)\n\n'
+                'B. Agentes / usuarios internos (CRM y Kiosko)\n\n'
+                '• Credenciales: correo electrónico y contraseña (almacenada con hash).\n'
+                '• Datos de clientes gestionados: nombre, teléfono, WhatsApp, correo, dirección, redes sociales, intereses y notas de seguimiento.\n'
+                '• Datos financieros de clientes: presupuesto (mínimo/máximo), cotizaciones de vehículos (precio, tasa de interés, enganche, plazo).\n'
+                '• Citas: coordenadas de ubicación (GPS), dirección, fecha, hora, notas del resultado de la visita.\n'
+                '• Kiosko de eventos: nombre, teléfono, correo y fotografía de prospectos captados en eventos.\n'
+                '• Actividad CRM: historial de interacciones, llamadas, visitas y seguimientos.',
             highlight: true,
           ),
 
           _Section(
             icon: Icons.track_changes_rounded,
-            title: '3. Para qué usamos tus datos',
+            title: '4. Para qué usamos tus datos',
             content:
+                'Usuarios públicos:\n'
                 '• Contactarte para dar seguimiento a tu solicitud de Tour Virtual 360°.\n'
                 '• Enviarte información sobre nuestros servicios si lo solicitaste.\n'
                 '• Mejorar la calidad de nuestro servicio de atención al cliente.\n\n'
-                'No usamos tus datos para publicidad de terceros ni perfilado automatizado.',
+                'Agentes / usuarios internos:\n'
+                '• Gestionar el ciclo de ventas y seguimiento de clientes (CRM).\n'
+                '• Agendar y controlar citas de visita a propiedades y vehículos.\n'
+                '• Generar cotizaciones de financiamiento de vehículos.\n'
+                '• Capturar prospectos en eventos presenciales (Kiosko).\n'
+                '• Medir el desempeño comercial por agente.\n\n'
+                'No usamos datos para publicidad de terceros ni perfilado automatizado.',
+          ),
+
+          _Section(
+            icon: Icons.attach_money_rounded,
+            title: '5. Datos financieros y cotizaciones',
+            content:
+                'El módulo de cotizaciones del Kiosko y el CRM procesan información financiera de referencia, incluyendo:\n\n'
+                '• Precio del vehículo de interés.\n'
+                '• Tasa de interés anual y plazo de financiamiento.\n'
+                '• Monto de enganche / prima.\n'
+                '• Rango de presupuesto declarado por el prospecto.\n\n'
+                'Esta información se usa exclusivamente para generar cotizaciones de referencia y facilitar el proceso de venta. No compartimos datos financieros con entidades crediticias sin el consentimiento explícito del cliente.',
+          ),
+
+          _Section(
+            icon: Icons.phone_android_rounded,
+            title: '6. Almacenamiento local en tu dispositivo',
+            content:
+                'La aplicación móvil almacena en tu dispositivo:\n\n'
+                '• Token de sesión (api_token): guardado de forma local para mantener tu sesión activa sin necesidad de autenticarte cada vez.\n\n'
+                'Este dato permanece en tu dispositivo hasta que cerrás sesión. Es una cadena cifrada de autenticación, no contiene información personal visible. Podés eliminarlo cerrando sesión en la aplicación.',
           ),
 
           _Section(
             icon: Icons.gavel_rounded,
-            title: '4. Base legal',
+            title: '7. Base legal del tratamiento',
             content:
-                'El tratamiento de tus datos se basa en tu consentimiento expreso, que otorgás al completar y enviar el formulario de contacto. Podés retirar este consentimiento en cualquier momento contactándonos.',
+                'Usuarios públicos: tu consentimiento expreso al enviar el formulario de contacto.\n\n'
+                'Agentes / usuarios internos: ejecución del contrato laboral o de prestación de servicios con Space 360 CR, y el interés legítimo en gestionar las operaciones comerciales de la empresa.\n\n'
+                'Podés retirar tu consentimiento en cualquier momento contactándonos.',
           ),
 
           _Section(
             icon: Icons.share_rounded,
-            title: '5. Compartición con terceros',
+            title: '8. Compartición con terceros y proveedores',
             content:
-                'No vendemos, alquilamos ni compartimos tus datos con terceros, excepto:\n\n'
-                '• Proveedores de infraestructura (hosting) bajo acuerdos de confidencialidad.\n'
-                '• Cuando sea requerido por ley o autoridad competente en Costa Rica.',
+                'Compartimos datos con los siguientes proveedores bajo acuerdos de confidencialidad:\n\n'
+                '• Proveedor de correo electrónico (Amazon SES / Mailgun / Postmark): recibe direcciones de correo y contenido de mensajes para el envío de notificaciones.\n'
+                '• Almacenamiento en la nube (Amazon S3 o similar): almacena imágenes de tours 360°, fotografías de prospectos y archivos multimedia.\n'
+                '• Proveedor de hosting / infraestructura: aloja la base de datos y servidores.\n\n'
+                'No vendemos, alquilamos ni cedemos datos personales a terceros con fines comerciales propios. Podemos divulgar datos cuando sea requerido por ley o autoridad competente en Costa Rica.',
           ),
 
           _Section(
             icon: Icons.schedule_rounded,
-            title: '6. Retención de datos',
+            title: '9. Retención de datos',
             content:
-                'Conservamos tus datos por un máximo de 2 años desde la última interacción, o hasta que solicitás su eliminación.',
+                '• Formulario de contacto: máximo 2 años desde la última interacción.\n'
+                '• Leads y datos de clientes CRM: mientras el cliente sea activo, y hasta 3 años luego del cierre del caso.\n'
+                '• Datos financieros y cotizaciones: 5 años por obligaciones de registro comercial.\n'
+                '• Fotografías de eventos (Kiosko): máximo 1 año.\n'
+                '• Logs de acceso y seguridad: 90 días.\n\n'
+                'Podés solicitar la eliminación de tus datos antes de estos plazos.',
           ),
 
           _Section(
             icon: Icons.lock_rounded,
-            title: '7. Seguridad',
+            title: '10. Seguridad',
             content:
-                'Todas las comunicaciones entre la app y nuestro servidor se realizan mediante HTTPS (TLS). Los datos se almacenan en servidores con acceso restringido.',
+                '• Las comunicaciones entre la app y el servidor se realizan mediante HTTPS (TLS).\n'
+                '• Las contraseñas se almacenan con hash seguro (bcrypt).\n'
+                '• El token de sesión se almacena únicamente en tu dispositivo.\n'
+                '• Los servidores tienen acceso restringido y monitoreo de seguridad.\n\n'
+                'Ningún sistema es 100% seguro. En caso de incidente de seguridad que afecte tus datos, te notificaremos conforme a la legislación aplicable.',
           ),
 
           _Section(
             icon: Icons.verified_user_rounded,
-            title: '8. Tus derechos (Ley N.° 8968 CR)',
+            title: '11. Tus derechos (Ley N.° 8968 CR)',
             content:
                 '• Acceso — conocer qué datos tenemos sobre vos.\n'
                 '• Rectificación — corregir datos incorrectos.\n'
@@ -174,14 +231,21 @@ class PrivacyPage extends StatelessWidget {
 
           _Section(
             icon: Icons.child_friendly_rounded,
-            title: '9. Menores de edad',
+            title: '12. Menores de edad',
             content:
-                'Nuestros servicios están dirigidos a personas mayores de 18 años. No recopilamos intencionalmente datos de menores.',
+                'Nuestros servicios están dirigidos a personas mayores de 18 años. No recopilamos intencionalmente datos de menores. Si detectamos que un menor nos ha enviado datos, los eliminaremos de inmediato.',
+          ),
+
+          _Section(
+            icon: Icons.cookie_rounded,
+            title: '13. Cookies y tecnologías similares',
+            content:
+                'La aplicación móvil no utiliza cookies. El sitio web puede usar cookies técnicas esenciales para el funcionamiento de la sesión. No utilizamos cookies de seguimiento ni de publicidad de terceros.',
           ),
 
           _Section(
             icon: Icons.update_rounded,
-            title: '10. Cambios a esta política',
+            title: '14. Cambios a esta política',
             content:
                 'Podemos actualizar esta política ocasionalmente. Te notificaremos de cambios significativos a través de la app. La fecha de versión al inicio del documento refleja la versión vigente.',
           ),
@@ -237,7 +301,7 @@ class PrivacyPage extends StatelessWidget {
 
           const SizedBox(height: 32),
           const Text(
-            'Política de Privacidad de Space 360 CR\nVersión 1.0 · Costa Rica · Ley N.° 8968',
+            'Política de Privacidad de Space 360 CR\nVersión 2.0 · Mayo 2026 · Costa Rica · Ley N.° 8968',
             textAlign: TextAlign.center,
             style: TextStyle(color: Color(0xFF3a3a3a), fontSize: 11, height: 1.6),
           ),
