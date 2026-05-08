@@ -4,6 +4,7 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:space360_flutter/src/navigation/agent_nav_page.dart';
 import 'package:space360_flutter/src/navigation/bottom_nav_page.dart';
 import 'package:space360_flutter/src/pages/legal/privacy_page.dart';
+import 'package:space360_flutter/src/pages/legal/support_page.dart';
 import 'package:space360_flutter/src/pages/login/login_page.dart';
 import 'package:space360_flutter/src/services/api_service.dart';
 
@@ -39,6 +40,7 @@ class Space360App extends StatelessWidget {
         '/home': (_) => const BottomNavPage(),
         '/login': (_) => const LoginPage(),
         '/privacidad': (_) => const PrivacyPage(),
+        '/soporte':    (_) => const SupportPage(),
       },
     );
   }

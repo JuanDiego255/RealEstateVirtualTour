@@ -543,6 +543,10 @@ Route::get('/privacidad', function () {
     return view('frontend.privacy');
 })->name('privacy');
 
+Route::get('/soporte', function () {
+    return view('frontend.support');
+})->name('support');
+
 // Archivo desde storage
 Route::get('/file/{filename}', function ($filename) {
     $path = storage_path('app/public/' . $filename);

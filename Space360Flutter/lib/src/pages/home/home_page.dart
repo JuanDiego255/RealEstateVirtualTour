@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:space360_flutter/src/pages/home/contact_form.dart';
 import 'package:space360_flutter/src/pages/legal/privacy_page.dart';
+import 'package:space360_flutter/src/pages/legal/support_page.dart';
 
 const _kGold = Color(0xFFD4A843);
 const _kGoldDark = Color(0xFFA07828);
@@ -645,13 +646,19 @@ class _Footer extends StatelessWidget {
               ),
               const Text(' · ', style: TextStyle(color: Color(0xFF333333), fontSize: 11)),
               GestureDetector(
-                onTap: () async {
-                  final uri = Uri.parse('https://space360cr.com/privacidad');
-                  if (await canLaunchUrl(uri)) launchUrl(uri, mode: LaunchMode.externalApplication);
-                },
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SupportPage()),
+                ),
                 child: const Text(
-                  'Ver en web',
-                  style: TextStyle(color: Color(0xFF555555), fontSize: 11),
+                  'Soporte',
+                  style: TextStyle(
+                    color: Color(0xFFD4A843),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    decoration: TextDecoration.underline,
+                    decorationColor: Color(0xFFD4A843),
+                  ),
                 ),
               ),
             ],
