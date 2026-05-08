@@ -1515,7 +1515,7 @@ Route::middleware(['auth:api', 'api.permission:event_dashboard,view'])->group(fu
             'lost_this_month'  => $lostMonth,
             'new_this_month'   => $newThisMonth,
             'conversion_rate'  => $convRate,
-            'activities_today' => $todayActs,
+            'activities_today' => (object) $todayActs->toArray(),
             'top_agents'       => $topAgents,
             'month'            => $month,
             'year'             => $year,

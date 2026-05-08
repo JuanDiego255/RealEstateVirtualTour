@@ -32,17 +32,25 @@ class CrmAnalyticsModel {
   });
 
   factory CrmAnalyticsModel.fromJson(Map<String, dynamic> j) {
-    final pipelineRaw  = j['pipeline'] as Map<String, dynamic>? ?? {};
-    final activitiesRaw = j['activities_today'] as Map<String, dynamic>? ?? {};
-    final agentsRaw    = j['top_agents'] as List<dynamic>? ?? [];
+    final pipelineRaw   = j['pipeline'];
+    final activitiesRaw = j['activities_today'];
+    final agentsRaw     = j['top_agents'] as List<dynamic>? ?? [];
+
+    final pipeline = (pipelineRaw is Map)
+        ? pipelineRaw.map((k, v) => MapEntry(k.toString(), (v as num).toInt()))
+        : <String, int>{};
+    final activities = (activitiesRaw is Map)
+        ? activitiesRaw.map((k, v) => MapEntry(k.toString(), (v as num).toInt()))
+        : <String, int>{};
+
     return CrmAnalyticsModel(
-      pipeline: pipelineRaw.map((k, v) => MapEntry(k, (v as num).toInt())),
+      pipeline:        pipeline,
       total:           (j['total']           as num? ?? 0).toInt(),
       wonThisMonth:    (j['won_this_month']   as num? ?? 0).toInt(),
       lostThisMonth:   (j['lost_this_month']  as num? ?? 0).toInt(),
       newThisMonth:    (j['new_this_month']   as num? ?? 0).toInt(),
       conversionRate:  (j['conversion_rate']  as num? ?? 0).toDouble(),
-      activitiesToday: activitiesRaw.map((k, v) => MapEntry(k, (v as num).toInt())),
+      activitiesToday: activities,
       topAgents:       agentsRaw.cast<Map<String, dynamic>>(),
     );
   }
