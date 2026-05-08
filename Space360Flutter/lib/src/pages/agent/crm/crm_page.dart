@@ -11,6 +11,7 @@ import 'package:space360_flutter/src/pages/agent/crm/crm_lead_detail_page.dart';
 import 'package:space360_flutter/src/pages/agent/crm/crm_pipeline_page.dart';
 import 'package:space360_flutter/src/pages/agent/crm/create_lead_sheet.dart';
 import 'package:space360_flutter/src/services/crm_service.dart';
+import 'package:space360_flutter/src/utils/crm_refresh_bus.dart';
 import 'package:space360_flutter/src/utils/resource.dart';
 import 'package:space360_flutter/src/widgets/empty_state.dart';
 
@@ -33,12 +34,16 @@ class _CrmPageState extends State<CrmPage> with SingleTickerProviderStateMixin {
   final _service = CrmService();
   final _searchCtrl = TextEditingController();
 
+  // Prevents CrmPage from reacting to its own bus signals
+  bool _selfSignaling = false;
+
   @override
   void initState() {
     super.initState();
     _tab = TabController(length: 4, vsync: this);
     _load(reset: true);
     if (widget.user.isAdmin) _loadAgents();
+    CrmRefreshBus.instance.addListener(_onBusSignal);
   }
 
   Future<void> _loadAgents() async {
@@ -49,9 +54,22 @@ class _CrmPageState extends State<CrmPage> with SingleTickerProviderStateMixin {
 
   @override
   void dispose() {
+    CrmRefreshBus.instance.removeListener(_onBusSignal);
     _tab.dispose();
     _searchCtrl.dispose();
     super.dispose();
+  }
+
+  void _onBusSignal() {
+    if (_selfSignaling || !mounted) return;
+    _load(reset: true, silent: true);
+  }
+
+  /// Signal the bus after mutations so Pipeline/Analytics/Agenda refresh too.
+  void _signalBus() {
+    _selfSignaling = true;
+    CrmRefreshBus.instance.signal();
+    _selfSignaling = false;
   }
 
   Resource<CrmLeadPage>? _result;
@@ -86,12 +104,10 @@ class _CrmPageState extends State<CrmPage> with SingleTickerProviderStateMixin {
     ('agency', 'Agencia'),
   ];
 
-  Future<void> _load({bool reset = false}) async {
-    if (reset) {
-      _page = 1;
-      _leads.clear();
-    }
-    setState(() => _result = null);
+  Future<void> _load({bool reset = false, bool silent = false}) async {
+    if (reset || silent) _page = 1;
+    if (reset) _leads.clear();
+    if (!silent) setState(() => _result = null);
     final results = await Future.wait([
       _service.getLeads(
         status:  _filterStatus == 'all' ? null : _filterStatus,
@@ -110,7 +126,7 @@ class _CrmPageState extends State<CrmPage> with SingleTickerProviderStateMixin {
       final r = results[0] as Resource<CrmLeadPage>;
       _result = r;
       if (r is Success<CrmLeadPage>) {
-        if (reset) _leads.clear();
+        if (reset || silent) _leads.clear();
         _leads.addAll(r.data.leads);
         _stats    = r.data.stats;
         _lastPage = r.data.lastPage;
@@ -162,7 +178,7 @@ class _CrmPageState extends State<CrmPage> with SingleTickerProviderStateMixin {
             builder: (_, __) => _tab.index == 0
                 ? IconButton(
                     icon: const Icon(Icons.refresh_rounded, color: _kSubtext),
-                    onPressed: () => _load(reset: true),
+                    onPressed: () { _load(reset: true); _signalBus(); },
                   )
                 : const SizedBox(),
           ),
@@ -191,7 +207,7 @@ class _CrmPageState extends State<CrmPage> with SingleTickerProviderStateMixin {
                 child: const Icon(Icons.person_add_rounded),
                 onPressed: () async {
                   final created = await showCreateLeadSheet(context);
-                  if (created == true) _load(reset: true);
+                  if (created == true) { _load(reset: true); _signalBus(); }
                 },
               )
             : const SizedBox(),
@@ -259,7 +275,7 @@ class _CrmPageState extends State<CrmPage> with SingleTickerProviderStateMixin {
       child: RefreshIndicator(
         color: _kGold,
         backgroundColor: _kSurface,
-        onRefresh: () => _load(reset: true),
+        onRefresh: () async { await _load(reset: true); _signalBus(); },
         child: ListView.builder(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
           itemCount: _leads.length + (_loadingMore ? 1 : 0),
@@ -278,6 +294,7 @@ class _CrmPageState extends State<CrmPage> with SingleTickerProviderStateMixin {
                   MaterialPageRoute(builder: (_) => CrmLeadDetailPage(leadId: _leads[i].id, user: widget.user)),
                 );
                 _load(reset: true);
+                _signalBus();
               },
             );
           },

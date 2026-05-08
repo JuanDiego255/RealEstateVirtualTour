@@ -3,6 +3,7 @@ import 'package:space360_flutter/src/models/auth_response.dart';
 import 'package:space360_flutter/src/models/crm_lead_model.dart';
 import 'package:space360_flutter/src/pages/agent/crm/crm_lead_detail_page.dart';
 import 'package:space360_flutter/src/services/crm_service.dart';
+import 'package:space360_flutter/src/utils/crm_refresh_bus.dart';
 import 'package:space360_flutter/src/utils/resource.dart';
 
 const _kGold    = Color(0xFFD4A843);
@@ -46,16 +47,22 @@ class _CrmPipelinePageState extends State<CrmPipelinePage>
   void initState() {
     super.initState();
     _load();
+    CrmRefreshBus.instance.addListener(_onBusSignal);
   }
 
   @override
   void dispose() {
+    CrmRefreshBus.instance.removeListener(_onBusSignal);
     _searchCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _load() async {
-    setState(() { _loading = true; _error = null; });
+  void _onBusSignal() {
+    if (mounted) _load(silent: true);
+  }
+
+  Future<void> _load({bool silent = false}) async {
+    if (!silent) setState(() { _loading = true; _error = null; });
     final futures = _kStatuses
         .map((s) => _service.getLeads(status: s.$1, page: 1, perPage: 200))
         .toList();
@@ -143,7 +150,7 @@ class _CrmPipelinePageState extends State<CrmPipelinePage>
           child: RefreshIndicator(
             color: _kGold,
             backgroundColor: _kSurface,
-            onRefresh: _load,
+            onRefresh: () => _load(),
             child: ListView(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.fromLTRB(12, 4, 12, 24),

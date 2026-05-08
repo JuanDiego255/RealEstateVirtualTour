@@ -3,6 +3,7 @@ import 'package:space360_flutter/src/models/appointment_model.dart';
 import 'package:space360_flutter/src/models/auth_response.dart';
 import 'package:space360_flutter/src/pages/agent/crm/crm_lead_detail_page.dart';
 import 'package:space360_flutter/src/services/crm_service.dart';
+import 'package:space360_flutter/src/utils/crm_refresh_bus.dart';
 import 'package:space360_flutter/src/utils/resource.dart';
 import 'package:space360_flutter/src/widgets/empty_state.dart';
 
@@ -59,10 +60,21 @@ class _CrmAgendaPageState extends State<CrmAgendaPage> {
   void initState() {
     super.initState();
     _load();
+    CrmRefreshBus.instance.addListener(_onBusSignal);
   }
 
-  Future<void> _load() async {
-    setState(() { _loading = true; _error = null; });
+  @override
+  void dispose() {
+    CrmRefreshBus.instance.removeListener(_onBusSignal);
+    super.dispose();
+  }
+
+  void _onBusSignal() {
+    if (mounted) _load(silent: true);
+  }
+
+  Future<void> _load({bool silent = false}) async {
+    if (!silent) setState(() { _loading = true; _error = null; });
     final r = await _service.getAgenda(days: _days);
     if (!mounted) return;
     setState(() {
@@ -81,7 +93,7 @@ class _CrmAgendaPageState extends State<CrmAgendaPage> {
       return const Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation(_kGold)));
     }
     if (_error != null) {
-      return ErrorState(message: _error!, onRetry: _load);
+      return ErrorState(message: _error!, onRetry: () => _load());
     }
     return Column(children: [
       // Days filter chips
@@ -98,7 +110,7 @@ class _CrmAgendaPageState extends State<CrmAgendaPage> {
             : RefreshIndicator(
                 color: _kGold,
                 backgroundColor: _kSurface,
-                onRefresh: _load,
+                onRefresh: () => _load(),
                 child: ListView.builder(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                   itemCount: _appointments.length,

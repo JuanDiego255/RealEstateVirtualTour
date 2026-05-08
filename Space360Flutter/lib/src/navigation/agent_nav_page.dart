@@ -5,6 +5,7 @@ import 'package:space360_flutter/src/pages/agent/dashboard/event_dashboard_page.
 import 'package:space360_flutter/src/pages/agent/kiosk/kiosk_vehicles_page.dart';
 import 'package:space360_flutter/src/services/api_service.dart';
 import 'package:space360_flutter/src/services/crm_service.dart';
+import 'package:space360_flutter/src/utils/crm_refresh_bus.dart';
 import 'package:space360_flutter/src/models/reminder_model.dart';
 import 'package:space360_flutter/src/utils/resource.dart';
 
@@ -78,7 +79,12 @@ class _AgentNavPageState extends State<AgentNavPage> {
         currentIndex: _index,
         onTap: (i) {
           setState(() => _index = i);
-          if (_canCrm) _loadCrmBadge();
+          if (_canCrm) {
+            _loadCrmBadge();
+            // Signal all CRM pages to silently re-fetch when any tab is tapped,
+            // so stale data (deleted/changed on web) is always resolved on entry.
+            CrmRefreshBus.instance.signal();
+          }
         },
         crmBadge: _crmBadge,
         crmIndex: _canCrm

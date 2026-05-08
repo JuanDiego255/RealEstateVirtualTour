@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:space360_flutter/src/models/auth_response.dart';
 import 'package:space360_flutter/src/services/crm_service.dart';
+import 'package:space360_flutter/src/utils/crm_refresh_bus.dart';
 import 'package:space360_flutter/src/utils/resource.dart';
 
 const _kGold    = Color(0xFFD4A843);
@@ -83,10 +84,21 @@ class _CrmAnalyticsPageState extends State<CrmAnalyticsPage>
     final now = DateTime.now();
     _selectedMonth = DateTime(now.year, now.month, 1);
     _load();
+    CrmRefreshBus.instance.addListener(_onBusSignal);
   }
 
-  Future<void> _load() async {
-    setState(() { _loading = true; _error = null; });
+  @override
+  void dispose() {
+    CrmRefreshBus.instance.removeListener(_onBusSignal);
+    super.dispose();
+  }
+
+  void _onBusSignal() {
+    if (mounted) _load(silent: true);
+  }
+
+  Future<void> _load({bool silent = false}) async {
+    if (!silent) setState(() { _loading = true; _error = null; });
     final r = await _service.getAnalytics(
       month: _selectedMonth.month,
       year:  _selectedMonth.year,
@@ -136,7 +148,7 @@ class _CrmAnalyticsPageState extends State<CrmAnalyticsPage>
           Text(_error!, style: const TextStyle(color: _kSubtext)),
           const SizedBox(height: 12),
           TextButton(
-            onPressed: _load,
+            onPressed: () => _load(),
             child: const Text('Reintentar', style: TextStyle(color: _kGold)),
           ),
         ]),
@@ -146,7 +158,7 @@ class _CrmAnalyticsPageState extends State<CrmAnalyticsPage>
     return RefreshIndicator(
       color: _kGold,
       backgroundColor: _kSurface,
-      onRefresh: _load,
+      onRefresh: () => _load(),
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
         children: [
