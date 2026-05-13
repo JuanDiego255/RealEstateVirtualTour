@@ -30,8 +30,9 @@
         </div>
     </div>
 
-    {{-- ===== TARJETAS DE RESUMEN ===== --}}
-    <div class="row mb-4">
+    {{-- ===== TARJETAS DE RESUMEN — EventLeads (Eventos/Kiosko) ===== --}}
+    <p class="text-muted small mb-1"><i class="fa fa-calendar"></i> Leads de Eventos / Kiosko</p>
+    <div class="row mb-2">
         <div class="col-lg-3 col-md-6 mb-3">
             <div class="card bg-primary text-white shadow-sm">
                 <div class="card-body py-3 text-center">
@@ -61,6 +62,43 @@
                 <div class="card-body py-3 text-center">
                     <h2 class="mb-0 font-weight-bold">{{ $funnel['lost'] }}</h2>
                     <small><i class="fa fa-times-circle"></i> Perdidos</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- ===== TARJETAS DE RESUMEN — CRM Leads (Módulo CRM) ===== --}}
+    <p class="text-muted small mb-1"><i class="fa fa-users"></i> CRM — Leads del módulo principal</p>
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card border-primary shadow-sm">
+                <div class="card-body py-3 text-center">
+                    <h2 class="mb-0 font-weight-bold text-primary">{{ $crmFunnel['total'] ?? 0 }}</h2>
+                    <small class="text-muted"><i class="fa fa-user-plus"></i> Leads CRM Total</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card border-warning shadow-sm">
+                <div class="card-body py-3 text-center">
+                    <h2 class="mb-0 font-weight-bold text-warning">{{ $crmFunnel['active'] ?? 0 }}</h2>
+                    <small class="text-muted"><i class="fa fa-fire"></i> Activos CRM</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card border-success shadow-sm">
+                <div class="card-body py-3 text-center">
+                    <h2 class="mb-0 font-weight-bold text-success">{{ $crmFunnel['won'] ?? 0 }}</h2>
+                    <small class="text-muted"><i class="fa fa-trophy"></i> Ganados CRM</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card border-danger shadow-sm">
+                <div class="card-body py-3 text-center">
+                    <h2 class="mb-0 font-weight-bold text-danger">{{ $crmFunnel['lost'] ?? 0 }}</h2>
+                    <small class="text-muted"><i class="fa fa-times-circle"></i> Perdidos CRM</small>
                 </div>
             </div>
         </div>

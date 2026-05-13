@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Lead;
 use App\LeadActivity;
 use App\Properties;
+use App\Reminder;
 use App\User;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
@@ -13,7 +14,7 @@ use Carbon\Carbon;
 class LeadController extends Controller
 {
     /**
-     * Display a listing of leads.
+     * Display a listing of leads (also handles AJAX partial requests).
      */
     public function index(Request $request)
     {
@@ -66,7 +67,6 @@ class LeadController extends Controller
         // Estadísticas
         $baseQuery = Lead::byCompany($user->company_id);
 
-        // Aplicar filtro de origen a las estadísticas también
         if ($request->filled('origin')) {
             if ($request->origin === 'event') {
                 $baseQuery = Lead::byCompany($user->company_id)->fromEvent();
@@ -76,12 +76,13 @@ class LeadController extends Controller
         }
 
         $stats = [
-            'total' => (clone $baseQuery)->count(),
-            'new' => (clone $baseQuery)->byStatus('new')->count(),
-            'active' => (clone $baseQuery)->active()->count(),
-            'won' => (clone $baseQuery)->byStatus('won')->count(),
-            'needs_follow_up' => (clone $baseQuery)->needsFollowUp()->count(),
-            'from_events' => Lead::byCompany($user->company_id)->fromEvent()->count(),
+            'total'          => (clone $baseQuery)->count(),
+            'new'            => (clone $baseQuery)->byStatus('new')->count(),
+            'active'         => (clone $baseQuery)->active()->count(),
+            'won'            => (clone $baseQuery)->byStatus('won')->count(),
+            'lost'           => (clone $baseQuery)->byStatus('lost')->count(),
+            'needs_follow_up'=> (clone $baseQuery)->needsFollowUp()->count(),
+            'from_events'    => Lead::byCompany($user->company_id)->fromEvent()->count(),
         ];
 
         $agents = User::where('company_id', $user->company_id)
@@ -89,7 +90,132 @@ class LeadController extends Controller
             ->orderBy('name')
             ->get();
 
+        // Respuesta parcial para filtros AJAX en tiempo real
+        if ($request->ajax() || $request->boolean('ajax')) {
+            $tableHtml      = view('admin.crm.leads._table', compact('leads'))->render();
+            $paginationHtml = $leads->links()->toHtml();
+            return response()->json([
+                'html'       => $tableHtml,
+                'pagination' => $paginationHtml,
+                'stats'      => $stats,
+            ]);
+        }
+
         return view('admin.crm.leads.index', compact('leads', 'stats', 'agents'));
+    }
+
+    /**
+     * Autocomplete search for quick lead switcher.
+     */
+    public function quickSearch(Request $request)
+    {
+        $user   = auth()->user();
+        $search = $request->get('q', '');
+
+        $leads = Lead::byCompany($user->company_id)
+            ->when($search, fn($q) => $q->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('phone', 'like', "%{$search}%");
+            }))
+            ->orderBy('updated_at', 'desc')
+            ->limit(10)
+            ->get(['id', 'name', 'email', 'phone', 'status']);
+
+        return response()->json($leads->map(fn($l) => [
+            'id'     => $l->id,
+            'name'   => $l->name,
+            'email'  => $l->email ?? '',
+            'phone'  => $l->phone ?? '',
+            'status' => $l->status_label,
+            'color'  => $l->status_color,
+            'url'    => route('admin.crm.leads.show', $l),
+        ]));
+    }
+
+    /**
+     * Quick status change via AJAX from lead list.
+     */
+    public function quickStatus(Request $request, Lead $lead)
+    {
+        $this->authorizeCompanyAccess($lead);
+
+        $request->validate([
+            'status' => 'required|in:' . implode(',', array_keys(Lead::getStatuses())),
+            'note'   => 'nullable|string|max:1000',
+        ]);
+
+        $lead->changeStatus($request->status, $request->note);
+        $lead->refresh();
+
+        return response()->json([
+            'success'      => true,
+            'status'       => $lead->status,
+            'status_label' => $lead->status_label,
+            'status_color' => $lead->status_color,
+            'message'      => 'Estado actualizado correctamente.',
+        ]);
+    }
+
+    /**
+     * Quick activity log via AJAX from lead list.
+     */
+    public function quickActivity(Request $request, Lead $lead)
+    {
+        $this->authorizeCompanyAccess($lead);
+
+        $request->validate([
+            'type'        => 'required|in:' . implode(',', array_keys(LeadActivity::getTypes())),
+            'subject'     => 'nullable|string|max:255',
+            'description' => 'nullable|string',
+            'next_follow_up' => 'nullable|date',
+        ]);
+
+        $lead->logActivity($request->type, [
+            'subject'     => $request->subject,
+            'description' => $request->description,
+            'activity_at' => now(),
+        ]);
+
+        if ($request->filled('next_follow_up')) {
+            $lead->update(['next_follow_up' => $request->next_follow_up]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Actividad registrada correctamente.',
+        ]);
+    }
+
+    /**
+     * Quick reminder creation via AJAX from lead list.
+     */
+    public function quickReminder(Request $request, Lead $lead)
+    {
+        $this->authorizeCompanyAccess($lead);
+
+        $request->validate([
+            'title'     => 'required|string|max:255',
+            'remind_at' => 'required|date',
+            'priority'  => 'nullable|in:low,medium,high,urgent',
+            'description' => 'nullable|string|max:500',
+        ]);
+
+        $user = auth()->user();
+
+        $lead->reminders()->create([
+            'user_id'    => $user->id,
+            'company_id' => $user->company_id,
+            'title'      => $request->title,
+            'description'=> $request->description,
+            'remind_at'  => $request->remind_at,
+            'priority'   => $request->priority ?? 'medium',
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Recordatorio creado correctamente.',
+        ]);
     }
 
     /**

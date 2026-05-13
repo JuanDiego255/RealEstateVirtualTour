@@ -301,6 +301,8 @@ Route::group(['middleware' => 'auth'], function () {
         Route::get('/pipeline', [LeadController::class, 'pipeline'])->name('admin.crm.leads.pipeline');
         Route::get('/follow-ups', [LeadController::class, 'followUps'])->name('admin.crm.leads.follow-ups');
         Route::get('/create', [LeadController::class, 'create'])->name('admin.crm.leads.create');
+        // AJAX - búsqueda rápida de leads (debe ir antes del wildcard /{lead})
+        Route::get('/quick-search', [LeadController::class, 'quickSearch'])->name('admin.crm.leads.quick-search');
         Route::post('/', [LeadController::class, 'store'])->name('admin.crm.leads.store');
         Route::get('/{lead}', [LeadController::class, 'show'])->name('admin.crm.leads.show');
         Route::get('/{lead}/edit', [LeadController::class, 'edit'])->name('admin.crm.leads.edit');
@@ -310,6 +312,10 @@ Route::group(['middleware' => 'auth'], function () {
         Route::delete('/{lead}', [LeadController::class, 'destroy'])->name('admin.crm.leads.destroy');
         // API para Kanban
         Route::patch('/{lead}/status-api', [LeadController::class, 'updateStatusApi'])->name('admin.crm.leads.update-status-api');
+        // AJAX - Acciones rápidas desde lista
+        Route::post('/{lead}/quick-status', [LeadController::class, 'quickStatus'])->name('admin.crm.leads.quick-status');
+        Route::post('/{lead}/quick-activity', [LeadController::class, 'quickActivity'])->name('admin.crm.leads.quick-activity');
+        Route::post('/{lead}/quick-reminder', [LeadController::class, 'quickReminder'])->name('admin.crm.leads.quick-reminder');
     });
 
     // --- AGENDA (Citas) ---

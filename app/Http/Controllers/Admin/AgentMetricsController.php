@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Lead;
 use App\Models\AgentGoal;
 use App\Models\AgentReward;
 use App\Models\AgentRewardGrant;
@@ -39,7 +40,8 @@ class AgentMetricsController extends Controller
 
         // Construir tabla de métricas por agente
         $agentMetrics = $agents->map(function (User $agent) use ($from, $to, $month, $companyId) {
-            $leads = EventLead::where('captured_by_user_id', $agent->id)
+            // ── EventLeads (eventos/kiosko) ──────────────────────────────────
+            $eventLeads  = EventLead::where('captured_by_user_id', $agent->id)
                 ->whereBetween('created_at', [$from, $to])
                 ->get();
 
@@ -47,59 +49,99 @@ class AgentMetricsController extends Controller
                 ->whereBetween('created_at', [$from, $to])
                 ->count();
 
-            $conversions = $leads->where('sale_status', 'converted')->count();
-            $total       = $leads->count();
-            $convRate    = $total > 0 ? round(($conversions / $total) * 100, 1) : 0;
+            $eventConversions = $eventLeads->where('sale_status', 'converted')->count();
+            $eventTotal       = $eventLeads->count();
 
-            // Días promedio de conversión
-            $convertedLeads = $leads->where('sale_status', 'converted')
+            // Días promedio de conversión (EventLeads)
+            $convertedEventLeads = $eventLeads->where('sale_status', 'converted')
                 ->filter(fn($l) => $l->converted_at);
-            $avgDays = $convertedLeads->count() > 0
-                ? round($convertedLeads->avg(fn($l) => $l->created_at->diffInDays($l->converted_at)), 1)
+            $avgDaysEvent = $convertedEventLeads->count() > 0
+                ? round($convertedEventLeads->avg(fn($l) => $l->created_at->diffInDays($l->converted_at)), 1)
                 : null;
 
-            // Meta del mes
-            $goal = AgentGoal::where('user_id', $agent->id)
-                ->where('month', $from->format('Y-m-d'))
-                ->first();
-
-            // Leads sin seguimiento en los últimos 5 días
+            // Leads sin seguimiento en los últimos 5 días (EventLeads)
             $idleLeads = EventLead::where('captured_by_user_id', $agent->id)
                 ->whereIn('sale_status', ['open', 'in_progress'])
                 ->where('created_at', '<=', now()->subDays(5))
                 ->whereDoesntHave('followups', fn($q) => $q->where('created_at', '>=', now()->subDays(5)))
                 ->count();
 
-            return [
-                'agent'         => $agent,
-                'leads'         => $total,
-                'quotes'        => $quotes,
-                'conversions'   => $conversions,
-                'conv_rate'     => $convRate,
-                'avg_days'      => $avgDays,
-                'idle_leads'    => $idleLeads,
-                'goal'          => $goal,
-                'leads_pct'     => $goal && $goal->leads_goal > 0       ? min(100, round(($total / $goal->leads_goal) * 100)) : null,
-                'quotes_pct'    => $goal && $goal->quotes_goal > 0      ? min(100, round(($quotes / $goal->quotes_goal) * 100)) : null,
-                'conv_pct'      => $goal && $goal->conversions_goal > 0 ? min(100, round(($conversions / $goal->conversions_goal) * 100)) : null,
-                // Distribución de categorías
-                'categories'    => $leads->groupBy('lead_category')->map->count(),
-                // Distribución de estados
-                'statuses'      => $leads->groupBy('sale_status')->map->count(),
-                // Recompensa aplicable
-                'eligible_reward' => AgentReward::where('is_active', true)
-                    ->get()
-                    ->first(fn($r) => $r->appliesTo($conversions)),
-            ];
-        })->sortByDesc('conversions')->values();
+            // ── CRM Leads (módulo CRM principal) ────────────────────────────
+            $crmLeads = Lead::where('user_id', $agent->id)
+                ->where('company_id', $companyId)
+                ->whereBetween('created_at', [$from, $to])
+                ->get(['id', 'status', 'created_at', 'converted_at']);
 
-        // Funnel global de la empresa en el mes
+            $crmTotal       = $crmLeads->count();
+            $crmWon         = $crmLeads->where('status', 'won')->count();
+            $crmLost        = $crmLeads->where('status', 'lost')->count();
+            $crmActive      = $crmLeads->whereIn('status', ['contacted', 'qualified', 'proposal', 'negotiation'])->count();
+
+            // Días promedio de conversión (CRM)
+            $convertedCrm = $crmLeads->where('status', 'won')->filter(fn($l) => $l->converted_at);
+            $avgDaysCrm   = $convertedCrm->count() > 0
+                ? round($convertedCrm->avg(fn($l) => $l->created_at->diffInDays($l->converted_at)), 1)
+                : null;
+
+            // Totales combinados para metas y recompensas
+            $totalLeads   = $eventTotal + $crmTotal;
+            $totalConv    = $eventConversions + $crmWon;
+            $convRate     = $totalLeads > 0 ? round(($totalConv / $totalLeads) * 100, 1) : 0;
+            $avgDays      = collect(array_filter([$avgDaysEvent, $avgDaysCrm]))->avg() ?: null;
+
+            // Meta del mes
+            $goal = AgentGoal::where('user_id', $agent->id)
+                ->where('month', $from->format('Y-m-d'))
+                ->first();
+
+            return [
+                'agent'             => $agent,
+                // EventLead metrics (legado)
+                'leads'             => $eventTotal,
+                'quotes'            => $quotes,
+                'conversions'       => $eventConversions,
+                // CRM Lead metrics (nuevo)
+                'crm_leads'         => $crmTotal,
+                'crm_won'           => $crmWon,
+                'crm_lost'          => $crmLost,
+                'crm_active'        => $crmActive,
+                // Combinados
+                'total_leads'       => $totalLeads,
+                'total_conversions' => $totalConv,
+                'conv_rate'         => $convRate,
+                'avg_days'          => $avgDays,
+                'idle_leads'        => $idleLeads,
+                'goal'              => $goal,
+                'leads_pct'         => $goal && $goal->leads_goal > 0       ? min(100, round(($totalLeads / $goal->leads_goal) * 100)) : null,
+                'quotes_pct'        => $goal && $goal->quotes_goal > 0      ? min(100, round(($quotes / $goal->quotes_goal) * 100)) : null,
+                'conv_pct'          => $goal && $goal->conversions_goal > 0 ? min(100, round(($totalConv / $goal->conversions_goal) * 100)) : null,
+                // Distribución
+                'categories'        => $eventLeads->groupBy('lead_category')->map->count(),
+                'statuses'          => $eventLeads->groupBy('sale_status')->map->count(),
+                'crm_statuses'      => $crmLeads->groupBy('status')->map->count(),
+                // Recompensa (basada en conversiones combinadas)
+                'eligible_reward'   => AgentReward::where('is_active', true)
+                    ->get()
+                    ->first(fn($r) => $r->appliesTo($totalConv)),
+            ];
+        })->sortByDesc('total_conversions')->values();
+
+        // Funnel global de la empresa en el mes (EventLeads)
         $funnel = [
             'captured'    => EventLead::where('company_id', $companyId)->whereBetween('created_at', [$from, $to])->count(),
             'contacted'   => EventLead::where('company_id', $companyId)->whereBetween('created_at', [$from, $to])->where('contacted', true)->count(),
             'in_progress' => EventLead::where('company_id', $companyId)->whereBetween('created_at', [$from, $to])->where('sale_status', 'in_progress')->count(),
             'converted'   => EventLead::where('company_id', $companyId)->whereBetween('created_at', [$from, $to])->where('sale_status', 'converted')->count(),
             'lost'        => EventLead::where('company_id', $companyId)->whereBetween('created_at', [$from, $to])->where('sale_status', 'lost')->count(),
+        ];
+
+        // Resumen CRM (módulo Lead) para el período seleccionado
+        $crmFunnel = [
+            'total'       => Lead::where('company_id', $companyId)->whereBetween('created_at', [$from, $to])->count(),
+            'new'         => Lead::where('company_id', $companyId)->whereBetween('created_at', [$from, $to])->where('status', 'new')->count(),
+            'active'      => Lead::where('company_id', $companyId)->whereBetween('created_at', [$from, $to])->whereIn('status', ['contacted','qualified','proposal','negotiation'])->count(),
+            'won'         => Lead::where('company_id', $companyId)->whereBetween('created_at', [$from, $to])->where('status', 'won')->count(),
+            'lost'        => Lead::where('company_id', $companyId)->whereBetween('created_at', [$from, $to])->where('status', 'lost')->count(),
         ];
 
         // Historial de recompensas otorgadas
@@ -110,7 +152,7 @@ class AgentMetricsController extends Controller
             ->get();
 
         return view('admin.metrics.index', compact(
-            'agentMetrics', 'funnel', 'recentGrants', 'month', 'from', 'to', 'companyId'
+            'agentMetrics', 'funnel', 'crmFunnel', 'recentGrants', 'month', 'from', 'to', 'companyId'
         ));
     }
 
@@ -184,12 +226,22 @@ class AgentMetricsController extends Controller
         $from  = $month->copy()->startOfMonth();
         $to    = $month->copy()->endOfMonth();
 
-        $conversions = EventLead::where('captured_by_user_id', $request->user_id)
+        $eventConversions = EventLead::where('captured_by_user_id', $request->user_id)
             ->where('sale_status', 'converted')
             ->whereBetween('converted_at', [$from, $to])
             ->count();
 
+        $crmConversions = Lead::where('user_id', $request->user_id)
+            ->where('status', 'won')
+            ->whereBetween('converted_at', [$from, $to])
+            ->count();
+
+        $conversions = $eventConversions + $crmConversions;
+
         $leads = EventLead::where('captured_by_user_id', $request->user_id)
+            ->whereBetween('created_at', [$from, $to])
+            ->count()
+            + Lead::where('user_id', $request->user_id)
             ->whereBetween('created_at', [$from, $to])
             ->count();
 

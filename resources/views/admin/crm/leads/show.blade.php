@@ -6,19 +6,43 @@
     @endif
 
     <div class="container-fluid">
-        <div class="d-flex justify-content-between align-items-center mb-4">
+        {{-- ── Header con buscador rápido de leads ── --}}
+        <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap" style="gap:12px;">
             <div>
                 <h4 class="mb-0">
                     <i class="fa fa-user"></i> {{ $lead->name }}
                     <span class="badge badge-{{ $lead->status_color }} ml-2">{{ $lead->status_label }}</span>
                     <span class="badge badge-{{ $lead->priority_color }}">{{ $lead->priority_label }}</span>
                 </h4>
-                <small class="text-muted">Creado {{ $lead->created_at->diffForHumans() }} | Agente: {{ $lead->user->name ?? 'Sin asignar' }}</small>
+                <small class="text-muted">Creado {{ $lead->created_at->diffForHumans() }} · Agente: {{ $lead->user->name ?? 'Sin asignar' }}</small>
             </div>
-            <div>
-                <a href="{{ route('admin.crm.leads.edit', $lead) }}" class="btn btn-primary"><i class="fa fa-edit"></i> Editar</a>
-                <a href="{{ route('admin.crm.appointments.create', ['lead_id' => $lead->id]) }}" class="btn btn-success"><i class="fa fa-calendar-plus-o"></i> Nueva Cita</a>
-                <a href="{{ route('admin.crm.leads.index') }}" class="btn btn-secondary"><i class="fa fa-arrow-left"></i> Volver</a>
+            <div class="d-flex align-items-center flex-wrap" style="gap:8px;">
+                {{-- Buscador rápido de lead ─────────────────────── --}}
+                <div class="position-relative" style="min-width:230px;">
+                    <div class="input-group input-group-sm">
+                        <div class="input-group-prepend">
+                            <span class="input-group-text bg-white border-right-0">
+                                <i class="fa fa-search text-muted"></i>
+                            </span>
+                        </div>
+                        <input type="text" id="lead-switcher-input" class="form-control form-control-sm border-left-0"
+                               placeholder="Ir a otro lead..." autocomplete="off" style="border-left:0;">
+                    </div>
+                    <div id="lead-switcher-dropdown"
+                         class="list-group shadow-sm"
+                         style="position:absolute;top:100%;left:0;right:0;z-index:1050;display:none;max-height:260px;overflow-y:auto;">
+                    </div>
+                </div>
+                {{-- Acciones ──────────────────────────────────────── --}}
+                <a href="{{ route('admin.crm.leads.edit', $lead) }}" class="btn btn-primary btn-sm">
+                    <i class="fa fa-edit"></i> Editar
+                </a>
+                <a href="{{ route('admin.crm.appointments.create', ['lead_id' => $lead->id]) }}" class="btn btn-success btn-sm">
+                    <i class="fa fa-calendar-plus-o"></i> Nueva Cita
+                </a>
+                <a href="{{ route('admin.crm.leads.index') }}" class="btn btn-secondary btn-sm">
+                    <i class="fa fa-arrow-left"></i> Volver
+                </a>
             </div>
         </div>
 
@@ -237,8 +261,55 @@
 
 @push('script')
 <script>
+    /* ── Mostrar campos de llamada según tipo ── */
     document.querySelector('select[name="type"]').addEventListener('change', function() {
         document.getElementById('call-fields').style.display = this.value === 'call' ? 'flex' : 'none';
     });
+
+    /* ── Buscador rápido de leads ── */
+    (function () {
+        const input    = document.getElementById('lead-switcher-input');
+        const dropdown = document.getElementById('lead-switcher-dropdown');
+        const SEARCH_URL = '{{ route('admin.crm.leads.quick-search') }}';
+        let timer = null;
+
+        input.addEventListener('input', function () {
+            clearTimeout(timer);
+            const q = this.value.trim();
+            if (q.length < 2) { dropdown.style.display = 'none'; dropdown.innerHTML = ''; return; }
+            timer = setTimeout(() => {
+                fetch(`${SEARCH_URL}?q=${encodeURIComponent(q)}`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                .then(r => r.json())
+                .then(results => {
+                    if (!results.length) {
+                        dropdown.innerHTML = '<a class="list-group-item list-group-item-action disabled small text-muted py-2">Sin resultados</a>';
+                    } else {
+                        dropdown.innerHTML = results.map(lead => `
+                            <a href="${lead.url}" class="list-group-item list-group-item-action py-2 px-3" style="font-size:0.85rem;">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <strong>${escHtml(lead.name)}</strong>
+                                    <span class="badge badge-${lead.color} ml-2">${escHtml(lead.status)}</span>
+                                </div>
+                                <small class="text-muted">${escHtml(lead.phone || lead.email || '')}</small>
+                            </a>
+                        `).join('');
+                    }
+                    dropdown.style.display = 'block';
+                });
+            }, 320);
+        });
+
+        document.addEventListener('click', function (e) {
+            if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+                dropdown.style.display = 'none';
+            }
+        });
+
+        function escHtml(str) {
+            return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+    })();
 </script>
 @endpush
