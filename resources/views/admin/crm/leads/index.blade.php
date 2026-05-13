@@ -24,6 +24,9 @@
             <a href="{{ route('admin.crm.leads.pipeline') }}" class="btn btn-dark btn-sm">
                 <i class="fa fa-columns"></i> Pipeline
             </a>
+            <a href="{{ route('admin.crm.reports.index') }}" class="btn btn-outline-danger btn-sm">
+                <i class="fa fa-file-pdf-o"></i> Reportes
+            </a>
             @if(Auth::user()->canAccessModule('crm', 'view'))
             <a href="{{ route('admin.crm.leads.create') }}" class="btn btn-primary btn-sm">
                 <i class="fa fa-plus"></i> Nuevo Lead

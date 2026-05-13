@@ -318,6 +318,19 @@ Route::group(['middleware' => 'auth'], function () {
         Route::post('/{lead}/quick-reminder', [LeadController::class, 'quickReminder'])->name('admin.crm.leads.quick-reminder');
     });
 
+    // --- REPORTERÍA CRM ---
+    Route::group(['prefix' => 'admin/crm/reports', 'middleware' => ['subscription']], function () {
+        Route::get('/', [\App\Http\Controllers\Admin\CrmReportController::class, 'index'])->name('admin.crm.reports.index');
+        Route::get('/lead/{lead}', [\App\Http\Controllers\Admin\CrmReportController::class, 'leadDetail'])->name('admin.crm.reports.lead-detail');
+        Route::get('/pipeline', [\App\Http\Controllers\Admin\CrmReportController::class, 'pipeline'])->name('admin.crm.reports.pipeline');
+        Route::get('/leads-general', [\App\Http\Controllers\Admin\CrmReportController::class, 'leadsGeneral'])->name('admin.crm.reports.leads-general');
+        Route::get('/appointments', [\App\Http\Controllers\Admin\CrmReportController::class, 'appointments'])->name('admin.crm.reports.appointments');
+        Route::get('/follow-ups', [\App\Http\Controllers\Admin\CrmReportController::class, 'followUps'])->name('admin.crm.reports.follow-ups');
+        Route::get('/no-followup', [\App\Http\Controllers\Admin\CrmReportController::class, 'noFollowup'])->name('admin.crm.reports.no-followup');
+        Route::get('/by-agent', [\App\Http\Controllers\Admin\CrmReportController::class, 'byAgent'])->name('admin.crm.reports.by-agent');
+        Route::get('/overdue-reminders', [\App\Http\Controllers\Admin\CrmReportController::class, 'overdueReminders'])->name('admin.crm.reports.overdue-reminders');
+    });
+
     // --- AGENDA (Citas) ---
     Route::group(['prefix' => 'admin/crm/appointments', 'middleware' => ['subscription']], function () {
         Route::get('/', [AppointmentController::class, 'index'])->name('admin.crm.appointments.index');

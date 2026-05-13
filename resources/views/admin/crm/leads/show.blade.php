@@ -40,6 +40,14 @@
                 <a href="{{ route('admin.crm.appointments.create', ['lead_id' => $lead->id]) }}" class="btn btn-success btn-sm">
                     <i class="fa fa-calendar-plus-o"></i> Nueva Cita
                 </a>
+                <div class="btn-group btn-group-sm">
+                    <a href="{{ route('admin.crm.reports.lead-detail', $lead) }}" target="_blank" class="btn btn-outline-danger">
+                        <i class="fa fa-file-pdf-o"></i> PDF
+                    </a>
+                    <a href="{{ route('admin.crm.reports.lead-detail', $lead) }}?download=1" class="btn btn-outline-danger">
+                        <i class="fa fa-download"></i>
+                    </a>
+                </div>
                 <a href="{{ route('admin.crm.leads.index') }}" class="btn btn-secondary btn-sm">
                     <i class="fa fa-arrow-left"></i> Volver
                 </a>
