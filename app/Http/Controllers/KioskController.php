@@ -55,9 +55,9 @@ class KioskController extends Controller
             ->whereIn('status', ['available', 'reserved', 'negotiating'])
             ->where(function ($q) use ($companyCategoryIds) {
                 $q->whereIn('category_id', $companyCategoryIds)
-                  ->orWhereHas('subcategory', function ($sq) use ($companyCategoryIds) {
-                      $sq->whereIn('category_id', $companyCategoryIds);
-                  });
+                    ->orWhereHas('subcategory', function ($sq) use ($companyCategoryIds) {
+                        $sq->whereIn('category_id', $companyCategoryIds);
+                    });
             });
 
         // Filtrar por vehiculos destacados si estan configurados
@@ -70,7 +70,7 @@ class KioskController extends Controller
             $query->whereNotIn('id', $settings->excluded_vehicle_ids);
         }
 
-        $vehicles = $query->with(['scenes' => function($q) {
+        $vehicles = $query->with(['scenes' => function ($q) {
             $q->with('spin');
         }])->get();
 
@@ -100,8 +100,13 @@ class KioskController extends Controller
         $agent    = Auth::user();
 
         return view('kiosk.other-index', compact(
-            'settings', 'eventName', 'company', 'categories',
-            'whatsappNumber', 'agentPin', 'agent'
+            'settings',
+            'eventName',
+            'company',
+            'categories',
+            'whatsappNumber',
+            'agentPin',
+            'agent'
         ));
     }
 
@@ -112,7 +117,7 @@ class KioskController extends Controller
     public function vehicle(Request $request, $id)
     {
         $vehicle = Properties::vehicles()
-            ->with(['scenes' => function($q) {
+            ->with(['scenes' => function ($q) {
                 $q->with('spin');
             }])
             ->findOrFail($id);
@@ -149,8 +154,14 @@ class KioskController extends Controller
             ?? new KioskSetting(KioskSetting::defaults());
 
         return view('kiosk.vehicle', compact(
-            'vehicle', 'spin', 'hotspots', 'colors', 'testDriveVideos',
-            'qrData', 'settings', 'eventName'
+            'vehicle',
+            'spin',
+            'hotspots',
+            'colors',
+            'testDriveVideos',
+            'qrData',
+            'settings',
+            'eventName'
         ));
     }
 
@@ -161,7 +172,7 @@ class KioskController extends Controller
     public function vehicleData(Request $request, $id)
     {
         $vehicle = Properties::vehicles()
-            ->with(['scenes' => function($q) {
+            ->with(['scenes' => function ($q) {
                 $q->with('spin');
             }])
             ->findOrFail($id);
@@ -461,7 +472,7 @@ class KioskController extends Controller
 
         $prizes = RafflePrize::where('company_id', $company->id)
             ->available()
-            ->get(['id','name','emoji','color','weight','quantity','claimed']);
+            ->get(['id', 'name', 'emoji', 'color', 'weight', 'quantity', 'claimed']);
 
         return response()->json(['prizes' => $prizes]);
     }
@@ -491,7 +502,10 @@ class KioskController extends Controller
         $winner      = null;
         foreach ($prizes as $prize) {
             $accumulated += $prize->weight;
-            if ($rand <= $accumulated) { $winner = $prize; break; }
+            if ($rand <= $accumulated) {
+                $winner = $prize;
+                break;
+            }
         }
         if (!$winner) $winner = $prizes->first();
 
@@ -604,7 +618,7 @@ class KioskController extends Controller
         }
 
         $vehicles = Properties::vehicles()
-            ->with(['scenes' => function($q) {
+            ->with(['scenes' => function ($q) {
                 $q->with('spin');
             }])
             ->whereIn('id', $vehicleIds)
@@ -681,8 +695,14 @@ class KioskController extends Controller
             ->get();
 
         return view('kiosk.dashboard', compact(
-            'topViewed', 'topQrScans', 'leadStats', 'quotesToday',
-            'viewsByHour', 'recentLeads', 'recentQuotes', 'eventName'
+            'topViewed',
+            'topQrScans',
+            'leadStats',
+            'quotesToday',
+            'viewsByHour',
+            'recentLeads',
+            'recentQuotes',
+            'eventName'
         ) + ['isOtherKiosk' => $user->company?->other_kiosk ?? false]);
     }
 
@@ -705,9 +725,13 @@ class KioskController extends Controller
         $eventLead = EventLead::with('property')->findOrFail($id);
 
         // Verificar si ya existe un lead con el mismo teléfono
-        $existingLead = \App\Lead::where('phone', $eventLead->phone)
-            ->orWhere('email', $eventLead->email)
-            ->first();
+        $existingLead = \App\Lead::where(function ($query) use ($eventLead) {
+            $query->where('phone', $eventLead->phone);
+
+            if (!empty($eventLead->email)) {
+                $query->orWhere('email', $eventLead->email);
+            }
+        })->first();
 
         if ($existingLead) {
             return response()->json([
@@ -747,9 +771,9 @@ class KioskController extends Controller
             'priority' => $priorityMap[$eventLead->interest_level] ?? 'medium',
             'interest_type' => 'buy',
             'notes' => "Lead capturado en evento: {$eventLead->event_name}\n" .
-                       "Origen: {$eventLead->source}\n" .
-                       "Nivel de interés: {$eventLead->interest_level}\n" .
-                       ($eventLead->notes ? "Notas: {$eventLead->notes}" : ''),
+                "Origen: {$eventLead->source}\n" .
+                "Nivel de interés: {$eventLead->interest_level}\n" .
+                ($eventLead->notes ? "Notas: {$eventLead->notes}" : ''),
             'first_contact_at' => $eventLead->created_at,
             'event_name' => $eventLead->event_name,
             'event_lead_id' => $eventLead->id,
@@ -759,7 +783,7 @@ class KioskController extends Controller
         $lead->logActivity('note', [
             'subject' => 'Lead importado desde evento',
             'description' => "Importado automáticamente desde el evento '{$eventLead->event_name}'. " .
-                           ($eventLead->property ? "Interesado en: {$eventLead->property->brand} {$eventLead->property->model}" : ''),
+                ($eventLead->property ? "Interesado en: {$eventLead->property->brand} {$eventLead->property->model}" : ''),
         ]);
 
         // Marcar el event lead como migrado
@@ -817,9 +841,9 @@ class KioskController extends Controller
             'budget_max' => $quote->vehicle_price * 1.2,
             'budget_currency' => $quote->currency,
             'notes' => "Lead creado desde cotización del evento: {$quote->event_name}\n" .
-                       "Cotización: Cuota mensual ₡" . number_format($quote->monthly_payment) . "\n" .
-                       "Prima: " . $quote->down_payment_percent . "% - Plazo: {$quote->term_months} meses\n" .
-                       "Tasa: {$quote->interest_rate}%",
+                "Cotización: Cuota mensual ₡" . number_format($quote->monthly_payment) . "\n" .
+                "Prima: " . $quote->down_payment_percent . "% - Plazo: {$quote->term_months} meses\n" .
+                "Tasa: {$quote->interest_rate}%",
             'first_contact_at' => $quote->created_at,
             'event_name' => $quote->event_name,
         ]);
@@ -828,8 +852,8 @@ class KioskController extends Controller
         $lead->logActivity('note', [
             'subject' => 'Lead creado desde cotización',
             'description' => "Cliente solicitó cotización en evento. " .
-                           ($quote->property ? "Vehículo: {$quote->property->brand} {$quote->property->model}" : '') .
-                           " - Cuota estimada: ₡" . number_format($quote->monthly_payment),
+                ($quote->property ? "Vehículo: {$quote->property->brand} {$quote->property->model}" : '') .
+                " - Cuota estimada: ₡" . number_format($quote->monthly_payment),
         ]);
 
         return response()->json([
