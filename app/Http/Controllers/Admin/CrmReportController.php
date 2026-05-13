@@ -10,6 +10,7 @@ use App\User;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class CrmReportController extends Controller
 {
@@ -52,7 +53,7 @@ class CrmReportController extends Controller
         return $this->render(
             'admin.crm.reports.pdf.lead-detail',
             compact('lead', 'company', 'logoPath', 'filters', 'printDate'),
-            'lead-' . $lead->id . '-' . str($lead->name)->slug(),
+            'lead-' . $lead->id . '-' . Str::slug($lead->name),
             $request->boolean('download')
         );
     }
