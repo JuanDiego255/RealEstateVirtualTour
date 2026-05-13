@@ -93,7 +93,7 @@ class CrmReportController extends Controller
         $user  = auth()->user();
         $query = Lead::with([
             'user',
-            'activities' => fn($q) => $q->latest('activity_at')->limit(1)->with('user'),
+            'activities' => fn($q) => $q->orderBy('activity_at', 'asc')->with('user'),
         ])->byCompany($user->company_id);
 
         $this->applyCommonFilters($query, $request);
