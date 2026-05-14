@@ -105,7 +105,7 @@
     <div class="crm-page-header">
         <div>
             <h2><i class="fa fa-columns"></i> Pipeline de Leads</h2>
-            <div class="sub">Vista Kanban · {{ $leadsByStatus->flatten()->count() }} leads en total</div>
+            <div class="sub">Vista Kanban · {{ collect($leadsByStatus)->flatten()->count() }} leads en total</div>
         </div>
         <div class="actions">
             <div class="rt-indicator"><span class="rt-dot"></span> En vivo</div>
