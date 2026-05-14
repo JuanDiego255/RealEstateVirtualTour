@@ -91,7 +91,7 @@
                     </label>
                     <input type="text" name="subject" value="{{ old('subject') }}"
                            class="form-control @error('subject') is-invalid @enderror"
-                           placeholder="Ej: Seguimiento de tu consulta sobre {{propiedad}}"
+                           placeholder="Ej: Seguimiento de tu consulta sobre @{{propiedad}}"
                            style="border-radius:9px; border:1px solid #e5e7eb; font-size:14px;">
                     @error('subject')
                         <div class="invalid-feedback">{{ $message }}</div>
@@ -106,14 +106,14 @@
                     <div style="background:#fffdf0; border:1px solid #f0e8a0; border-radius:9px; padding:10px 14px; margin-bottom:10px; font-size:12.5px; color:#7a6012;">
                         <i class="fa fa-info-circle"></i>
                         Variables disponibles:
-                        <code style="background:#f0e8a0; border-radius:4px; padding:1px 5px; margin:0 2px;">{{nombre}}</code>
-                        <code style="background:#f0e8a0; border-radius:4px; padding:1px 5px; margin:0 2px;">{{agente}}</code>
-                        <code style="background:#f0e8a0; border-radius:4px; padding:1px 5px; margin:0 2px;">{{propiedad}}</code>
-                        <code style="background:#f0e8a0; border-radius:4px; padding:1px 5px; margin:0 2px;">{{fecha}}</code>
+                        <code style="background:#f0e8a0; border-radius:4px; padding:1px 5px; margin:0 2px;">@{{nombre}}</code>
+                        <code style="background:#f0e8a0; border-radius:4px; padding:1px 5px; margin:0 2px;">@{{agente}}</code>
+                        <code style="background:#f0e8a0; border-radius:4px; padding:1px 5px; margin:0 2px;">@{{propiedad}}</code>
+                        <code style="background:#f0e8a0; border-radius:4px; padding:1px 5px; margin:0 2px;">@{{fecha}}</code>
                     </div>
                     <textarea name="body" rows="7"
                               class="form-control @error('body') is-invalid @enderror"
-                              placeholder="Hola {{nombre}}, te contacto en nombre de {{agente}}..."
+                              placeholder="Hola @{{nombre}}, te contacto en nombre de @{{agente}}..."
                               style="border-radius:9px; border:1px solid #e5e7eb; font-size:14px; resize:vertical;">{{ old('body') }}</textarea>
                     @error('body')
                         <div class="invalid-feedback">{{ $message }}</div>

@@ -56,11 +56,11 @@
     <div class="var-info-box">
         <strong><i class="fa fa-info-circle"></i> Variables de interpolación disponibles:</strong>
         <span style="margin-left:6px;">
-            <code>{{nombre}}</code> nombre del lead &nbsp;·&nbsp;
-            <code>{{agente}}</code> nombre del agente &nbsp;·&nbsp;
-            <code>{{propiedad}}</code> propiedad de interés &nbsp;·&nbsp;
-            <code>{{fecha}}</code> fecha actual &nbsp;·&nbsp;
-            <code>{{enlace}}</code> enlace al portal
+            <code>@{{nombre}}</code> nombre del lead &nbsp;·&nbsp;
+            <code>@{{agente}}</code> nombre del agente &nbsp;·&nbsp;
+            <code>@{{propiedad}}</code> propiedad de interés &nbsp;·&nbsp;
+            <code>@{{fecha}}</code> fecha actual &nbsp;·&nbsp;
+            <code>@{{enlace}}</code> enlace al portal
         </span>
     </div>
 

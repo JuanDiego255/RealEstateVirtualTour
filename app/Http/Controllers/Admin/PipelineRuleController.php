@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 
 class PipelineRuleController extends Controller
 {
-    private function authorize(PipelineRule $rule): void
+    private function authorizeRule(PipelineRule $rule): void
     {
         if ($rule->company_id !== auth()->user()->company_id) abort(403);
     }
@@ -47,7 +47,7 @@ class PipelineRuleController extends Controller
 
     public function edit(PipelineRule $rule)
     {
-        $this->authorize($rule);
+        $this->authorizeRule($rule);
         $actions  = PipelineRule::getActions();
         $statuses = \App\Lead::getStatuses();
         return view('admin.crm.pipeline-rules.edit', compact('rule', 'actions', 'statuses'));
@@ -55,7 +55,7 @@ class PipelineRuleController extends Controller
 
     public function update(Request $request, PipelineRule $rule)
     {
-        $this->authorize($rule);
+        $this->authorizeRule($rule);
         $data = $request->validate([
             'name'           => 'required|string|max:150',
             'trigger_stage'  => 'required|in:new,contacted,qualified,proposal,negotiation,won,lost',
@@ -71,14 +71,14 @@ class PipelineRuleController extends Controller
 
     public function destroy(PipelineRule $rule)
     {
-        $this->authorize($rule);
+        $this->authorizeRule($rule);
         $rule->delete();
         return redirect()->route('admin.crm.pipeline-rules.index')->with('success', 'Regla eliminada.');
     }
 
     public function toggle(PipelineRule $rule)
     {
-        $this->authorize($rule);
+        $this->authorizeRule($rule);
         $rule->update(['is_active' => !$rule->is_active]);
         return response()->json(['success' => true, 'is_active' => $rule->is_active]);
     }

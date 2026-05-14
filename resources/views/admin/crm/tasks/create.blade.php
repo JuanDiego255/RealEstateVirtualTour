@@ -118,9 +118,9 @@
                                 Prioridad <span class="text-danger">*</span>
                             </label>
                             <select name="priority" class="form-control @error('priority') is-invalid @enderror" required>
-                                @foreach(\App\LeadTask::getPriorities() as $key => $label)
+                                @foreach(\App\LeadTask::getPriorities() as $key => $info)
                                     <option value="{{ $key }}" {{ old('priority', 'medium') === $key ? 'selected' : '' }}>
-                                        {{ $label }}
+                                        {{ $info['label'] }}
                                     </option>
                                 @endforeach
                             </select>

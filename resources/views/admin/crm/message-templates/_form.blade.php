@@ -40,7 +40,7 @@
 <div style="margin-bottom:16px;">
     <label style="font-size:12px;font-weight:700;color:#888;text-transform:uppercase;">Cuerpo del mensaje *</label>
     <div style="font-size:11px;color:#aaa;margin-bottom:6px;">
-        Variables: <code>{{nombre}}</code>, <code>{{agente}}</code>, <code>{{propiedad}}</code>, <code>{{fecha}}</code>, <code>{{enlace}}</code>, <code>{{empresa}}</code>
+        Variables: <code>@{{nombre}}</code>, <code>@{{agente}}</code>, <code>@{{propiedad}}</code>, <code>@{{fecha}}</code>, <code>@{{enlace}}</code>, <code>@{{empresa}}</code>
     </div>
     <textarea name="body" rows="8" class="form-control" required style="font-family:monospace;font-size:13px;">{{ old('body', $template->body ?? '') }}</textarea>
 </div>
