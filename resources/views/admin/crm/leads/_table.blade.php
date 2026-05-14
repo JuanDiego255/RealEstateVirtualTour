@@ -14,6 +14,8 @@
         data-quick-status-url="{{ route('admin.crm.leads.quick-status', $lead) }}"
         data-quick-activity-url="{{ route('admin.crm.leads.quick-activity', $lead) }}"
         data-quick-reminder-url="{{ route('admin.crm.leads.quick-reminder', $lead) }}"
+        data-quick-followup-url="{{ route('admin.crm.leads.quick-followup', $lead) }}"
+        data-lead-followup="{{ $lead->next_follow_up ? $lead->next_follow_up->format('Y-m-d') : '' }}"
         data-show-url="{{ route('admin.crm.leads.show', $lead) }}"
         data-edit-url="{{ route('admin.crm.leads.edit', $lead) }}"
         data-appointment-url="{{ route('admin.crm.appointments.create', ['lead_id' => $lead->id]) }}">
@@ -99,6 +101,10 @@
                 <button class="action-btn reminder btn-quick-reminder" data-lead-id="{{ $lead->id }}" title="Recordatorio">
                     <i class="fa fa-bell"></i>
                 </button>
+                <button class="action-btn followup btn-quick-followup" data-lead-id="{{ $lead->id }}" title="Próximo seguimiento"
+                        style="background:#ede9fe;color:#6d28d9;">
+                    <i class="fa fa-calendar-check-o"></i>
+                </button>
                 <div class="dropdown">
                     <button class="action-btn more dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                         <i class="fa fa-ellipsis-v"></i>
@@ -108,10 +114,10 @@
                         <button class="dropdown-item btn-quick-view" data-lead-id="{{ $lead->id }}" style="display:flex;align-items:center;gap:8px;">
                             <i class="fa fa-info-circle" style="color:#94a3b8; width:14px;"></i> Vista rápida
                         </button>
-                        <a class="dropdown-item" href="{{ route('admin.crm.leads.edit', $lead) }}" style="display:flex;align-items:center;gap:8px;">
+                        <a class="dropdown-item" href="{{ route('admin.crm.leads.edit', $lead) }}?_back={{ urlencode(route('admin.crm.leads.index')) }}" style="display:flex;align-items:center;gap:8px;">
                             <i class="fa fa-edit" style="color:#94a3b8; width:14px;"></i> Editar lead
                         </a>
-                        <a class="dropdown-item" href="{{ route('admin.crm.appointments.create', ['lead_id' => $lead->id]) }}" style="display:flex;align-items:center;gap:8px;">
+                        <a class="dropdown-item" href="{{ route('admin.crm.appointments.create', ['lead_id' => $lead->id]) }}?_back={{ urlencode(route('admin.crm.leads.index')) }}" style="display:flex;align-items:center;gap:8px;">
                             <i class="fa fa-calendar-plus-o" style="color:#94a3b8; width:14px;"></i> Agendar cita
                         </a>
                         <div class="dropdown-divider"></div>

@@ -319,10 +319,10 @@
             </div>
 
             {{-- Acciones --}}
-            <a href="{{ route('admin.crm.leads.edit', $lead) }}" class="action-btn primary">
+            <a href="{{ route('admin.crm.leads.edit', $lead) }}?_back={{ urlencode(url()->current()) }}" class="action-btn primary">
                 <i class="fa fa-edit"></i> Editar
             </a>
-            <a href="{{ route('admin.crm.appointments.create', ['lead_id' => $lead->id]) }}" class="action-btn success">
+            <a href="{{ route('admin.crm.appointments.create', ['lead_id' => $lead->id]) }}?_back={{ urlencode(url()->current()) }}" class="action-btn success">
                 <i class="fa fa-calendar-plus-o"></i> Nueva Cita
             </a>
             <a href="{{ route('admin.crm.reports.lead-detail', $lead) }}" target="_blank" class="action-btn gold">

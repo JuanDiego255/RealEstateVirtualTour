@@ -178,7 +178,7 @@
                             <span class="crm-badge lost"><i class="fa fa-times"></i> Descartado</span>
                         @endif
                     @endif
-                    <a href="{{ route('admin.crm.reminders.edit', $reminder) }}" class="action-btn view" style="padding:5px 11px; font-size:12px;">
+                    <a href="{{ route('admin.crm.reminders.edit', $reminder) }}?_back={{ urlencode(url()->current()) }}" class="action-btn view" style="padding:5px 11px; font-size:12px;">
                         <i class="fa fa-edit"></i>
                     </a>
                 </div>

@@ -26,7 +26,7 @@
             <a href="{{ route('admin.crm.appointments.index') }}" class="action-btn secondary">
                 <i class="fa fa-calendar"></i> Calendario
             </a>
-            <a href="{{ route('admin.crm.appointments.create') }}" class="action-btn primary">
+            <a href="{{ route('admin.crm.appointments.create') }}?_back={{ urlencode(url()->current()) }}" class="action-btn primary">
                 <i class="fa fa-plus"></i> Nueva Cita
             </a>
         </div>
@@ -105,7 +105,7 @@
                                 <a href="{{ route('admin.crm.appointments.show', $appointment) }}" class="action-btn view" title="Ver">
                                     <i class="fa fa-eye"></i>
                                 </a>
-                                <a href="{{ route('admin.crm.appointments.edit', $appointment) }}" class="action-btn" style="background:#e0e7ff;color:#4338ca;padding:5px 9px;font-size:12px;" title="Editar">
+                                <a href="{{ route('admin.crm.appointments.edit', $appointment) }}?_back={{ urlencode(url()->current()) }}" class="action-btn" style="background:#e0e7ff;color:#4338ca;padding:5px 9px;font-size:12px;" title="Editar">
                                     <i class="fa fa-edit"></i>
                                 </a>
                                 @if($appointment->canBeCancelled())

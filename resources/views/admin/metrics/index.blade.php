@@ -2,351 +2,529 @@
 @section('title', 'Métricas de Agentes')
 @section('content')
 
+@include('admin.metrics.layouts._metrics-styles')
+
+<style>
+/* ── Filtros ── */
+.crm-filters-bar {
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 4px 15px rgba(0,0,0,.07);
+    padding: 14px 20px;
+    margin-bottom: 22px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.crm-filters-bar label {
+    font-size: 12px; font-weight: 700; color: #888;
+    margin: 0; text-transform: uppercase; letter-spacing: .4px;
+}
+.crm-filters-bar input[type="month"],
+.crm-filters-bar input[type="number"] {
+    border: 1.5px solid #e5e7eb; border-radius: 9px;
+    padding: 6px 12px; font-size: 13px; color: #1a1a2e;
+    outline: none; transition: border-color .15s;
+    background: #fafafa;
+}
+.crm-filters-bar input:focus { border-color: #c2ac1f; background: #fff; }
+
+/* ── Section label ── */
+.section-label {
+    font-size: 11px; font-weight: 700; color: #888;
+    text-transform: uppercase; letter-spacing: .6px;
+    margin-bottom: 10px;
+    display: flex; align-items: center; gap: 7px;
+}
+.section-label i { color: #c2ac1f; }
+
+/* ── Progress bars ── */
+.mini-progress {
+    height: 5px; border-radius: 3px;
+    background: #f0f0f0; overflow: hidden; margin-top: 5px;
+}
+.mini-progress-bar { height: 100%; border-radius: 3px; transition: width .4s; }
+
+/* ── Leaderboard rank cell ── */
+.rank-cell { font-size: 17px; line-height: 1; }
+
+/* ── Idle / grants card header variants ── */
+.dc-header-danger  { background: #fff5f5; border-bottom-color: #fecaca; }
+.dc-header-dark    { background: linear-gradient(135deg, #1a1a2e, #2d2d4e); border-bottom: none; }
+.dc-header-dark h5 { color: #fff; }
+.dc-header-dark h5 i { color: #c2ac1f; }
+.dc-header-dark .dc-month { font-size: 12px; color: #c2ac1f; font-weight: 500; }
+
+/* ── Two-column funnel/idle layout ── */
+.funnel-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 24px;
+}
+@media (max-width: 768px) { .funnel-grid { grid-template-columns: 1fr; } }
+
+/* ── Idle card accent border ── */
+.card-idle  { border-left: 4px solid #ef4444; }
+.card-allok { border-left: 4px solid #22c55e; }
+
+/* ── Alert ── */
+.metrics-alert {
+    background: #fff;
+    border: 1px solid #d1fae5;
+    border-left: 4px solid #22c55e;
+    border-radius: 12px;
+    padding: 12px 18px;
+    margin-bottom: 16px;
+    display: flex; align-items: center; gap: 10px;
+    font-size: 13.5px; color: #065f46;
+}
+</style>
+
 @if(Session::has('success'))
-    <div class="alert alert-success alert-dismissible fade show">
-        <strong>{{ Session::get('success') }}</strong>
-        <button type="button" class="close" data-dismiss="alert"><span class="fa fa-times"></span></button>
-    </div>
+<div style="background:#d1fae5;border:1px solid #6ee7b7;border-radius:12px;padding:12px 18px;margin-bottom:16px;display:flex;align-items:center;gap:10px;color:#065f46;font-size:13.5px;">
+    <i class="fa fa-check-circle" style="color:#22c55e;"></i>
+    <strong>{{ Session::get('success') }}</strong>
+</div>
 @endif
 
-<div class="container-fluid">
+<div class="crm-page">
 
-    {{-- ===== FILTROS ===== --}}
-    <div class="row mb-3">
-        <div class="col-12">
-            <form method="GET" class="form-inline">
-                @if(Auth::user()->isSuperAdmin())
-                    <input type="number" name="company_id" value="{{ $companyId }}" class="form-control form-control-sm mr-2" placeholder="Company ID">
-                @endif
-                <input type="month" name="month" value="{{ $month }}" class="form-control form-control-sm mr-2">
-                <button class="btn btn-sm btn-primary"><i class="fa fa-filter"></i> Filtrar</button>
-                <a href="{{ route('admin.metrics.goals.index', ['month' => $month]) }}" class="btn btn-sm btn-secondary ml-2">
-                    <i class="fa fa-bullseye"></i> Gestionar Metas
-                </a>
-                <a href="{{ route('admin.rewards.index') }}" class="btn btn-sm btn-warning ml-2">
-                    <i class="fa fa-trophy"></i> Recompensas
-                </a>
-            </form>
+    {{-- ══════════════════════════════════════════
+         HEADER
+    ══════════════════════════════════════════ --}}
+    <div class="crm-page-header">
+        <div>
+            <h2><i class="fa fa-trophy"></i> Métricas de Agentes</h2>
+            <div class="sub">
+                <i class="fa fa-calendar"></i>
+                {{ \Carbon\Carbon::parse($month . '-01')->translatedFormat('F Y') }}
+            </div>
+        </div>
+        <div class="actions">
+            <a href="{{ route('admin.metrics.goals.index', ['month' => $month]) }}"
+               class="action-btn gold">
+                <i class="fa fa-bullseye"></i> Metas
+            </a>
+            <a href="{{ route('admin.rewards.index') }}"
+               class="action-btn warning">
+                <i class="fa fa-trophy"></i> Recompensas
+            </a>
         </div>
     </div>
 
-    {{-- ===== TARJETAS DE RESUMEN — EventLeads (Eventos/Kiosko) ===== --}}
-    <p class="text-muted small mb-1"><i class="fa fa-calendar"></i> Leads de Eventos / Kiosko</p>
-    <div class="row mb-2">
-        <div class="col-lg-3 col-md-6 mb-3">
-            <div class="card bg-primary text-white shadow-sm">
-                <div class="card-body py-3 text-center">
-                    <h2 class="mb-0 font-weight-bold">{{ $funnel['captured'] }}</h2>
-                    <small><i class="fa fa-users"></i> Leads Capturados</small>
-                </div>
-            </div>
+    {{-- ══════════════════════════════════════════
+         FILTER BAR
+    ══════════════════════════════════════════ --}}
+    <form method="GET">
+        <div class="crm-filters-bar">
+            <label><i class="fa fa-filter"></i> Período</label>
+            <input type="month" name="month" value="{{ $month }}">
+            @if(Auth::user()->isSuperAdmin())
+                <input type="number" name="company_id"
+                       value="{{ $companyId ?? '' }}"
+                       placeholder="Company ID"
+                       style="width:130px;">
+            @endif
+            <button type="submit" class="action-btn primary">
+                <i class="fa fa-search"></i> Filtrar
+            </button>
         </div>
-        <div class="col-lg-3 col-md-6 mb-3">
-            <div class="card bg-info text-white shadow-sm">
-                <div class="card-body py-3 text-center">
-                    <h2 class="mb-0 font-weight-bold">{{ $funnel['in_progress'] }}</h2>
-                    <small><i class="fa fa-spinner"></i> En Proceso</small>
-                </div>
-            </div>
+    </form>
+
+    {{-- ══════════════════════════════════════════
+         STAT CARDS — EVENTOS / KIOSKO
+    ══════════════════════════════════════════ --}}
+    <div class="section-label">
+        <i class="fa fa-calendar-check-o"></i> Eventos / Kiosko
+    </div>
+    <div class="stats-grid" style="margin-bottom:10px;">
+
+        <div class="stat-card">
+            <div class="sc-icon blue"><i class="fa fa-users"></i></div>
+            <div class="sc-value">{{ $funnel['captured'] }}</div>
+            <div class="sc-label">Capturados</div>
         </div>
-        <div class="col-lg-3 col-md-6 mb-3">
-            <div class="card bg-success text-white shadow-sm">
-                <div class="card-body py-3 text-center">
-                    <h2 class="mb-0 font-weight-bold">{{ $funnel['converted'] }}</h2>
-                    <small><i class="fa fa-check-circle"></i> Conversiones</small>
-                </div>
-            </div>
+
+        <div class="stat-card">
+            <div class="sc-icon yellow"><i class="fa fa-spinner"></i></div>
+            <div class="sc-value">{{ $funnel['in_progress'] }}</div>
+            <div class="sc-label">En Proceso</div>
         </div>
-        <div class="col-lg-3 col-md-6 mb-3">
-            <div class="card bg-danger text-white shadow-sm">
-                <div class="card-body py-3 text-center">
-                    <h2 class="mb-0 font-weight-bold">{{ $funnel['lost'] }}</h2>
-                    <small><i class="fa fa-times-circle"></i> Perdidos</small>
-                </div>
-            </div>
+
+        <div class="stat-card">
+            <div class="sc-icon green"><i class="fa fa-check-circle"></i></div>
+            <div class="sc-value">{{ $funnel['converted'] }}</div>
+            <div class="sc-label">Convertidos</div>
         </div>
+
+        <div class="stat-card">
+            <div class="sc-icon red"><i class="fa fa-times-circle"></i></div>
+            <div class="sc-value">{{ $funnel['lost'] }}</div>
+            <div class="sc-label">Perdidos</div>
+        </div>
+
     </div>
 
-    {{-- ===== TARJETAS DE RESUMEN — CRM Leads (Módulo CRM) ===== --}}
-    <p class="text-muted small mb-1"><i class="fa fa-users"></i> CRM — Leads del módulo principal</p>
-    <div class="row mb-4">
-        <div class="col-lg-3 col-md-6 mb-3">
-            <div class="card border-primary shadow-sm">
-                <div class="card-body py-3 text-center">
-                    <h2 class="mb-0 font-weight-bold text-primary">{{ $crmFunnel['total'] ?? 0 }}</h2>
-                    <small class="text-muted"><i class="fa fa-user-plus"></i> Leads CRM Total</small>
-                </div>
-            </div>
+    {{-- ══════════════════════════════════════════
+         STAT CARDS — CRM
+    ══════════════════════════════════════════ --}}
+    <div class="section-label" style="margin-top:22px;">
+        <i class="fa fa-users"></i> CRM
+    </div>
+    <div class="stats-grid">
+
+        <div class="stat-card">
+            <div class="sc-icon indigo"><i class="fa fa-user-plus"></i></div>
+            <div class="sc-value">{{ $crmFunnel['total'] ?? 0 }}</div>
+            <div class="sc-label">Total CRM</div>
         </div>
-        <div class="col-lg-3 col-md-6 mb-3">
-            <div class="card border-warning shadow-sm">
-                <div class="card-body py-3 text-center">
-                    <h2 class="mb-0 font-weight-bold text-warning">{{ $crmFunnel['active'] ?? 0 }}</h2>
-                    <small class="text-muted"><i class="fa fa-fire"></i> Activos CRM</small>
-                </div>
-            </div>
+
+        <div class="stat-card">
+            <div class="sc-icon orange"><i class="fa fa-fire"></i></div>
+            <div class="sc-value">{{ $crmFunnel['active'] ?? 0 }}</div>
+            <div class="sc-label">Activos</div>
         </div>
-        <div class="col-lg-3 col-md-6 mb-3">
-            <div class="card border-success shadow-sm">
-                <div class="card-body py-3 text-center">
-                    <h2 class="mb-0 font-weight-bold text-success">{{ $crmFunnel['won'] ?? 0 }}</h2>
-                    <small class="text-muted"><i class="fa fa-trophy"></i> Ganados CRM</small>
-                </div>
-            </div>
+
+        <div class="stat-card">
+            <div class="sc-icon green"><i class="fa fa-handshake-o"></i></div>
+            <div class="sc-value">{{ $crmFunnel['won'] ?? 0 }}</div>
+            <div class="sc-label">Ganados</div>
         </div>
-        <div class="col-lg-3 col-md-6 mb-3">
-            <div class="card border-danger shadow-sm">
-                <div class="card-body py-3 text-center">
-                    <h2 class="mb-0 font-weight-bold text-danger">{{ $crmFunnel['lost'] ?? 0 }}</h2>
-                    <small class="text-muted"><i class="fa fa-times-circle"></i> Perdidos CRM</small>
-                </div>
-            </div>
+
+        <div class="stat-card">
+            <div class="sc-icon red"><i class="fa fa-ban"></i></div>
+            <div class="sc-value">{{ $crmFunnel['lost'] ?? 0 }}</div>
+            <div class="sc-label">Perdidos</div>
         </div>
+
     </div>
 
-    <div class="row">
+    {{-- ══════════════════════════════════════════
+         FUNNEL CHART  +  IDLE LEADS
+    ══════════════════════════════════════════ --}}
+    @php $idleTotal = $agentMetrics->sum('idle_leads'); @endphp
 
-        {{-- ===== FUNNEL DE CONVERSIÓN ===== --}}
-        <div class="col-lg-5 mb-4">
-            <div class="card shadow-sm">
-                <div class="card-header bg-dark text-white">
-                    <i class="fa fa-filter"></i> Embudo de Conversión — {{ \Carbon\Carbon::parse($month . '-01')->translatedFormat('F Y') }}
-                </div>
-                <div class="card-body">
-                    @php
-                        $funnelSteps = [
-                            ['label' => 'Capturados',   'count' => $funnel['captured'],    'color' => 'primary'],
-                            ['label' => 'Contactados',  'count' => $funnel['contacted'],   'color' => 'info'],
-                            ['label' => 'En Proceso',   'count' => $funnel['in_progress'], 'color' => 'warning'],
-                            ['label' => 'Convertidos',  'count' => $funnel['converted'],   'color' => 'success'],
-                            ['label' => 'Perdidos',     'count' => $funnel['lost'],        'color' => 'danger'],
-                        ];
-                        $base = max($funnel['captured'], 1);
-                    @endphp
-                    @foreach($funnelSteps as $step)
-                    @php $pct = round(($step['count'] / $base) * 100); @endphp
-                    <div class="mb-2">
-                        <div class="d-flex justify-content-between mb-1">
-                            <small class="font-weight-bold">{{ $step['label'] }}</small>
-                            <small>{{ $step['count'] }} ({{ $pct }}%)</small>
+    <div class="funnel-grid">
+
+        {{-- Funnel Chart ── --}}
+        <div class="dashboard-card">
+            <div class="dc-header">
+                <h5><i class="fa fa-filter"></i> Embudo de Conversión</h5>
+                <span style="font-size:12px;color:#aaa;">
+                    {{ \Carbon\Carbon::parse($month . '-01')->translatedFormat('F Y') }}
+                </span>
+            </div>
+            <div class="dc-body">
+                @php
+                    $funnelSteps = [
+                        ['label' => 'Capturados',  'count' => $funnel['captured'],    'hex' => '#3b82f6'],
+                        ['label' => 'Contactados', 'count' => $funnel['contacted'],   'hex' => '#6366f1'],
+                        ['label' => 'En Proceso',  'count' => $funnel['in_progress'], 'hex' => '#eab308'],
+                        ['label' => 'Convertidos', 'count' => $funnel['converted'],   'hex' => '#22c55e'],
+                        ['label' => 'Perdidos',    'count' => $funnel['lost'],        'hex' => '#ef4444'],
+                    ];
+                    $funnelBase = max($funnel['captured'], 1);
+                @endphp
+                @foreach($funnelSteps as $step)
+                    @php $pct = round(($step['count'] / $funnelBase) * 100); @endphp
+                    <div style="margin-bottom:12px;">
+                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                            <span style="font-size:12px;font-weight:600;color:#555;">{{ $step['label'] }}</span>
+                            <span style="font-size:12px;color:#888;">{{ $step['count'] }} <span style="color:#ccc;">({{ $pct }}%)</span></span>
                         </div>
-                        <div class="progress" style="height:18px;">
-                            <div class="progress-bar bg-{{ $step['color'] }}" style="width:{{ $pct }}%"></div>
+                        <div class="mini-progress">
+                            <div class="mini-progress-bar"
+                                 style="width:{{ $pct }}%; background:{{ $step['hex'] }};"></div>
                         </div>
                     </div>
-                    @endforeach
-                    <canvas id="funnelChart" height="160" class="mt-3"></canvas>
-                </div>
+                @endforeach
+                <canvas id="funnelChart" height="160" style="margin-top:18px;"></canvas>
             </div>
         </div>
 
-        {{-- ===== LEADS SIN SEGUIMIENTO ===== --}}
-        <div class="col-lg-7 mb-4">
-            @php
-                $idleLeads = $agentMetrics->sum('idle_leads');
-            @endphp
-            @if($idleLeads > 0)
-            <div class="card border-danger shadow-sm">
-                <div class="card-header bg-danger text-white">
-                    <i class="fa fa-exclamation-triangle"></i> Leads Sin Seguimiento (+5 días): {{ $idleLeads }}
-                </div>
-                <div class="card-body p-2">
-                    <table class="table table-sm table-borderless mb-0">
-                        <thead class="thead-light">
-                            <tr>
-                                <th>Agente</th>
-                                <th class="text-center">Leads Idle</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                        @foreach($agentMetrics->where('idle_leads', '>', 0) as $m)
-                            <tr>
-                                <td>{{ $m['agent']->name }}</td>
-                                <td class="text-center">
-                                    <span class="badge badge-danger">{{ $m['idle_leads'] }}</span>
-                                </td>
-                                <td>
-                                    <a href="{{ route('admin.metrics.agent', [$m['agent']->id, 'month' => $month]) }}" class="btn btn-xs btn-outline-primary">
-                                        Ver
-                                    </a>
-                                </td>
-                            </tr>
-                        @endforeach
-                        </tbody>
-                    </table>
-                </div>
+        {{-- Idle Leads ── --}}
+        @if($idleTotal > 0)
+        <div class="dashboard-card card-idle">
+            <div class="dc-header dc-header-danger">
+                <h5 style="color:#991b1b;">
+                    <i class="fa fa-exclamation-triangle" style="color:#ef4444;"></i>
+                    Leads Sin Seguimiento
+                    <span style="font-size:11px;color:#ef4444;font-weight:400;">(+5 días)</span>
+                </h5>
+                <span style="background:#fee2e2;color:#991b1b;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;">
+                    {{ $idleTotal }}
+                </span>
             </div>
-            @else
-            <div class="card border-success shadow-sm">
-                <div class="card-body text-center text-success py-4">
-                    <i class="fa fa-check-circle fa-2x"></i>
-                    <p class="mt-2 mb-0">Todos los leads tienen seguimiento actualizado.</p>
-                </div>
-            </div>
-            @endif
-        </div>
-
-    </div>
-
-    {{-- ===== TABLA LEADERBOARD ===== --}}
-    <div class="card shadow-sm mb-4">
-        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-            <span><i class="fa fa-trophy"></i> Rendimiento de Agentes</span>
-            <small class="text-muted">{{ \Carbon\Carbon::parse($month . '-01')->translatedFormat('F Y') }}</small>
-        </div>
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead class="thead-light">
+            <div style="overflow-x:auto;">
+                <table class="crm-table">
+                    <thead>
                         <tr>
-                            <th>#</th>
                             <th>Agente</th>
-                            <th class="text-center">Leads</th>
-                            <th class="text-center">Cotizaciones</th>
-                            <th class="text-center">Conversiones</th>
-                            <th class="text-center">Tasa Conv.</th>
-                            <th class="text-center">Días Prom.</th>
-                            <th class="text-center">Recompensa</th>
-                            <th></th>
+                            <th style="text-align:center;">Idle</th>
+                            <th style="width:56px;"></th>
                         </tr>
                     </thead>
                     <tbody>
-                    @forelse($agentMetrics as $i => $m)
-                        @php
-                            $agent = $m['agent'];
-                            $rank = $i + 1;
-                            $rankIcon = $rank === 1 ? '🥇' : ($rank === 2 ? '🥈' : ($rank === 3 ? '🥉' : "#$rank"));
-                        @endphp
-                        <tr>
-                            <td class="text-center font-weight-bold">{{ $rankIcon }}</td>
+                    @foreach($agentMetrics->where('idle_leads', '>', 0) as $m)
+                        <tr class="row-danger">
                             <td>
-                                <strong>{{ $agent->name }}</strong>
-                                @if($m['idle_leads'] > 0)
-                                    <span class="badge badge-danger ml-1" title="Leads sin seguimiento">{{ $m['idle_leads'] }} idle</span>
-                                @endif
+                                <strong style="color:#1a1a2e;">{{ $m['agent']->name }}</strong>
                             </td>
-                            <td class="text-center">
-                                <div>{{ $m['leads'] }}
-                                @if($m['leads_pct'] !== null)
-                                    <small class="text-muted">/ {{ $m['goal']->leads_goal }}</small>
-                                @endif
-                                </div>
-                                @if($m['leads_pct'] !== null)
-                                <div class="progress mt-1" style="height:6px;" title="{{ $m['leads_pct'] }}%">
-                                    <div class="progress-bar {{ $m['leads_pct'] >= 100 ? 'bg-success' : ($m['leads_pct'] >= 70 ? 'bg-warning' : 'bg-danger') }}"
-                                         style="width:{{ $m['leads_pct'] }}%"></div>
-                                </div>
-                                @endif
-                            </td>
-                            <td class="text-center">
-                                <div>{{ $m['quotes'] }}
-                                @if($m['quotes_pct'] !== null)
-                                    <small class="text-muted">/ {{ $m['goal']->quotes_goal }}</small>
-                                @endif
-                                </div>
-                                @if($m['quotes_pct'] !== null)
-                                <div class="progress mt-1" style="height:6px;" title="{{ $m['quotes_pct'] }}%">
-                                    <div class="progress-bar {{ $m['quotes_pct'] >= 100 ? 'bg-success' : ($m['quotes_pct'] >= 70 ? 'bg-warning' : 'bg-danger') }}"
-                                         style="width:{{ $m['quotes_pct'] }}%"></div>
-                                </div>
-                                @endif
-                            </td>
-                            <td class="text-center">
-                                <div>{{ $m['conversions'] }}
-                                @if($m['conv_pct'] !== null)
-                                    <small class="text-muted">/ {{ $m['goal']->conversions_goal }}</small>
-                                @endif
-                                </div>
-                                @if($m['conv_pct'] !== null)
-                                <div class="progress mt-1" style="height:6px;" title="{{ $m['conv_pct'] }}%">
-                                    <div class="progress-bar {{ $m['conv_pct'] >= 100 ? 'bg-success' : ($m['conv_pct'] >= 70 ? 'bg-warning' : 'bg-danger') }}"
-                                         style="width:{{ $m['conv_pct'] }}%"></div>
-                                </div>
-                                @endif
-                            </td>
-                            <td class="text-center">
-                                @php
-                                    $cr = $m['conv_rate'];
-                                    $crColor = $cr >= 30 ? 'success' : ($cr >= 15 ? 'warning' : 'danger');
-                                @endphp
-                                <span class="badge badge-{{ $crColor }}">{{ $m['conv_rate'] }}%</span>
-                            </td>
-                            <td class="text-center">
-                                @if($m['avg_days'] !== null)
-                                    <span class="badge badge-secondary">{{ $m['avg_days'] }}d</span>
-                                @else
-                                    <span class="text-muted">—</span>
-                                @endif
-                            </td>
-                            <td class="text-center">
-                                @if($m['eligible_reward'])
-                                    <span class="badge badge-warning" title="{{ $m['eligible_reward']->name }}">
-                                        <i class="fa fa-trophy"></i> {{ $m['eligible_reward']->formatted_value }}
-                                    </span>
-                                @else
-                                    <span class="text-muted">—</span>
-                                @endif
+                            <td style="text-align:center;">
+                                <span class="crm-badge lost">{{ $m['idle_leads'] }}</span>
                             </td>
                             <td>
-                                <a href="{{ route('admin.metrics.agent', [$agent->id, 'month' => $month]) }}"
-                                   class="btn btn-xs btn-outline-primary">Detalle</a>
+                                <a href="{{ route('admin.metrics.agent', [$m['agent']->id, 'month' => $month]) }}"
+                                   class="action-btn view">
+                                    <i class="fa fa-eye"></i>
+                                </a>
                             </td>
                         </tr>
-                    @empty
-                        <tr><td colspan="9" class="text-center text-muted py-4">No hay agentes registrados.</td></tr>
-                    @endforelse
+                    @endforeach
                     </tbody>
                 </table>
             </div>
         </div>
-    </div>
-
-    {{-- ===== RECOMPENSAS OTORGADAS RECIENTEMENTE ===== --}}
-    @if($recentGrants->count() > 0)
-    <div class="card shadow-sm mb-4">
-        <div class="card-header bg-warning text-dark">
-            <i class="fa fa-trophy"></i> Recompensas Otorgadas Recientemente
+        @else
+        <div class="dashboard-card card-allok">
+            <div class="dc-body" style="text-align:center;padding:48px 24px;">
+                <div style="width:56px;height:56px;background:rgba(34,197,94,.13);border-radius:50%;
+                            display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+                    <i class="fa fa-check-circle" style="font-size:26px;color:#22c55e;"></i>
+                </div>
+                <div style="font-weight:700;font-size:15px;color:#1a1a2e;margin-bottom:6px;">¡Todo al día!</div>
+                <div style="font-size:13px;color:#888;line-height:1.5;">
+                    Todos los leads tienen seguimiento actualizado.
+                </div>
+            </div>
         </div>
-        <div class="card-body p-0">
-            <table class="table table-sm mb-0">
-                <thead class="thead-light">
+        @endif
+
+    </div>{{-- /.funnel-grid --}}
+
+    {{-- ══════════════════════════════════════════
+         LEADERBOARD TABLE
+    ══════════════════════════════════════════ --}}
+    <div class="dashboard-card" style="margin-bottom:24px;">
+
+        <div class="dc-header dc-header-dark">
+            <h5>
+                <i class="fa fa-trophy"></i>
+                Rendimiento de Agentes
+            </h5>
+            <span class="dc-month">
+                {{ \Carbon\Carbon::parse($month . '-01')->translatedFormat('F Y') }}
+            </span>
+        </div>
+
+        <div style="overflow-x:auto;">
+            <table class="crm-table">
+                <thead>
+                    <tr>
+                        <th style="width:46px;text-align:center;">#</th>
+                        <th>Agente</th>
+                        <th style="text-align:center;">Leads</th>
+                        <th style="text-align:center;">Cotizaciones</th>
+                        <th style="text-align:center;">Conversiones</th>
+                        <th style="text-align:center;">Tasa Conv.</th>
+                        <th style="text-align:center;">Días Prom.</th>
+                        <th style="text-align:center;">Recompensa</th>
+                        <th style="width:80px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                @forelse($agentMetrics as $i => $m)
+                    @php
+                        $agent    = $m['agent'];
+                        $rank     = $i + 1;
+                        $rankIcon = $rank === 1 ? '🥇' : ($rank === 2 ? '🥈' : ($rank === 3 ? '🥉' : '#' . $rank));
+                        $cr       = $m['conv_rate'];
+                        $crBadge  = $cr >= 30 ? 'won' : ($cr >= 15 ? 'proposal' : 'lost');
+                    @endphp
+                    <tr>
+
+                        {{-- Rank --}}
+                        <td style="text-align:center;" class="rank-cell">{{ $rankIcon }}</td>
+
+                        {{-- Agent name --}}
+                        <td>
+                            <strong style="color:#1a1a2e;">{{ $agent->name }}</strong>
+                            @if($m['idle_leads'] > 0)
+                                <span class="crm-badge lost" style="margin-left:6px;"
+                                      title="Leads sin seguimiento">
+                                    {{ $m['idle_leads'] }} idle
+                                </span>
+                            @endif
+                        </td>
+
+                        {{-- Leads --}}
+                        <td style="text-align:center;min-width:82px;">
+                            <div style="font-weight:600;color:#1a1a2e;">
+                                {{ $m['leads'] }}
+                                @if($m['leads_pct'] !== null)
+                                    <span style="font-size:11px;color:#bbb;font-weight:400;">
+                                        / {{ $m['goal']->leads_goal }}
+                                    </span>
+                                @endif
+                            </div>
+                            @if($m['leads_pct'] !== null)
+                                <div class="mini-progress">
+                                    <div class="mini-progress-bar"
+                                         style="width:{{ min(100, $m['leads_pct']) }}%;
+                                                background:{{ $m['leads_pct'] >= 100 ? '#22c55e' : ($m['leads_pct'] >= 70 ? '#eab308' : '#ef4444') }};"></div>
+                                </div>
+                            @endif
+                        </td>
+
+                        {{-- Cotizaciones --}}
+                        <td style="text-align:center;min-width:92px;">
+                            <div style="font-weight:600;color:#1a1a2e;">
+                                {{ $m['quotes'] }}
+                                @if($m['quotes_pct'] !== null)
+                                    <span style="font-size:11px;color:#bbb;font-weight:400;">
+                                        / {{ $m['goal']->quotes_goal }}
+                                    </span>
+                                @endif
+                            </div>
+                            @if($m['quotes_pct'] !== null)
+                                <div class="mini-progress">
+                                    <div class="mini-progress-bar"
+                                         style="width:{{ min(100, $m['quotes_pct']) }}%;
+                                                background:{{ $m['quotes_pct'] >= 100 ? '#22c55e' : ($m['quotes_pct'] >= 70 ? '#eab308' : '#ef4444') }};"></div>
+                                </div>
+                            @endif
+                        </td>
+
+                        {{-- Conversiones --}}
+                        <td style="text-align:center;min-width:92px;">
+                            <div style="font-weight:600;color:#1a1a2e;">
+                                {{ $m['conversions'] }}
+                                @if($m['conv_pct'] !== null)
+                                    <span style="font-size:11px;color:#bbb;font-weight:400;">
+                                        / {{ $m['goal']->conversions_goal }}
+                                    </span>
+                                @endif
+                            </div>
+                            @if($m['conv_pct'] !== null)
+                                <div class="mini-progress">
+                                    <div class="mini-progress-bar"
+                                         style="width:{{ min(100, $m['conv_pct']) }}%;
+                                                background:{{ $m['conv_pct'] >= 100 ? '#22c55e' : ($m['conv_pct'] >= 70 ? '#eab308' : '#ef4444') }};"></div>
+                                </div>
+                            @endif
+                        </td>
+
+                        {{-- Tasa conversión --}}
+                        <td style="text-align:center;">
+                            <span class="crm-badge {{ $crBadge }}">{{ $cr }}%</span>
+                        </td>
+
+                        {{-- Días promedio --}}
+                        <td style="text-align:center;">
+                            @if($m['avg_days'] !== null)
+                                <span style="font-size:13px;color:#555;font-weight:600;">
+                                    {{ $m['avg_days'] }}<span style="font-size:11px;font-weight:400;color:#aaa;">d</span>
+                                </span>
+                            @else
+                                <span style="color:#ccc;">—</span>
+                            @endif
+                        </td>
+
+                        {{-- Recompensa elegible --}}
+                        <td style="text-align:center;">
+                            @if($m['eligible_reward'])
+                                <span class="crm-badge proposal"
+                                      style="display:inline-flex;align-items:center;gap:4px;"
+                                      title="{{ $m['eligible_reward']->name }}">
+                                    <i class="fa fa-trophy"></i>
+                                    {{ $m['eligible_reward']->formatted_value }}
+                                </span>
+                            @else
+                                <span style="color:#ccc;">—</span>
+                            @endif
+                        </td>
+
+                        {{-- Detalle --}}
+                        <td>
+                            <a href="{{ route('admin.metrics.agent', [$agent->id, 'month' => $month]) }}"
+                               class="action-btn view">
+                                <i class="fa fa-bar-chart"></i> Detalle
+                            </a>
+                        </td>
+
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="9" style="text-align:center;color:#aaa;padding:36px;">
+                            <i class="fa fa-users" style="font-size:22px;display:block;margin-bottom:8px;"></i>
+                            No hay agentes registrados.
+                        </td>
+                    </tr>
+                @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>{{-- /.leaderboard card --}}
+
+    {{-- ══════════════════════════════════════════
+         RECOMPENSAS RECIENTES
+    ══════════════════════════════════════════ --}}
+    @if($recentGrants->count() > 0)
+    <div class="dashboard-card">
+        <div class="dc-header dc-header-dark">
+            <h5>
+                <i class="fa fa-trophy"></i>
+                Recompensas Otorgadas Recientemente
+            </h5>
+            <a href="{{ route('admin.rewards.grants.index') }}"
+               class="action-btn gold" style="font-size:12px;padding:5px 10px;">
+                Ver todas <i class="fa fa-arrow-right"></i>
+            </a>
+        </div>
+        <div style="overflow-x:auto;">
+            <table class="crm-table">
+                <thead>
                     <tr>
                         <th>Agente</th>
                         <th>Recompensa</th>
                         <th>Mes</th>
-                        <th>Conversiones</th>
+                        <th style="text-align:center;">Conversiones</th>
                         <th>Otorgado</th>
                     </tr>
                 </thead>
                 <tbody>
                 @foreach($recentGrants as $grant)
                     <tr>
-                        <td>{{ $grant->agent?->name ?? '—' }}</td>
+                        <td><strong>{{ $grant->agent?->name ?? '—' }}</strong></td>
                         <td>
-                            <span class="badge badge-warning">{{ $grant->reward?->name ?? '—' }}</span>
+                            <span class="crm-badge proposal"
+                                  style="display:inline-flex;align-items:center;gap:4px;">
+                                <i class="fa fa-trophy"></i>
+                                {{ $grant->reward?->name ?? '—' }}
+                            </span>
                         </td>
-                        <td>{{ \Carbon\Carbon::parse($grant->month)->format('M Y') }}</td>
-                        <td class="text-center">{{ $grant->conversions_count }}</td>
-                        <td>
-                            <small class="text-muted">{{ $grant->granted_at?->diffForHumans() }}</small>
+                        <td style="font-size:13px;color:#555;">
+                            {{ \Carbon\Carbon::parse($grant->month)->translatedFormat('M Y') }}
+                        </td>
+                        <td style="text-align:center;font-weight:600;">
+                            {{ $grant->conversions_count }}
+                        </td>
+                        <td style="font-size:12px;color:#999;">
+                            {{ $grant->granted_at?->diffForHumans() }}
                         </td>
                     </tr>
                 @endforeach
                 </tbody>
             </table>
         </div>
-        <div class="card-footer text-right">
-            <a href="{{ route('admin.rewards.grants.index') }}" class="btn btn-sm btn-warning">
-                Ver todos los grants <i class="fa fa-arrow-right"></i>
-            </a>
-        </div>
     </div>
     @endif
 
-</div>
+</div>{{-- /.crm-page --}}
 
-@push('scripts')
+@push('script')
 <script>
 (function () {
     const ctx = document.getElementById('funnelChart');
@@ -354,11 +532,18 @@
     new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: ['Capturados','Contactados','En Proceso','Convertidos','Perdidos'],
+            labels: ['Capturados', 'Contactados', 'En Proceso', 'Convertidos', 'Perdidos'],
             datasets: [{
                 label: 'Leads',
-                data: [{{ $funnel['captured'] }}, {{ $funnel['contacted'] }}, {{ $funnel['in_progress'] }}, {{ $funnel['converted'] }}, {{ $funnel['lost'] }}],
-                backgroundColor: ['#4e73df','#36b9cc','#f6c23e','#1cc88a','#e74a3b'],
+                data: [
+                    {{ $funnel['captured'] }},
+                    {{ $funnel['contacted'] }},
+                    {{ $funnel['in_progress'] }},
+                    {{ $funnel['converted'] }},
+                    {{ $funnel['lost'] }}
+                ],
+                backgroundColor: ['#3b82f6', '#6366f1', '#eab308', '#22c55e', '#ef4444'],
+                borderRadius: 6,
             }]
         },
         options: {

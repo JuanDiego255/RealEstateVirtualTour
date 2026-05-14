@@ -226,6 +226,37 @@ class LeadController extends Controller
     }
 
     /**
+     * Quick set next_follow_up date via AJAX from lead list.
+     */
+    public function quickFollowup(Request $request, Lead $lead)
+    {
+        $this->authorizeCompanyAccess($lead);
+
+        $request->validate([
+            'next_follow_up' => 'required|date',
+            'note'           => 'nullable|string|max:500',
+        ]);
+
+        $lead->update(['next_follow_up' => $request->next_follow_up]);
+
+        if ($request->filled('note')) {
+            $lead->activities()->create([
+                'user_id'     => auth()->id(),
+                'type'        => 'note',
+                'description' => 'Seguimiento programado: ' . $request->note,
+                'activity_at' => now(),
+                'subject'     => 'Próximo seguimiento: ' . \Carbon\Carbon::parse($request->next_follow_up)->format('d/m/Y'),
+            ]);
+        }
+
+        return response()->json([
+            'success'        => true,
+            'message'        => 'Fecha de seguimiento actualizada.',
+            'next_follow_up' => \Carbon\Carbon::parse($request->next_follow_up)->format('d/m/Y'),
+        ]);
+    }
+
+    /**
      * Show the form for creating a new lead.
      */
     public function create()

@@ -4,7 +4,7 @@
     <div class="container-fluid">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h4><i class="fa fa-edit"></i> Editar Lead: {{ $lead->name }}</h4>
-            <a href="{{ route('admin.crm.leads.show', $lead) }}" class="btn btn-secondary">
+            <a href="{{ request('_back') ?: route('admin.crm.leads.show', $lead) }}" class="btn btn-secondary">
                 <i class="fa fa-arrow-left"></i> Volver
             </a>
         </div>
@@ -220,7 +220,7 @@
                             <i class="fa fa-trash"></i> Eliminar
                         </button>
                         <div>
-                            <a href="{{ route('admin.crm.leads.show', $lead) }}"
+                            <a href="{{ request('_back') ?: route('admin.crm.leads.show', $lead) }}"
                                 class="btn btn-secondary mr-2">Cancelar</a>
                             <button type="submit" class="btn btn-primary"><i class="fa fa-save"></i> Guardar
                                 Cambios</button>

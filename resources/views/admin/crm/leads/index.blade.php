@@ -682,6 +682,37 @@
     </div>
 </div>
 
+{{-- Modal: Próximo Seguimiento --}}
+<div class="modal fade" id="modal-quick-followup" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content" style="border-radius:16px;border:none;overflow:hidden;">
+            <div class="modal-header" style="background:linear-gradient(135deg,#6d28d9,#5b21b6);color:#fff;padding:16px 20px;">
+                <h6 class="modal-title mb-0"><i class="fa fa-calendar-check-o"></i> Próximo Seguimiento — <span id="qf-lead-name"></span></h6>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body p-4">
+                <input type="hidden" id="qf-url">
+                <div class="form-group mb-3">
+                    <label class="small font-weight-bold text-muted mb-2 d-block">Fecha de seguimiento <span class="text-danger">*</span></label>
+                    <input type="date" id="qf-date" class="form-control form-control-sm" style="border-radius:8px;">
+                </div>
+                <div class="form-group mb-0">
+                    <label class="small font-weight-bold text-muted mb-2 d-block">Nota (opcional)</label>
+                    <textarea id="qf-note" class="form-control form-control-sm" rows="2"
+                              placeholder="Motivo o acción planificada..." style="border-radius:8px;resize:none;"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer" style="border:none;padding:12px 20px;">
+                <button type="button" class="btn btn-light btn-sm" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-sm" id="btn-save-followup"
+                    style="background:linear-gradient(135deg,#6d28d9,#5b21b6);color:#fff;border-radius:8px;">
+                    <i class="fa fa-calendar-check-o"></i> Guardar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {{-- Toast --}}
 <div id="crm-toast" class="alert alert-success" style="position:fixed;bottom:24px;right:24px;z-index:9999;display:none;min-width:260px;max-width:360px;border-radius:12px;padding:12px 18px;box-shadow:0 4px 20px rgba(0,0,0,.15);border:none;">
     <i class="fa fa-check-circle"></i> <span id="crm-toast-msg"></span>
@@ -808,6 +839,7 @@
         document.querySelectorAll('.btn-quick-status').forEach(btn => btn.addEventListener('click', () => openQuickStatus(btn.closest('tr'))));
         document.querySelectorAll('.btn-quick-activity').forEach(btn => btn.addEventListener('click', () => openQuickActivity(btn.closest('tr'))));
         document.querySelectorAll('.btn-quick-reminder').forEach(btn => btn.addEventListener('click', () => openQuickReminder(btn.closest('tr'))));
+        document.querySelectorAll('.btn-quick-followup').forEach(btn => btn.addEventListener('click', () => openQuickFollowup(btn.closest('tr'))));
         document.querySelectorAll('.btn-quick-view').forEach(btn => btn.addEventListener('click', () => openQuickView(btn.closest('tr'))));
     }
 
@@ -888,6 +920,28 @@
         postJson(url, { title, remind_at, priority, description }).then(data => {
             if (data.success) { $('#modal-quick-reminder').modal('hide'); showToast(data.message); }
             else showToast(data.message ?? 'Error', 'danger');
+        }).catch(() => showToast('Error de conexión', 'danger'));
+    });
+
+    /* ── Modal Próximo Seguimiento ── */
+    function openQuickFollowup(row) {
+        document.getElementById('qf-lead-name').textContent = row.dataset.leadName;
+        document.getElementById('qf-url').value             = row.dataset.quickFollowupUrl;
+        document.getElementById('qf-date').value            = row.dataset.leadFollowup || '';
+        document.getElementById('qf-note').value            = '';
+        $('#modal-quick-followup').modal('show');
+    }
+    document.getElementById('btn-save-followup').addEventListener('click', () => {
+        const url  = document.getElementById('qf-url').value;
+        const date = document.getElementById('qf-date').value;
+        const note = document.getElementById('qf-note').value;
+        if (!date) { showToast('Selecciona una fecha', 'warning'); return; }
+        postJson(url, { next_follow_up: date, note }).then(data => {
+            if (data.success) {
+                $('#modal-quick-followup').modal('hide');
+                showToast(data.message);
+                fetchLeads(1);
+            } else showToast(data.message ?? 'Error', 'danger');
         }).catch(() => showToast('Error de conexión', 'danger'));
     });
 
