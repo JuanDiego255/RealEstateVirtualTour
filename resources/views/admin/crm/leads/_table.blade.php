@@ -84,6 +84,14 @@
             @else
                 <span style="color:#ccc; font-size:13px;">—</span>
             @endif
+            {{-- Score mini badge --}}
+            @if($lead->score > 0)
+            <div style="margin-top:4px;">
+                <span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;background:{{ $lead->score >= 60 ? '#fee2e2' : ($lead->score >= 40 ? '#fef3c7' : '#f1f5f9') }};color:{{ $lead->score >= 60 ? '#991b1b' : ($lead->score >= 40 ? '#92400e' : '#64748b') }};">
+                    <i class="fa fa-fire"></i> {{ $lead->score }}
+                </span>
+            </div>
+            @endif
         </td>
 
         {{-- Acciones rápidas --}}

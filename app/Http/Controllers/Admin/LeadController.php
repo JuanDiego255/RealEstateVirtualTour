@@ -22,6 +22,11 @@ class LeadController extends Controller
         $query = Lead::with(['user', 'property', 'vehicle'])
             ->byCompany($user->company_id);
 
+        // Agents can only see their own leads unless they have admin rights
+        if (!$user->isAdmin()) {
+            $query->byUser($user->id);
+        }
+
         // Filtro por origen (evento vs agencia)
         if ($request->filled('origin')) {
             if ($request->origin === 'event') {
@@ -351,10 +356,117 @@ class LeadController extends Controller
             'vehicle',
             'activities.user',
             'appointments' => fn($q) => $q->orderBy('starts_at', 'desc')->limit(5),
-            'reminders' => fn($q) => $q->pending()->orderBy('remind_at'),
+            'reminders'    => fn($q) => $q->pending()->orderBy('remind_at'),
         ]);
 
-        return view('admin.crm.leads.show', compact('lead'));
+        // Recalculate score on view (lightweight, cached by score_updated_at)
+        if (!$lead->score_updated_at || $lead->score_updated_at->diffInHours(now()) > 6) {
+            $lead->recalculateScore();
+            $lead->refresh();
+        }
+
+        // Portal URL if token exists and valid
+        $portalUrl = $lead->isPortalValid() ? $lead->portal_url : null;
+
+        // Pending tasks preview (up to 5)
+        $pendingTasks = $lead->tasks()
+            ->where('status', 'pending')
+            ->orderBy('due_at')
+            ->limit(5)
+            ->get();
+
+        // Property matching
+        $matchedProperties = collect();
+        $user = auth()->user();
+        if ($lead->budget_max || $lead->preferred_zones || $lead->preferred_bedrooms_min) {
+            $properties = \App\Properties::realEstate()
+                ->whereHas('category', fn($q) => $q->where('company_id', $user->company_id))
+                ->with('sector')
+                ->limit(30)
+                ->get();
+            $matchedProperties = $properties->map(fn($p) => [
+                'property' => $p,
+                'score'    => $lead->matchScore($p),
+            ])->filter(fn($m) => $m['score'] >= 20)->sortByDesc('score');
+        }
+
+        // Pipeline automation alerts
+        $pipelineAlerts = \App\PipelineRule::where('company_id', $user->company_id)
+            ->active()
+            ->get()
+            ->filter(fn($rule) => $rule->triggersFor($lead));
+
+        return view('admin.crm.leads.show', compact(
+            'lead', 'portalUrl', 'pendingTasks', 'matchedProperties', 'pipelineAlerts'
+        ));
+    }
+
+    /**
+     * Generate a shareable portal token for the lead.
+     */
+    public function generatePortal(Lead $lead)
+    {
+        $this->authorizeCompanyAccess($lead);
+        $lead->generatePortalToken();
+
+        return back()->with('success', 'Portal del cliente generado. Enlace válido por 30 días.');
+    }
+
+    /**
+     * Send an email to the lead and log it as activity.
+     */
+    public function sendEmail(Request $request, Lead $lead)
+    {
+        $this->authorizeCompanyAccess($lead);
+
+        $request->validate([
+            'to'      => 'required|email',
+            'subject' => 'required|string|max:200',
+            'body'    => 'required|string|max:5000',
+        ]);
+
+        try {
+            \Illuminate\Support\Facades\Mail::raw($request->body, function ($msg) use ($request, $lead) {
+                $msg->to($request->to, $lead->name)
+                    ->subject($request->subject)
+                    ->replyTo(auth()->user()->email, auth()->user()->name);
+            });
+
+            $lead->activities()->create([
+                'user_id'     => auth()->id(),
+                'type'        => 'email',
+                'subject'     => $request->subject,
+                'description' => $request->body,
+                'activity_at' => now(),
+            ]);
+
+            $lead->update(['last_contact_at' => now()]);
+
+            return back()->with('success', 'Email enviado a ' . $request->to);
+        } catch (\Exception $e) {
+            return back()->withErrors(['email' => 'No se pudo enviar el email: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Show all matched properties for a lead.
+     */
+    public function matching(Lead $lead)
+    {
+        $this->authorizeCompanyAccess($lead);
+        $user = auth()->user();
+
+        $properties = \App\Properties::realEstate()
+            ->whereHas('category', fn($q) => $q->where('company_id', $user->company_id))
+            ->with('sector')
+            ->get();
+
+        $matched = $properties->map(fn($p) => [
+            'property' => $p,
+            'score'    => $lead->matchScore($p),
+        ])->filter(fn($m) => $m['score'] > 0)->sortByDesc('score');
+
+        return view('admin.crm.leads.matching', compact('lead', 'matched'));
     }
 
     /**

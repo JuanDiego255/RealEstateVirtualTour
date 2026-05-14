@@ -469,6 +469,81 @@
     </div>{{-- /.leaderboard card --}}
 
     {{-- ══════════════════════════════════════════
+         TIEMPO EN ETAPA + FORECAST
+    ══════════════════════════════════════════ --}}
+    <div class="funnel-grid">
+
+        {{-- Tiempo Promedio en Etapa ── --}}
+        <div class="dashboard-card" style="margin-bottom:18px;">
+            <div class="dc-header" style="background:#1a1a2e;">
+                <h5 style="color:#fff;"><i class="fa fa-clock-o" style="color:#c2ac1f;"></i> Tiempo Promedio en Etapa</h5>
+                <span style="font-size:11px;color:#aaa;">días desde último cambio de estado</span>
+            </div>
+            <div class="dc-body">
+                @php
+                $stageNames = ['new'=>'Nuevo','contacted'=>'Contactado','qualified'=>'Calificado','proposal'=>'Propuesta','negotiation'=>'Negociación'];
+                @endphp
+                @foreach($stageNames as $key => $label)
+                @php $days = $timeInStage[$key] ?? 0; $barColor = $days <= 7 ? '#22c55e' : ($days <= 14 ? '#f59e0b' : '#ef4444'); $width = min(100, ($days / 30) * 100); @endphp
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+                    <div style="width:100px;font-size:12px;font-weight:500;color:#555;flex-shrink:0;">{{ $label }}</div>
+                    <div style="flex:1;height:8px;background:#f0f0f0;border-radius:4px;overflow:hidden;">
+                        <div style="height:100%;width:{{ $width }}%;background:{{ $barColor }};border-radius:4px;transition:width .4s;"></div>
+                    </div>
+                    <div style="width:50px;text-align:right;font-size:12px;font-weight:700;color:{{ $barColor }};">{{ $days }}d</div>
+                </div>
+                @endforeach
+            </div>
+        </div>
+
+        {{-- Forecast de Ventas ── --}}
+        <div class="dashboard-card" style="margin-bottom:18px;">
+            <div class="dc-header" style="background:#1a1a2e;">
+                <h5 style="color:#fff;"><i class="fa fa-line-chart" style="color:#c2ac1f;"></i> Forecast de Ventas</h5>
+            </div>
+            <div class="dc-body">
+                @php
+                $forecastLeads = $forecast ?? collect();
+                $totalPotential = $forecastLeads->sum('potential');
+                @endphp
+                @if($forecastLeads->isEmpty())
+                    <p style="color:#aaa;font-size:13px;text-align:center;margin:20px 0;">Sin leads en etapas avanzadas este mes.</p>
+                @else
+                <div style="margin-bottom:14px;">
+                    <div style="font-size:28px;font-weight:700;color:#1a1a2e;">
+                        {{ $totalPotential > 0 ? '₡ ' . number_format($totalPotential, 0, ',', '.') : 'N/D' }}
+                    </div>
+                    <div style="font-size:12px;color:#aaa;">potencial ponderado total</div>
+                </div>
+                <table class="crm-table">
+                    <thead><tr><th>Lead</th><th>Etapa</th><th>Probabilidad</th><th>Potencial</th></tr></thead>
+                    <tbody>
+                    @foreach($forecastLeads->take(6) as $fl)
+                    <tr>
+                        <td style="font-size:13px;font-weight:500;">{{ $fl['name'] }}</td>
+                        <td><span class="crm-badge {{ $fl['status'] }}">{{ $fl['status_label'] }}</span></td>
+                        <td>
+                            <div style="display:flex;align-items:center;gap:6px;">
+                                <div style="height:4px;width:60px;background:#f0f0f0;border-radius:2px;overflow:hidden;">
+                                    <div style="height:100%;width:{{ $fl['probability'] }}%;background:#c2ac1f;"></div>
+                                </div>
+                                <span style="font-size:11px;color:#888;">{{ $fl['probability'] }}%</span>
+                            </div>
+                        </td>
+                        <td style="font-size:13px;font-weight:600;color:#1a1a2e;">
+                            {{ $fl['potential'] > 0 ? '₡ ' . number_format($fl['potential'], 0, ',', '.') : '—' }}
+                        </td>
+                    </tr>
+                    @endforeach
+                    </tbody>
+                </table>
+                @endif
+            </div>
+        </div>
+
+    </div>{{-- /.funnel-grid time-in-stage + forecast --}}
+
+    {{-- ══════════════════════════════════════════
          RECOMPENSAS RECIENTES
     ══════════════════════════════════════════ --}}
     @if($recentGrants->count() > 0)

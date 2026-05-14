@@ -151,8 +151,38 @@ class AgentMetricsController extends Controller
             ->limit(10)
             ->get();
 
+        // Time in stage (avg days per active status)
+        $stageStats = Lead::byCompany($companyId)
+            ->whereNotNull('stage_entered_at')
+            ->whereIn('status', ['new', 'contacted', 'qualified', 'proposal', 'negotiation'])
+            ->selectRaw('status, AVG(DATEDIFF(NOW(), stage_entered_at)) as avg_days')
+            ->groupBy('status')
+            ->get()
+            ->pluck('avg_days', 'status')
+            ->map(fn($d) => (int) round($d));
+
+        $timeInStage = $stageStats->toArray();
+
+        // Forecast: leads in proposal/negotiation with budget
+        $probabilityMap = ['proposal' => 30, 'negotiation' => 65];
+        $forecast = Lead::byCompany($companyId)
+            ->whereIn('status', ['proposal', 'negotiation'])
+            ->active()
+            ->get()
+            ->map(fn($lead) => [
+                'name'         => $lead->name,
+                'status'       => $lead->status,
+                'status_label' => $lead->status_label,
+                'probability'  => $probabilityMap[$lead->status] ?? 0,
+                'potential'    => (int) round(($lead->budget_max ?? 0) * (($probabilityMap[$lead->status] ?? 0) / 100)),
+            ])
+            ->sortByDesc('potential')
+            ->values();
+
         return view('admin.metrics.index', compact(
-            'agentMetrics', 'funnel', 'crmFunnel', 'recentGrants', 'month', 'from', 'to', 'companyId'
+            'agentMetrics', 'funnel', 'crmFunnel', 'recentGrants',
+            'timeInStage', 'forecast',
+            'month', 'from', 'to', 'companyId'
         ));
     }
 
