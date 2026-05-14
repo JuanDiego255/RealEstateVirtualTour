@@ -323,6 +323,53 @@ Route::group(['middleware' => 'auth'], function () {
         Route::get('/{lead}/matching', [LeadController::class, 'matching'])->name('admin.crm.leads.matching');
     });
 
+    // --- TASKS ---
+    Route::group(['prefix' => 'admin/crm/tasks', 'middleware' => ['subscription']], function () {
+        Route::get('/', [\App\Http\Controllers\Admin\LeadTaskController::class, 'index'])->name('admin.crm.tasks.index');
+        Route::get('/create', [\App\Http\Controllers\Admin\LeadTaskController::class, 'create'])->name('admin.crm.tasks.create');
+        Route::post('/', [\App\Http\Controllers\Admin\LeadTaskController::class, 'store'])->name('admin.crm.tasks.store');
+        Route::get('/{task}/edit', [\App\Http\Controllers\Admin\LeadTaskController::class, 'edit'])->name('admin.crm.tasks.edit');
+        Route::put('/{task}', [\App\Http\Controllers\Admin\LeadTaskController::class, 'update'])->name('admin.crm.tasks.update');
+        Route::post('/{task}/complete', [\App\Http\Controllers\Admin\LeadTaskController::class, 'complete'])->name('admin.crm.tasks.complete');
+        Route::delete('/{task}', [\App\Http\Controllers\Admin\LeadTaskController::class, 'destroy'])->name('admin.crm.tasks.destroy');
+    });
+
+    // --- ACTIVITY TEMPLATES ---
+    Route::group(['prefix' => 'admin/crm/activity-templates', 'middleware' => ['subscription']], function () {
+        Route::get('/', [\App\Http\Controllers\Admin\ActivityTemplateController::class, 'index'])->name('admin.crm.activity-templates.index');
+        Route::get('/create', [\App\Http\Controllers\Admin\ActivityTemplateController::class, 'create'])->name('admin.crm.activity-templates.create');
+        Route::post('/', [\App\Http\Controllers\Admin\ActivityTemplateController::class, 'store'])->name('admin.crm.activity-templates.store');
+        Route::get('/for-stage', [\App\Http\Controllers\Admin\ActivityTemplateController::class, 'forStage'])->name('admin.crm.activity-templates.for-stage');
+        Route::get('/{template}/edit', [\App\Http\Controllers\Admin\ActivityTemplateController::class, 'edit'])->name('admin.crm.activity-templates.edit');
+        Route::put('/{template}', [\App\Http\Controllers\Admin\ActivityTemplateController::class, 'update'])->name('admin.crm.activity-templates.update');
+        Route::post('/{template}/toggle', [\App\Http\Controllers\Admin\ActivityTemplateController::class, 'toggle'])->name('admin.crm.activity-templates.toggle');
+        Route::delete('/{template}', [\App\Http\Controllers\Admin\ActivityTemplateController::class, 'destroy'])->name('admin.crm.activity-templates.destroy');
+    });
+
+    // --- MESSAGE TEMPLATES ---
+    Route::group(['prefix' => 'admin/crm/message-templates', 'middleware' => ['subscription']], function () {
+        Route::get('/', [\App\Http\Controllers\Admin\MessageTemplateController::class, 'index'])->name('admin.crm.message-templates.index');
+        Route::get('/create', [\App\Http\Controllers\Admin\MessageTemplateController::class, 'create'])->name('admin.crm.message-templates.create');
+        Route::post('/', [\App\Http\Controllers\Admin\MessageTemplateController::class, 'store'])->name('admin.crm.message-templates.store');
+        Route::post('/preview', [\App\Http\Controllers\Admin\MessageTemplateController::class, 'preview'])->name('admin.crm.message-templates.preview');
+        Route::get('/{template}/edit', [\App\Http\Controllers\Admin\MessageTemplateController::class, 'edit'])->name('admin.crm.message-templates.edit');
+        Route::put('/{template}', [\App\Http\Controllers\Admin\MessageTemplateController::class, 'update'])->name('admin.crm.message-templates.update');
+        Route::post('/{template}/toggle', [\App\Http\Controllers\Admin\MessageTemplateController::class, 'toggle'])->name('admin.crm.message-templates.toggle');
+        Route::delete('/{template}', [\App\Http\Controllers\Admin\MessageTemplateController::class, 'destroy'])->name('admin.crm.message-templates.destroy');
+    });
+
+    // --- CRM FORMS ---
+    Route::group(['prefix' => 'admin/crm/forms', 'middleware' => ['subscription']], function () {
+        Route::get('/', [\App\Http\Controllers\Admin\CrmFormController::class, 'index'])->name('admin.crm.forms.index');
+        Route::get('/create', [\App\Http\Controllers\Admin\CrmFormController::class, 'create'])->name('admin.crm.forms.create');
+        Route::post('/', [\App\Http\Controllers\Admin\CrmFormController::class, 'store'])->name('admin.crm.forms.store');
+        Route::get('/{form}', [\App\Http\Controllers\Admin\CrmFormController::class, 'show'])->name('admin.crm.forms.show');
+        Route::get('/{form}/edit', [\App\Http\Controllers\Admin\CrmFormController::class, 'edit'])->name('admin.crm.forms.edit');
+        Route::put('/{form}', [\App\Http\Controllers\Admin\CrmFormController::class, 'update'])->name('admin.crm.forms.update');
+        Route::post('/{form}/toggle', [\App\Http\Controllers\Admin\CrmFormController::class, 'toggle'])->name('admin.crm.forms.toggle');
+        Route::delete('/{form}', [\App\Http\Controllers\Admin\CrmFormController::class, 'destroy'])->name('admin.crm.forms.destroy');
+    });
+
     // --- PIPELINE RULES ---
     Route::group(['prefix' => 'admin/crm/pipeline-rules', 'middleware' => ['subscription']], function () {
         Route::get('/', [\App\Http\Controllers\Admin\PipelineRuleController::class, 'index'])->name('admin.crm.pipeline-rules.index');
@@ -452,6 +499,18 @@ Route::group(['middleware' => 'auth'], function () {
 // =====================================================
 // RUTAS PÚBLICAS
 // =====================================================
+
+// Public CRM Forms
+Route::get('/f/{slug}', [\App\Http\Controllers\CrmFormPublicController::class, 'show'])->name('crm.form.show');
+Route::post('/f/{slug}', [\App\Http\Controllers\CrmFormPublicController::class, 'submit'])->name('crm.form.submit');
+
+// Client Portal
+Route::get('/portal/{token}', function($token) {
+    $lead = \App\Lead::where('portal_token', $token)->firstOrFail();
+    if (!$lead->isPortalValid()) abort(410);
+    return view('crm.portal', compact('lead'));
+})->name('crm.portal');
+
 Route::get('/', [SectorController::class, 'index'])->name('welcome');
 Route::get('/buscar', [SearchController::class, 'index'])->name('search');
 Route::get('/sector/{slug}', [SectorController::class, 'show'])->name('sector.show');
