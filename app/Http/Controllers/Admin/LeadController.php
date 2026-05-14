@@ -101,7 +101,13 @@ class LeadController extends Controller
             ]);
         }
 
-        return view('admin.crm.leads.index', compact('leads', 'stats', 'agents'));
+        // Conteos por estado para sidebar del pipeline
+        $pipelineCounts = Lead::byCompany($user->company_id)
+            ->selectRaw('status, count(*) as count')
+            ->groupBy('status')
+            ->pluck('count', 'status');
+
+        return view('admin.crm.leads.index', compact('leads', 'stats', 'agents', 'pipelineCounts'));
     }
 
     /**
@@ -123,13 +129,14 @@ class LeadController extends Controller
             ->get(['id', 'name', 'email', 'phone', 'status']);
 
         return response()->json($leads->map(fn($l) => [
-            'id'     => $l->id,
-            'name'   => $l->name,
-            'email'  => $l->email ?? '',
-            'phone'  => $l->phone ?? '',
-            'status' => $l->status_label,
-            'color'  => $l->status_color,
-            'url'    => route('admin.crm.leads.show', $l),
+            'id'         => $l->id,
+            'name'       => $l->name,
+            'email'      => $l->email ?? '',
+            'phone'      => $l->phone ?? '',
+            'status'     => $l->status_label,
+            'status_key' => $l->status,
+            'color'      => $l->status_color,
+            'url'        => route('admin.crm.leads.show', $l),
         ]));
     }
 

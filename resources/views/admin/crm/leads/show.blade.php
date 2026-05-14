@@ -1,323 +1,642 @@
 @extends('admin.main')
 @section('title', 'Lead: ' . $lead->name)
 @section('content')
-    @if (Session::has('success'))
-        <div class="alert alert-success alert-dismissible fade show"><strong>{{ Session::get('success') }}</strong><button type="button" class="close" data-dismiss="alert"><span class="fa fa-times"></span></button></div>
-    @endif
 
-    <div class="container-fluid">
-        {{-- ── Header con buscador rápido de leads ── --}}
-        <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap" style="gap:12px;">
-            <div>
-                <h4 class="mb-0">
-                    <i class="fa fa-user"></i> {{ $lead->name }}
-                    <span class="badge badge-{{ $lead->status_color }} ml-2">{{ $lead->status_label }}</span>
-                    <span class="badge badge-{{ $lead->priority_color }}">{{ $lead->priority_label }}</span>
-                </h4>
-                <small class="text-muted">Creado {{ $lead->created_at->diffForHumans() }} · Agente: {{ $lead->user->name ?? 'Sin asignar' }}</small>
-            </div>
-            <div class="d-flex align-items-center flex-wrap" style="gap:8px;">
-                {{-- Buscador rápido de lead ─────────────────────── --}}
-                <div class="position-relative" style="min-width:230px;">
-                    <div class="input-group input-group-sm">
-                        <div class="input-group-prepend">
-                            <span class="input-group-text bg-white border-right-0">
-                                <i class="fa fa-search text-muted"></i>
-                            </span>
-                        </div>
-                        <input type="text" id="lead-switcher-input" class="form-control form-control-sm border-left-0"
-                               placeholder="Ir a otro lead..." autocomplete="off" style="border-left:0;">
-                    </div>
-                    <div id="lead-switcher-dropdown"
-                         class="list-group shadow-sm"
-                         style="position:absolute;top:100%;left:0;right:0;z-index:1050;display:none;max-height:260px;overflow-y:auto;">
-                    </div>
-                </div>
-                {{-- Acciones ──────────────────────────────────────── --}}
-                <a href="{{ route('admin.crm.leads.edit', $lead) }}" class="btn btn-primary btn-sm">
-                    <i class="fa fa-edit"></i> Editar
-                </a>
-                <a href="{{ route('admin.crm.appointments.create', ['lead_id' => $lead->id]) }}" class="btn btn-success btn-sm">
-                    <i class="fa fa-calendar-plus-o"></i> Nueva Cita
-                </a>
-                <div class="btn-group btn-group-sm">
-                    <a href="{{ route('admin.crm.reports.lead-detail', $lead) }}" target="_blank" class="btn btn-outline-danger">
-                        <i class="fa fa-file-pdf-o"></i> PDF
-                    </a>
-                    <a href="{{ route('admin.crm.reports.lead-detail', $lead) }}?download=1" class="btn btn-outline-danger">
-                        <i class="fa fa-download"></i>
-                    </a>
-                </div>
-                <a href="{{ route('admin.crm.leads.index') }}" class="btn btn-secondary btn-sm">
-                    <i class="fa fa-arrow-left"></i> Volver
-                </a>
+@if (Session::has('success'))
+    <div class="alert alert-success alert-dismissible fade show mb-3">
+        <strong>{{ Session::get('success') }}</strong>
+        <button type="button" class="close" data-dismiss="alert"><span class="fa fa-times"></span></button>
+    </div>
+@endif
+
+<style>
+/* ── Lead Detail — basado en event-dashboard ── */
+.lead-detail-wrap { padding: 20px; }
+
+/* Header */
+.lead-detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 26px;
+    flex-wrap: wrap;
+    gap: 14px;
+}
+.lead-detail-header h2 {
+    font-size: 22px;
+    font-weight: 700;
+    color: #1a1a2e;
+    margin: 0 0 5px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.lead-detail-header h2 i { color: #c2ac1f; }
+.lead-detail-header .sub { font-size: 13px; color: #888; }
+
+/* Badges */
+.crm-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+}
+.crm-badge.new          { background: #dbeafe; color: #1d4ed8; }
+.crm-badge.contacted    { background: #e0e7ff; color: #4338ca; }
+.crm-badge.qualified    { background: #ede9fe; color: #7c3aed; }
+.crm-badge.proposal     { background: #fff3cd; color: #b45309; }
+.crm-badge.negotiation  { background: #fef3c7; color: #92400e; }
+.crm-badge.won          { background: #d1fae5; color: #065f46; }
+.crm-badge.lost         { background: #fee2e2; color: #991b1b; }
+.crm-badge.low          { background: #f1f5f9; color: #64748b; }
+.crm-badge.medium       { background: #dbeafe; color: #1e40af; }
+.crm-badge.high         { background: #fef3c7; color: #92400e; }
+.crm-badge.urgent       { background: #fee2e2; color: #991b1b; }
+
+/* Action buttons header */
+.action-btn {
+    padding: 7px 14px;
+    border: none;
+    border-radius: 9px;
+    cursor: pointer;
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all .15s;
+    text-decoration: none;
+    font-weight: 500;
+    line-height: 1;
+}
+.action-btn.primary   { background: #1a1a2e; color: #fff; }
+.action-btn.primary:hover { background: #2d2d4e; color: #fff; }
+.action-btn.success   { background: #d1fae5; color: #065f46; }
+.action-btn.success:hover { background: #a7f3d0; color: #065f46; }
+.action-btn.danger    { background: #fee2e2; color: #991b1b; }
+.action-btn.danger:hover  { background: #fecaca; color: #991b1b; }
+.action-btn.secondary { background: #f1f5f9; color: #475569; }
+.action-btn.secondary:hover { background: #e2e8f0; color: #1e293b; }
+.action-btn.gold      { background: #fef9e7; color: #92400e; border: 1px solid #c2ac1f; }
+.action-btn.gold:hover { background: #c2ac1f; color: #fff; }
+
+/* Lead switcher */
+.lead-switcher-wrap { position: relative; min-width: 230px; }
+.lead-switcher-wrap input {
+    width: 100%;
+    border: 1px solid #e5e7eb;
+    border-radius: 9px;
+    padding: 7px 12px 7px 34px;
+    font-size: 13px;
+    background: #fafafa;
+    outline: none;
+    transition: border-color .15s;
+}
+.lead-switcher-wrap input:focus { border-color: #c2ac1f; background: #fff; }
+.lead-switcher-wrap .sw-icon {
+    position: absolute; left: 11px; top: 50%;
+    transform: translateY(-50%);
+    color: #aaa; font-size: 13px;
+    pointer-events: none;
+}
+#lead-switcher-dropdown {
+    position: absolute; top: calc(100% + 4px);
+    left: 0; right: 0; z-index: 1050;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0,0,0,.13);
+    display: none;
+    max-height: 260px;
+    overflow-y: auto;
+}
+.sw-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-bottom: 1px solid #f5f5f5;
+    text-decoration: none;
+    color: #1a1a2e;
+    font-size: 13px;
+    transition: background .1s;
+}
+.sw-item:last-child { border-bottom: none; }
+.sw-item:hover { background: #fffdf0; }
+.sw-item strong { font-weight: 600; }
+.sw-item small  { color: #888; font-size: 11px; }
+.sw-no-result {
+    padding: 14px;
+    text-align: center;
+    color: #aaa;
+    font-size: 13px;
+}
+
+/* Layout */
+.detail-grid {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 22px;
+    align-items: start;
+}
+@media (max-width: 900px) { .detail-grid { grid-template-columns: 1fr; } }
+
+/* Cards */
+.dashboard-card {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 4px 15px rgba(0,0,0,.07);
+    overflow: hidden;
+    margin-bottom: 18px;
+}
+.dashboard-card .dc-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.dashboard-card .dc-header h5 {
+    font-size: 14px; font-weight: 600;
+    display: flex; align-items: center; gap: 8px;
+    margin: 0; color: #1a1a2e;
+}
+.dashboard-card .dc-header h5 i { color: #c2ac1f; }
+.dashboard-card .dc-body { padding: 16px 18px; }
+
+/* Detail list */
+.detail-list { width: 100%; font-size: 13px; border-collapse: collapse; }
+.detail-list tr td { padding: 7px 0; vertical-align: top; border: none; }
+.detail-list tr td:first-child { color: #999; width: 42%; font-size: 12px; padding-right: 8px; }
+
+/* Status change form */
+.status-select {
+    width: 100%;
+    border: 1px solid #e5e7eb;
+    border-radius: 9px;
+    padding: 8px 12px;
+    font-size: 13px;
+    background: #fafafa;
+    margin-bottom: 10px;
+    outline: none;
+}
+.status-select:focus { border-color: #c2ac1f; }
+.status-textarea {
+    width: 100%;
+    border: 1px solid #e5e7eb;
+    border-radius: 9px;
+    padding: 8px 12px;
+    font-size: 13px;
+    resize: vertical;
+    min-height: 62px;
+    margin-bottom: 10px;
+    outline: none;
+}
+.status-textarea:focus { border-color: #c2ac1f; }
+
+/* Reminder item */
+.reminder-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 9px 12px;
+    border-radius: 10px;
+    border: 1px solid #f0f0f0;
+    margin-bottom: 8px;
+    transition: background .1s;
+}
+.reminder-item.due { background: #fff9e6; border-color: #fde68a; }
+.reminder-item .ri-title { font-size: 13px; font-weight: 600; color: #1a1a2e; }
+.reminder-item .ri-date  { font-size: 11px; color: #888; }
+
+/* Appointment item */
+.appt-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 9px 12px;
+    border-radius: 10px;
+    border: 1px solid #f0f0f0;
+    margin-bottom: 8px;
+}
+.appt-item .ai-title { font-size: 13px; font-weight: 600; color: #1a1a2e; }
+.appt-item .ai-date  { font-size: 11px; color: #888; }
+
+/* Activity form */
+.act-select, .act-input {
+    width: 100%;
+    border: 1px solid #e5e7eb;
+    border-radius: 9px;
+    padding: 8px 12px;
+    font-size: 13px;
+    background: #fafafa;
+    outline: none;
+}
+.act-select:focus, .act-input:focus { border-color: #c2ac1f; background: #fff; }
+.act-textarea {
+    width: 100%;
+    border: 1px solid #e5e7eb;
+    border-radius: 9px;
+    padding: 8px 12px;
+    font-size: 13px;
+    resize: vertical;
+    min-height: 70px;
+    background: #fafafa;
+    outline: none;
+}
+.act-textarea:focus { border-color: #c2ac1f; background: #fff; }
+
+/* Activity timeline */
+.activity-item {
+    display: flex;
+    gap: 14px;
+    padding-bottom: 20px;
+    position: relative;
+}
+.activity-item::before {
+    content: '';
+    position: absolute;
+    left: 18px;
+    top: 38px;
+    bottom: 0;
+    width: 2px;
+    background: #f0f0f0;
+}
+.activity-item:last-child::before { display: none; }
+.act-icon-wrap {
+    flex-shrink: 0;
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+}
+.act-icon-wrap.call     { background: #d1fae5; color: #065f46; }
+.act-icon-wrap.email    { background: #dbeafe; color: #1d4ed8; }
+.act-icon-wrap.meeting  { background: #ede9fe; color: #7c3aed; }
+.act-icon-wrap.note     { background: #fef3c7; color: #92400e; }
+.act-icon-wrap.task     { background: #f1f5f9; color: #475569; }
+.act-icon-wrap.whatsapp { background: #d1fae5; color: #15803d; }
+.act-icon-wrap.visit    { background: #fce7f3; color: #9d174d; }
+.act-icon-wrap.status_change { background: #e0e7ff; color: #4338ca; }
+.act-icon-wrap.other    { background: #f1f5f9; color: #64748b; }
+.act-body { flex: 1; }
+.act-type  { font-size: 13px; font-weight: 600; color: #1a1a2e; }
+.act-time  { font-size: 11px; color: #aaa; margin-left: 8px; }
+.act-subject { font-size: 13px; color: #333; font-weight: 500; margin-top: 2px; }
+.act-desc  { font-size: 13px; color: #666; margin-top: 3px; line-height: 1.5; }
+.act-by    { font-size: 11px; color: #bbb; margin-top: 4px; }
+</style>
+
+<div class="lead-detail-wrap">
+
+    {{-- ── Header ── --}}
+    <div class="lead-detail-header">
+        <div>
+            <h2>
+                <i class="fa fa-user-circle-o"></i>
+                {{ $lead->name }}
+                <span class="crm-badge {{ $lead->status }}">{{ $lead->status_label }}</span>
+                <span class="crm-badge {{ $lead->priority }}">{{ $lead->priority_label }}</span>
+            </h2>
+            <div class="sub">
+                Creado {{ $lead->created_at->diffForHumans() }}
+                &nbsp;·&nbsp; Agente: <strong>{{ $lead->user->name ?? 'Sin asignar' }}</strong>
+                @if($lead->next_follow_up)
+                    &nbsp;·&nbsp;
+                    <span class="{{ $lead->isOverdueForFollowUp() ? 'text-danger font-weight-bold' : '' }}">
+                        Próx. seguim.: {{ $lead->next_follow_up->format('d/m/Y') }}
+                    </span>
+                @endif
             </div>
         </div>
 
-        <div class="row">
-            {{-- Columna izquierda: Info del lead --}}
-            <div class="col-md-4">
-                {{-- Info de contacto --}}
-                <div class="card mb-4">
-                    <div class="card-header"><strong><i class="fa fa-address-card"></i> Contacto</strong></div>
-                    <div class="card-body">
-                        @if($lead->email)
-                            <p class="mb-2"><i class="fa fa-envelope text-muted"></i> <a href="mailto:{{ $lead->email }}">{{ $lead->email }}</a></p>
-                        @endif
-                        @if($lead->phone)
-                            <p class="mb-2"><i class="fa fa-phone text-muted"></i> <a href="tel:{{ $lead->phone }}">{{ $lead->phone }}</a></p>
-                        @endif
-                        @if($lead->whatsapp)
-                            <p class="mb-2"><i class="fa fa-whatsapp text-success"></i> <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $lead->whatsapp) }}" target="_blank">{{ $lead->whatsapp }}</a></p>
-                        @endif
-                    </div>
-                </div>
-
-                {{-- Detalles --}}
-                <div class="card mb-4">
-                    <div class="card-header"><strong><i class="fa fa-info-circle"></i> Detalles</strong></div>
-                    <div class="card-body">
-                        <table class="table table-sm table-borderless mb-0">
-                            <tr><td class="text-muted">Fuente:</td><td>{{ $lead->source_label }}</td></tr>
-                            <tr><td class="text-muted">Interés:</td><td>{{ $lead->interest_type_label }}</td></tr>
-                            <tr><td class="text-muted">Presupuesto:</td><td>{{ $lead->budget_range }}</td></tr>
-                            @if($lead->property)
-                            <tr><td class="text-muted">Propiedad:</td><td><a href="#">{{ $lead->property->title }}</a></td></tr>
-                            @endif
-                            @if($lead->vehicle)
-                            <tr><td class="text-muted">Vehículo:</td><td><a href="#">{{ $lead->vehicle->name }}</a></td></tr>
-                            @endif
-                            <tr><td class="text-muted">Primer contacto:</td><td>{{ $lead->first_contact_at ? $lead->first_contact_at->format('d/m/Y H:i') : '-' }}</td></tr>
-                            <tr><td class="text-muted">Último contacto:</td><td>{{ $lead->last_contact_at ? $lead->last_contact_at->format('d/m/Y H:i') : '-' }}</td></tr>
-                        </table>
-                    </div>
-                </div>
-
-                {{-- Cambiar estado --}}
-                <div class="card mb-4">
-                    <div class="card-header"><strong><i class="fa fa-exchange"></i> Cambiar Estado</strong></div>
-                    <div class="card-body">
-                        <form action="{{ route('admin.crm.leads.update-status', $lead) }}" method="POST">
-                            @csrf
-                            @method('PATCH')
-                            <div class="form-group">
-                                <select name="status" class="form-control">
-                                    @foreach(\App\Lead::getStatuses() as $key => $label)
-                                        <option value="{{ $key }}" {{ $lead->status == $key ? 'selected' : '' }}>{{ $label }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <textarea name="note" class="form-control" rows="2" placeholder="Nota (opcional)"></textarea>
-                            </div>
-                            <button type="submit" class="btn btn-primary btn-block">Actualizar Estado</button>
-                        </form>
-                    </div>
-                </div>
-
-                {{-- Recordatorios pendientes --}}
-                @if($lead->reminders->count() > 0)
-                <div class="card mb-4">
-                    <div class="card-header"><strong><i class="fa fa-bell"></i> Recordatorios</strong></div>
-                    <div class="card-body">
-                        @foreach($lead->reminders as $reminder)
-                            <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded {{ $reminder->isDue() ? 'bg-warning' : '' }}">
-                                <div>
-                                    <strong>{{ $reminder->title }}</strong>
-                                    <br><small class="text-muted">{{ $reminder->remind_at->format('d/m/Y H:i') }}</small>
-                                </div>
-                                <form action="{{ route('admin.crm.reminders.complete', $reminder) }}" method="POST">
-                                    @csrf
-                                    <button type="submit" class="btn btn-sm btn-success" title="Completar"><i class="fa fa-check"></i></button>
-                                </form>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-                @endif
-
-                {{-- Próximas citas --}}
-                @if($lead->appointments->count() > 0)
-                <div class="card mb-4">
-                    <div class="card-header"><strong><i class="fa fa-calendar"></i> Próximas Citas</strong></div>
-                    <div class="card-body">
-                        @foreach($lead->appointments as $appointment)
-                            <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
-                                <div>
-                                    <strong>{{ $appointment->title }}</strong>
-                                    <br><small class="text-muted">{{ $appointment->starts_at->format('d/m/Y H:i') }}</small>
-                                </div>
-                                <span class="badge badge-{{ $appointment->status_color }}">{{ $appointment->status_label }}</span>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-                @endif
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            {{-- Buscador rápido --}}
+            <div class="lead-switcher-wrap">
+                <i class="fa fa-search sw-icon"></i>
+                <input type="text" id="lead-switcher-input" placeholder="Ir a otro lead..." autocomplete="off">
+                <div id="lead-switcher-dropdown"></div>
             </div>
 
-            {{-- Columna derecha: Actividades --}}
-            <div class="col-md-8">
-                {{-- Notas y requerimientos --}}
-                @if($lead->requirements || $lead->notes)
-                <div class="card mb-4">
-                    <div class="card-body">
-                        @if($lead->requirements)
-                            <h6><i class="fa fa-list-ul"></i> Lo que busca:</h6>
-                            <p>{{ $lead->requirements }}</p>
-                        @endif
-                        @if($lead->notes)
-                            <h6><i class="fa fa-sticky-note"></i> Notas:</h6>
-                            <p class="mb-0">{{ $lead->notes }}</p>
-                        @endif
-                    </div>
-                </div>
-                @endif
-
-                {{-- Registrar actividad --}}
-                <div class="card mb-4">
-                    <div class="card-header"><strong><i class="fa fa-plus-circle"></i> Registrar Actividad</strong></div>
-                    <div class="card-body">
-                        <form action="{{ route('admin.crm.leads.add-activity', $lead) }}" method="POST">
-                            @csrf
-                            <div class="row">
-                                <div class="col-md-4">
-                                    <div class="form-group">
-                                        <select name="type" class="form-control" required>
-                                            @foreach(\App\LeadActivity::getTypes() as $key => $label)
-                                                @if($key !== 'status_change')
-                                                <option value="{{ $key }}">{{ $label }}</option>
-                                                @endif
-                                            @endforeach
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="col-md-8">
-                                    <div class="form-group">
-                                        <input type="text" name="subject" class="form-control" placeholder="Asunto (opcional)">
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <textarea name="description" class="form-control" rows="2" placeholder="Descripción de la actividad..."></textarea>
-                            </div>
-                            <div class="row" id="call-fields" style="display: none;">
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <select name="call_result" class="form-control">
-                                            <option value="">Resultado de llamada</option>
-                                            @foreach(\App\LeadActivity::getCallResults() as $key => $label)
-                                                <option value="{{ $key }}">{{ $label }}</option>
-                                            @endforeach
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <input type="number" name="call_duration" class="form-control" placeholder="Duración (segundos)" min="0">
-                                    </div>
-                                </div>
-                            </div>
-                            <button type="submit" class="btn btn-primary"><i class="fa fa-save"></i> Registrar</button>
-                        </form>
-                    </div>
-                </div>
-
-                {{-- Timeline de actividades --}}
-                <div class="card">
-                    <div class="card-header"><strong><i class="fa fa-history"></i> Historial de Actividades</strong></div>
-                    <div class="card-body">
-                        @forelse($lead->activities as $activity)
-                            <div class="d-flex mb-3 pb-3 border-bottom">
-                                <div class="mr-3">
-                                    <span class="badge badge-{{ $activity->type_color }} p-2">
-                                        <i class="{{ $activity->type_icon }}"></i>
-                                    </span>
-                                </div>
-                                <div class="flex-grow-1">
-                                    <div class="d-flex justify-content-between">
-                                        <strong>{{ $activity->type_label }}</strong>
-                                        <small class="text-muted">{{ $activity->activity_at->format('d/m/Y H:i') }}</small>
-                                    </div>
-                                    @if($activity->subject)
-                                        <div><strong>{{ $activity->subject }}</strong></div>
-                                    @endif
-                                    @if($activity->description)
-                                        <p class="mb-1">{{ $activity->description }}</p>
-                                    @endif
-                                    @if($activity->type === 'status_change')
-                                        <small class="text-muted">
-                                            {{ \App\Lead::getStatuses()[$activity->old_status] ?? $activity->old_status }}
-                                            <i class="fa fa-arrow-right"></i>
-                                            {{ \App\Lead::getStatuses()[$activity->new_status] ?? $activity->new_status }}
-                                        </small>
-                                    @endif
-                                    @if($activity->call_result)
-                                        <small class="text-muted d-block">Resultado: {{ $activity->call_result_label }} {{ $activity->call_duration_formatted ? '(' . $activity->call_duration_formatted . ')' : '' }}</small>
-                                    @endif
-                                    <small class="text-muted">Por: {{ $activity->user->name ?? 'Sistema' }}</small>
-                                </div>
-                            </div>
-                        @empty
-                            <p class="text-muted text-center py-4">No hay actividades registradas</p>
-                        @endforelse
-                    </div>
-                </div>
-            </div>
+            {{-- Acciones --}}
+            <a href="{{ route('admin.crm.leads.edit', $lead) }}" class="action-btn primary">
+                <i class="fa fa-edit"></i> Editar
+            </a>
+            <a href="{{ route('admin.crm.appointments.create', ['lead_id' => $lead->id]) }}" class="action-btn success">
+                <i class="fa fa-calendar-plus-o"></i> Nueva Cita
+            </a>
+            <a href="{{ route('admin.crm.reports.lead-detail', $lead) }}" target="_blank" class="action-btn gold">
+                <i class="fa fa-file-pdf-o"></i> PDF
+            </a>
+            <a href="{{ route('admin.crm.reports.lead-detail', $lead) }}?download=1" class="action-btn danger">
+                <i class="fa fa-download"></i>
+            </a>
+            <a href="{{ route('admin.crm.leads.index') }}" class="action-btn secondary">
+                <i class="fa fa-arrow-left"></i> Volver
+            </a>
         </div>
     </div>
+
+    {{-- ── Detail Grid ── --}}
+    <div class="detail-grid">
+
+        {{-- ────── Columna izquierda ────── --}}
+        <div>
+
+            {{-- Contacto --}}
+            <div class="dashboard-card">
+                <div class="dc-header">
+                    <h5><i class="fa fa-address-card-o"></i> Contacto</h5>
+                </div>
+                <div class="dc-body">
+                    <table class="detail-list">
+                        @if($lead->email)
+                        <tr>
+                            <td><i class="fa fa-envelope" style="color:#aaa;"></i> Email</td>
+                            <td><a href="mailto:{{ $lead->email }}" style="color:#1a1a2e;">{{ $lead->email }}</a></td>
+                        </tr>
+                        @endif
+                        @if($lead->phone)
+                        <tr>
+                            <td><i class="fa fa-phone" style="color:#aaa;"></i> Teléfono</td>
+                            <td><a href="tel:{{ $lead->phone }}" style="color:#1a1a2e;">{{ $lead->phone }}</a></td>
+                        </tr>
+                        @endif
+                        @if($lead->whatsapp)
+                        <tr>
+                            <td><i class="fa fa-whatsapp" style="color:#25d366;"></i> WhatsApp</td>
+                            <td><a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $lead->whatsapp) }}" target="_blank" style="color:#25d366;">{{ $lead->whatsapp }}</a></td>
+                        </tr>
+                        @endif
+                    </table>
+                </div>
+            </div>
+
+            {{-- Detalles --}}
+            <div class="dashboard-card">
+                <div class="dc-header">
+                    <h5><i class="fa fa-info-circle"></i> Detalles</h5>
+                </div>
+                <div class="dc-body">
+                    <table class="detail-list">
+                        <tr><td>Fuente</td><td>{{ $lead->source_label }}</td></tr>
+                        <tr><td>Interés</td><td>{{ $lead->interest_type_label }}</td></tr>
+                        <tr><td>Presupuesto</td><td>{{ $lead->budget_range }}</td></tr>
+                        @if($lead->property)
+                        <tr><td>Propiedad</td><td>{{ $lead->property->title }}</td></tr>
+                        @endif
+                        @if($lead->vehicle)
+                        <tr><td>Vehículo</td><td>{{ $lead->vehicle->name }}</td></tr>
+                        @endif
+                        <tr><td>Primer contacto</td><td>{{ $lead->first_contact_at ? $lead->first_contact_at->format('d/m/Y H:i') : '—' }}</td></tr>
+                        <tr><td>Último contacto</td><td>{{ $lead->last_contact_at ? $lead->last_contact_at->format('d/m/Y H:i') : '—' }}</td></tr>
+                    </table>
+                </div>
+            </div>
+
+            {{-- Cambiar Estado --}}
+            <div class="dashboard-card">
+                <div class="dc-header">
+                    <h5><i class="fa fa-exchange"></i> Cambiar Estado</h5>
+                </div>
+                <div class="dc-body">
+                    <form action="{{ route('admin.crm.leads.update-status', $lead) }}" method="POST">
+                        @csrf
+                        @method('PATCH')
+                        <select name="status" class="status-select">
+                            @foreach(\App\Lead::getStatuses() as $key => $label)
+                                <option value="{{ $key }}" {{ $lead->status == $key ? 'selected' : '' }}>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                        <textarea name="note" class="status-textarea" placeholder="Nota (opcional)"></textarea>
+                        <button type="submit" class="action-btn primary" style="width:100%; justify-content:center;">
+                            <i class="fa fa-check"></i> Actualizar Estado
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            {{-- Recordatorios --}}
+            @if($lead->reminders->count() > 0)
+            <div class="dashboard-card">
+                <div class="dc-header">
+                    <h5><i class="fa fa-bell"></i> Recordatorios</h5>
+                    <span style="font-size:12px; color:#aaa;">{{ $lead->reminders->count() }}</span>
+                </div>
+                <div class="dc-body">
+                    @foreach($lead->reminders as $reminder)
+                    <div class="reminder-item {{ $reminder->isDue() ? 'due' : '' }}">
+                        <div>
+                            <div class="ri-title">{{ $reminder->title }}</div>
+                            <div class="ri-date"><i class="fa fa-clock-o"></i> {{ $reminder->remind_at->format('d/m/Y H:i') }}</div>
+                        </div>
+                        <form action="{{ route('admin.crm.reminders.complete', $reminder) }}" method="POST">
+                            @csrf
+                            <button type="submit" class="action-btn success" title="Completar" style="padding:5px 9px;">
+                                <i class="fa fa-check"></i>
+                            </button>
+                        </form>
+                    </div>
+                    @endforeach
+                </div>
+            </div>
+            @endif
+
+            {{-- Citas --}}
+            @if($lead->appointments->count() > 0)
+            <div class="dashboard-card">
+                <div class="dc-header">
+                    <h5><i class="fa fa-calendar"></i> Citas</h5>
+                    <span style="font-size:12px; color:#aaa;">{{ $lead->appointments->count() }}</span>
+                </div>
+                <div class="dc-body">
+                    @foreach($lead->appointments as $appointment)
+                    <div class="appt-item">
+                        <div>
+                            <div class="ai-title">{{ $appointment->title }}</div>
+                            <div class="ai-date"><i class="fa fa-clock-o"></i> {{ $appointment->starts_at->format('d/m/Y H:i') }}</div>
+                        </div>
+                        <span class="crm-badge {{ $appointment->status }}">{{ $appointment->status_label }}</span>
+                    </div>
+                    @endforeach
+                </div>
+            </div>
+            @endif
+
+        </div>
+
+        {{-- ────── Columna derecha ────── --}}
+        <div>
+
+            {{-- Notas / Requerimientos --}}
+            @if($lead->requirements || $lead->notes)
+            <div class="dashboard-card">
+                <div class="dc-body">
+                    @if($lead->requirements)
+                        <h6 style="font-size:13px; font-weight:600; color:#1a1a2e; margin-bottom:6px;">
+                            <i class="fa fa-list-ul" style="color:#c2ac1f;"></i> Lo que busca
+                        </h6>
+                        <p style="font-size:13px; color:#555; margin-bottom:{{ $lead->notes ? '14px' : '0' }};">{{ $lead->requirements }}</p>
+                    @endif
+                    @if($lead->notes)
+                        <h6 style="font-size:13px; font-weight:600; color:#1a1a2e; margin-bottom:6px;">
+                            <i class="fa fa-sticky-note-o" style="color:#c2ac1f;"></i> Notas internas
+                        </h6>
+                        <p style="font-size:13px; color:#555; margin:0;">{{ $lead->notes }}</p>
+                    @endif
+                </div>
+            </div>
+            @endif
+
+            {{-- Registrar Actividad --}}
+            <div class="dashboard-card">
+                <div class="dc-header">
+                    <h5><i class="fa fa-plus-circle"></i> Registrar Actividad</h5>
+                </div>
+                <div class="dc-body">
+                    <form action="{{ route('admin.crm.leads.add-activity', $lead) }}" method="POST">
+                        @csrf
+                        <div style="display:grid; grid-template-columns:1fr 2fr; gap:10px; margin-bottom:10px;">
+                            <select name="type" class="act-select" required>
+                                @foreach(\App\LeadActivity::getTypes() as $key => $label)
+                                    @if($key !== 'status_change')
+                                    <option value="{{ $key }}">{{ $label }}</option>
+                                    @endif
+                                @endforeach
+                            </select>
+                            <input type="text" name="subject" class="act-input" placeholder="Asunto (opcional)">
+                        </div>
+                        <textarea name="description" class="act-textarea" placeholder="Descripción de la actividad..." style="margin-bottom:10px;"></textarea>
+
+                        <div id="call-fields" style="display:none; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+                            <select name="call_result" class="act-select">
+                                <option value="">Resultado de llamada</option>
+                                @foreach(\App\LeadActivity::getCallResults() as $key => $label)
+                                    <option value="{{ $key }}">{{ $label }}</option>
+                                @endforeach
+                            </select>
+                            <input type="number" name="call_duration" class="act-input" placeholder="Duración (seg.)" min="0">
+                        </div>
+
+                        <button type="submit" class="action-btn primary">
+                            <i class="fa fa-save"></i> Registrar
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            {{-- Timeline de Actividades --}}
+            <div class="dashboard-card">
+                <div class="dc-header">
+                    <h5><i class="fa fa-history"></i> Historial de Actividades</h5>
+                    <span style="font-size:12px; color:#aaa;">{{ $lead->activities->count() }} registros</span>
+                </div>
+                <div class="dc-body">
+                    @forelse($lead->activities as $activity)
+                    <div class="activity-item">
+                        <div class="act-icon-wrap {{ $activity->type }}">
+                            <i class="{{ $activity->type_icon }}"></i>
+                        </div>
+                        <div class="act-body">
+                            <div>
+                                <span class="act-type">{{ $activity->type_label }}</span>
+                                <span class="act-time">{{ $activity->activity_at->format('d/m/Y H:i') }}</span>
+                            </div>
+                            @if($activity->subject)
+                                <div class="act-subject">{{ $activity->subject }}</div>
+                            @endif
+                            @if($activity->type === 'status_change')
+                                <div class="act-desc">
+                                    <span class="crm-badge {{ $activity->old_status ?? '' }}" style="font-size:10px;">{{ \App\Lead::getStatuses()[$activity->old_status] ?? $activity->old_status }}</span>
+                                    <i class="fa fa-arrow-right" style="color:#aaa; margin:0 4px; font-size:10px;"></i>
+                                    <span class="crm-badge {{ $activity->new_status ?? '' }}" style="font-size:10px;">{{ \App\Lead::getStatuses()[$activity->new_status] ?? $activity->new_status }}</span>
+                                    @if($activity->description)
+                                        <div style="margin-top:4px; color:#666;">{{ $activity->description }}</div>
+                                    @endif
+                                </div>
+                            @elseif($activity->description)
+                                <div class="act-desc">{{ $activity->description }}</div>
+                            @endif
+                            @if($activity->call_result)
+                                <div class="act-desc" style="color:#888;">
+                                    <i class="fa fa-phone"></i> {{ $activity->call_result_label }}
+                                    @if($activity->call_duration_formatted) ({{ $activity->call_duration_formatted }}) @endif
+                                </div>
+                            @endif
+                            <div class="act-by">Por: {{ $activity->user->name ?? 'Sistema' }}</div>
+                        </div>
+                    </div>
+                    @empty
+                    <div style="text-align:center; padding:36px 0; color:#ccc;">
+                        <i class="fa fa-history" style="font-size:32px; display:block; margin-bottom:10px;"></i>
+                        <span style="font-size:13px; color:#aaa;">No hay actividades registradas</span>
+                    </div>
+                    @endforelse
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @push('script')
 <script>
-    /* ── Mostrar campos de llamada según tipo ── */
-    document.querySelector('select[name="type"]').addEventListener('change', function() {
-        document.getElementById('call-fields').style.display = this.value === 'call' ? 'flex' : 'none';
+/* ── Mostrar campos de llamada ── */
+document.querySelector('select[name="type"]').addEventListener('change', function () {
+    const cf = document.getElementById('call-fields');
+    if (this.value === 'call') {
+        cf.style.display = 'grid';
+    } else {
+        cf.style.display = 'none';
+    }
+});
+
+/* ── Lead switcher ── */
+(function () {
+    const input    = document.getElementById('lead-switcher-input');
+    const dropdown = document.getElementById('lead-switcher-dropdown');
+    const SEARCH_URL = '{{ route('admin.crm.leads.quick-search') }}';
+    let timer = null;
+
+    input.addEventListener('input', function () {
+        clearTimeout(timer);
+        const q = this.value.trim();
+        if (q.length < 2) { dropdown.style.display = 'none'; dropdown.innerHTML = ''; return; }
+        timer = setTimeout(() => {
+            fetch(`${SEARCH_URL}?q=${encodeURIComponent(q)}`, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(r => r.json())
+            .then(results => {
+                if (!results.length) {
+                    dropdown.innerHTML = '<div class="sw-no-result">Sin resultados</div>';
+                } else {
+                    dropdown.innerHTML = results.map(lead => `
+                        <a href="${lead.url}" class="sw-item">
+                            <div>
+                                <strong>${esc(lead.name)}</strong>
+                                <br><small>${esc(lead.phone || lead.email || '')}</small>
+                            </div>
+                            <span class="crm-badge ${esc(lead.status_key || '')}" style="font-size:10px;">${esc(lead.status)}</span>
+                        </a>
+                    `).join('');
+                }
+                dropdown.style.display = 'block';
+            });
+        }, 320);
     });
 
-    /* ── Buscador rápido de leads ── */
-    (function () {
-        const input    = document.getElementById('lead-switcher-input');
-        const dropdown = document.getElementById('lead-switcher-dropdown');
-        const SEARCH_URL = '{{ route('admin.crm.leads.quick-search') }}';
-        let timer = null;
-
-        input.addEventListener('input', function () {
-            clearTimeout(timer);
-            const q = this.value.trim();
-            if (q.length < 2) { dropdown.style.display = 'none'; dropdown.innerHTML = ''; return; }
-            timer = setTimeout(() => {
-                fetch(`${SEARCH_URL}?q=${encodeURIComponent(q)}`, {
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
-                })
-                .then(r => r.json())
-                .then(results => {
-                    if (!results.length) {
-                        dropdown.innerHTML = '<a class="list-group-item list-group-item-action disabled small text-muted py-2">Sin resultados</a>';
-                    } else {
-                        dropdown.innerHTML = results.map(lead => `
-                            <a href="${lead.url}" class="list-group-item list-group-item-action py-2 px-3" style="font-size:0.85rem;">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <strong>${escHtml(lead.name)}</strong>
-                                    <span class="badge badge-${lead.color} ml-2">${escHtml(lead.status)}</span>
-                                </div>
-                                <small class="text-muted">${escHtml(lead.phone || lead.email || '')}</small>
-                            </a>
-                        `).join('');
-                    }
-                    dropdown.style.display = 'block';
-                });
-            }, 320);
-        });
-
-        document.addEventListener('click', function (e) {
-            if (!input.contains(e.target) && !dropdown.contains(e.target)) {
-                dropdown.style.display = 'none';
-            }
-        });
-
-        function escHtml(str) {
-            return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    document.addEventListener('click', function (e) {
+        if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.style.display = 'none';
         }
-    })();
+    });
+
+    function esc(str) {
+        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+})();
 </script>
 @endpush
