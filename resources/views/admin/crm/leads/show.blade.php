@@ -318,6 +318,15 @@
                 <div id="lead-switcher-dropdown"></div>
             </div>
 
+            {{-- Score badge --}}
+            @if($lead->score > 0)
+            <div style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid #e5e7eb;border-radius:20px;padding:5px 12px;font-size:12px;font-weight:600;color:{{ $lead->score_color }};">
+                <i class="fa fa-fire"></i>
+                Score {{ $lead->score }}/100
+                <span style="font-weight:400;color:#aaa;">· {{ $lead->score_label }}</span>
+            </div>
+            @endif
+
             {{-- Acciones --}}
             <a href="{{ route('admin.crm.leads.edit', $lead) }}?_back={{ urlencode(url()->current()) }}" class="action-btn primary">
                 <i class="fa fa-edit"></i> Editar
@@ -325,11 +334,23 @@
             <a href="{{ route('admin.crm.appointments.create', ['lead_id' => $lead->id]) }}?_back={{ urlencode(url()->current()) }}" class="action-btn success">
                 <i class="fa fa-calendar-plus-o"></i> Nueva Cita
             </a>
+            @if(isset($portalUrl))
+            <a href="{{ $portalUrl }}" target="_blank" class="action-btn" style="background:#ede9fe;color:#6d28d9;" title="Portal del cliente">
+                <i class="fa fa-external-link"></i> Portal
+            </a>
+            @else
+            <form action="{{ route('admin.crm.leads.generate-portal', $lead) }}" method="POST" class="d-inline">
+                @csrf
+                <button type="submit" class="action-btn" style="background:#ede9fe;color:#6d28d9;" title="Generar portal del cliente">
+                    <i class="fa fa-share-square-o"></i> Portal
+                </button>
+            </form>
+            @endif
+            <button class="action-btn" style="background:#dbeafe;color:#1d4ed8;" id="btn-send-email" title="Enviar email">
+                <i class="fa fa-envelope"></i> Email
+            </button>
             <a href="{{ route('admin.crm.reports.lead-detail', $lead) }}" target="_blank" class="action-btn gold">
                 <i class="fa fa-file-pdf-o"></i> PDF
-            </a>
-            <a href="{{ route('admin.crm.reports.lead-detail', $lead) }}?download=1" class="action-btn danger">
-                <i class="fa fa-download"></i>
             </a>
             <a href="{{ route('admin.crm.leads.index') }}" class="action-btn secondary">
                 <i class="fa fa-arrow-left"></i> Volver
@@ -488,6 +509,92 @@
             </div>
             @endif
 
+            {{-- Property Matching --}}
+            @if(isset($matchedProperties) && $matchedProperties->count() > 0)
+            <div class="dashboard-card" style="margin-bottom:18px;">
+                <div class="dc-header" style="background:#1a1a2e;">
+                    <h5 style="color:#fff;"><i class="fa fa-home" style="color:#c2ac1f;"></i> Propiedades Sugeridas</h5>
+                    <span style="font-size:12px;color:#aaa;">{{ $matchedProperties->count() }} coincidencias</span>
+                </div>
+                @foreach($matchedProperties->take(3) as $pm)
+                <div style="display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid #f5f5f5;">
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-weight:600;color:#1a1a2e;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                            {{ $pm['property']->title ?? $pm['property']->name ?? 'Propiedad' }}
+                        </div>
+                        <div style="font-size:11px;color:#aaa;margin-top:2px;">
+                            {{ $pm['property']->sector?->name ?? '' }}
+                            @if($pm['property']->bedrooms) · {{ $pm['property']->bedrooms }} hab. @endif
+                        </div>
+                    </div>
+                    <div style="text-align:right;flex-shrink:0;">
+                        <div style="font-size:11px;font-weight:700;color:{{ $pm['score'] >= 70 ? '#22c55e' : ($pm['score'] >= 40 ? '#f59e0b' : '#94a3b8') }};">
+                            {{ $pm['score'] }}% match
+                        </div>
+                        <div style="height:4px;width:60px;background:#f0f0f0;border-radius:4px;margin-top:3px;overflow:hidden;">
+                            <div style="height:100%;width:{{ $pm['score'] }}%;background:{{ $pm['score'] >= 70 ? '#22c55e' : ($pm['score'] >= 40 ? '#f59e0b' : '#94a3b8') }};"></div>
+                        </div>
+                    </div>
+                </div>
+                @endforeach
+                @if($matchedProperties->count() > 3)
+                <div style="padding:10px 18px;text-align:center;">
+                    <a href="{{ route('admin.crm.leads.matching', $lead) }}" style="font-size:12px;color:#c2ac1f;">
+                        Ver todas ({{ $matchedProperties->count() }})
+                    </a>
+                </div>
+                @endif
+            </div>
+            @endif
+
+            {{-- Tasks preview --}}
+            @if(isset($pendingTasks) && $pendingTasks->count() > 0)
+            <div class="dashboard-card" style="margin-bottom:18px;">
+                <div class="dc-header">
+                    <h5><i class="fa fa-tasks"></i> Tareas Pendientes</h5>
+                    <a href="{{ route('admin.crm.tasks.create', ['lead_id' => $lead->id]) }}" class="action-btn success" style="padding:4px 10px;font-size:11px;">
+                        <i class="fa fa-plus"></i>
+                    </a>
+                </div>
+                @foreach($pendingTasks as $task)
+                <div style="display:flex;align-items:center;gap:10px;padding:10px 18px;border-bottom:1px solid #f5f5f5;">
+                    <form action="{{ route('admin.crm.tasks.complete', $task) }}" method="POST" class="d-inline">
+                        @csrf
+                        <button type="submit" style="width:18px;height:18px;border-radius:4px;border:2px solid #d1d5db;background:transparent;cursor:pointer;" title="Completar"></button>
+                    </form>
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-size:13px;font-weight:500;color:#1a1a2e;">{{ $task->title }}</div>
+                        @if($task->due_at)
+                        <div class="fu-{{ $task->is_overdue ? 'overdue' : ($task->is_due_today ? 'today' : 'ok') }}" style="font-size:11px;margin-top:1px;">
+                            <i class="fa fa-clock-o"></i> {{ $task->due_at->format('d/m/Y H:i') }}
+                        </div>
+                        @endif
+                    </div>
+                    <span class="crm-badge {{ $task->priority }}">{{ \App\LeadTask::getPriorities()[$task->priority] }}</span>
+                </div>
+                @endforeach
+                @if($lead->tasks()->pending()->count() > $pendingTasks->count())
+                <div style="padding:8px 18px;text-align:center;">
+                    <a href="{{ route('admin.crm.tasks.index', ['lead_id' => $lead->id]) }}" style="font-size:12px;color:#c2ac1f;">
+                        Ver todas
+                    </a>
+                </div>
+                @endif
+            </div>
+            @else
+            <div class="dashboard-card" style="margin-bottom:18px;">
+                <div class="dc-header">
+                    <h5><i class="fa fa-tasks"></i> Tareas</h5>
+                    <a href="{{ route('admin.crm.tasks.create', ['lead_id' => $lead->id]) }}" class="action-btn success" style="padding:4px 10px;font-size:11px;">
+                        <i class="fa fa-plus"></i> Nueva
+                    </a>
+                </div>
+                <div style="padding:16px 18px;text-align:center;color:#ccc;font-size:13px;">
+                    Sin tareas pendientes
+                </div>
+            </div>
+            @endif
+
             {{-- Registrar Actividad --}}
             <div class="dashboard-card">
                 <div class="dc-header">
@@ -638,5 +745,47 @@ document.querySelector('select[name="type"]').addEventListener('change', functio
         return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 })();
+</script>
+{{-- Email Modal --}}
+<div class="modal fade" id="modal-send-email" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content" style="border-radius:16px;border:none;overflow:hidden;">
+            <div class="modal-header" style="background:linear-gradient(135deg,#3b82f6,#1d4ed8);color:#fff;padding:16px 20px;">
+                <h6 class="modal-title mb-0"><i class="fa fa-envelope"></i> Enviar Email — {{ $lead->name }}</h6>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <form id="email-form" action="{{ route('admin.crm.leads.send-email', $lead) }}" method="POST">
+                @csrf
+                <div class="modal-body p-4">
+                    <div class="form-group mb-3">
+                        <label class="small font-weight-bold text-muted mb-1 d-block">Para</label>
+                        <input type="email" name="to" value="{{ $lead->email }}" class="form-control form-control-sm" style="border-radius:8px;" required>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label class="small font-weight-bold text-muted mb-1 d-block">Asunto <span class="text-danger">*</span></label>
+                        <input type="text" name="subject" class="form-control form-control-sm" style="border-radius:8px;" required placeholder="Asunto del mensaje">
+                    </div>
+                    <div class="form-group mb-0">
+                        <label class="small font-weight-bold text-muted mb-1 d-block">Mensaje <span class="text-danger">*</span></label>
+                        <textarea name="body" class="form-control form-control-sm" rows="5" style="border-radius:8px;resize:none;" required placeholder="Escribe tu mensaje aquí..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer" style="border:none;padding:12px 20px;">
+                    <button type="button" class="btn btn-light btn-sm" data-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-sm" style="background:linear-gradient(135deg,#3b82f6,#1d4ed8);color:#fff;border-radius:8px;">
+                        <i class="fa fa-paper-plane"></i> Enviar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endpush
+
+@push('script')
+<script>
+document.getElementById('btn-send-email')?.addEventListener('click', function() {
+    $('#modal-send-email').modal('show');
+});
 </script>
 @endpush

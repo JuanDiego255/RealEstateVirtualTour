@@ -22,6 +22,7 @@ use App\Http\Controllers\Admin\AgentMetricsController;
 use App\Http\Controllers\Admin\AgentGoalController;
 use App\Http\Controllers\Admin\AgentRewardController;
 use App\Http\Controllers\Admin\LeadFollowupController;
+use App\Http\Controllers\Admin\LeadTaskController;
 use App\Http\Controllers\CloudConvertWebhookController;
 use App\Http\Controllers\RegisterCompanyController;
 use App\Http\Controllers\SpinController;
@@ -317,6 +318,20 @@ Route::group(['middleware' => 'auth'], function () {
         Route::post('/{lead}/quick-activity', [LeadController::class, 'quickActivity'])->name('admin.crm.leads.quick-activity');
         Route::post('/{lead}/quick-reminder', [LeadController::class, 'quickReminder'])->name('admin.crm.leads.quick-reminder');
         Route::post('/{lead}/quick-followup', [LeadController::class, 'quickFollowup'])->name('admin.crm.leads.quick-followup');
+        Route::post('/{lead}/generate-portal', [LeadController::class, 'generatePortal'])->name('admin.crm.leads.generate-portal');
+        Route::post('/{lead}/send-email', [LeadController::class, 'sendEmail'])->name('admin.crm.leads.send-email');
+        Route::get('/{lead}/matching', [LeadController::class, 'matching'])->name('admin.crm.leads.matching');
+    });
+
+    // --- PIPELINE RULES ---
+    Route::group(['prefix' => 'admin/crm/pipeline-rules', 'middleware' => ['subscription']], function () {
+        Route::get('/', [\App\Http\Controllers\Admin\PipelineRuleController::class, 'index'])->name('admin.crm.pipeline-rules.index');
+        Route::get('/create', [\App\Http\Controllers\Admin\PipelineRuleController::class, 'create'])->name('admin.crm.pipeline-rules.create');
+        Route::post('/', [\App\Http\Controllers\Admin\PipelineRuleController::class, 'store'])->name('admin.crm.pipeline-rules.store');
+        Route::get('/{rule}/edit', [\App\Http\Controllers\Admin\PipelineRuleController::class, 'edit'])->name('admin.crm.pipeline-rules.edit');
+        Route::put('/{rule}', [\App\Http\Controllers\Admin\PipelineRuleController::class, 'update'])->name('admin.crm.pipeline-rules.update');
+        Route::delete('/{rule}', [\App\Http\Controllers\Admin\PipelineRuleController::class, 'destroy'])->name('admin.crm.pipeline-rules.destroy');
+        Route::post('/{rule}/toggle', [\App\Http\Controllers\Admin\PipelineRuleController::class, 'toggle'])->name('admin.crm.pipeline-rules.toggle');
     });
 
     // --- REPORTERÍA CRM ---

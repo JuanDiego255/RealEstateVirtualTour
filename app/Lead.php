@@ -31,15 +31,30 @@ class Lead extends Model
         'converted_at',
         'event_name',
         'event_lead_id',
+        // Phase 2 fields
+        'score',
+        'score_updated_at',
+        'stage_entered_at',
+        'portal_token',
+        'portal_token_expires_at',
+        'preferred_zones',
+        'preferred_property_types',
+        'preferred_bedrooms_min',
+        'preferred_bedrooms_max',
     ];
 
     protected $casts = [
-        'budget_min' => 'decimal:2',
-        'budget_max' => 'decimal:2',
-        'next_follow_up' => 'date',
-        'first_contact_at' => 'datetime',
-        'last_contact_at' => 'datetime',
-        'converted_at' => 'datetime',
+        'budget_min'               => 'decimal:2',
+        'budget_max'               => 'decimal:2',
+        'next_follow_up'           => 'date',
+        'first_contact_at'         => 'datetime',
+        'last_contact_at'          => 'datetime',
+        'converted_at'             => 'datetime',
+        'score_updated_at'         => 'datetime',
+        'stage_entered_at'         => 'datetime',
+        'portal_token_expires_at'  => 'datetime',
+        'preferred_zones'          => 'array',
+        'preferred_property_types' => 'array',
     ];
 
     // Estados del lead
@@ -201,6 +216,11 @@ class Lead extends Model
         return $this->morphMany(Reminder::class, 'remindable');
     }
 
+    public function tasks()
+    {
+        return $this->hasMany(LeadTask::class);
+    }
+
     // Scopes
     public function scopeByCompany($query, $companyId)
     {
@@ -326,16 +346,167 @@ class Lead extends Model
     {
         $oldStatus = $this->status;
 
-        $this->update(['status' => $newStatus]);
+        $this->update([
+            'status'           => $newStatus,
+            'stage_entered_at' => now(),
+        ]);
 
         if ($newStatus === self::STATUS_WON) {
             $this->update(['converted_at' => now()]);
         }
 
         $this->logActivity('status_change', [
-            'old_status' => $oldStatus,
-            'new_status' => $newStatus,
+            'old_status'  => $oldStatus,
+            'new_status'  => $newStatus,
             'description' => $note,
         ]);
+
+        $this->recalculateScore();
+    }
+
+    // ── Lead Scoring ──────────────────────────────────────────────────────────
+
+    /**
+     * Calculate and persist the lead score (0–100).
+     *
+     * Breakdown:
+     *   Status progression : up to 30 pts
+     *   Priority           : up to 15 pts
+     *   Activity recency   : up to 25 pts
+     *   Activity volume    : up to 15 pts
+     *   Budget defined     : up to 10 pts
+     *   Source quality     : up to  5 pts
+     */
+    public function recalculateScore(): int
+    {
+        $score = 0;
+
+        // Status progression (30 pts)
+        $statusScores = [
+            'new' => 5, 'contacted' => 10, 'qualified' => 18,
+            'proposal' => 22, 'negotiation' => 28, 'won' => 30, 'lost' => 0,
+        ];
+        $score += $statusScores[$this->status] ?? 0;
+
+        // Priority (15 pts)
+        $priorityScores = ['low' => 2, 'medium' => 6, 'high' => 11, 'urgent' => 15];
+        $score += $priorityScores[$this->priority] ?? 6;
+
+        // Activity recency (25 pts) — decay based on days since last contact
+        $lastContact = $this->last_contact_at ?? $this->created_at;
+        $daysSince   = $lastContact->diffInDays(now());
+        if ($daysSince === 0)       $score += 25;
+        elseif ($daysSince <= 2)    $score += 22;
+        elseif ($daysSince <= 7)    $score += 16;
+        elseif ($daysSince <= 14)   $score += 10;
+        elseif ($daysSince <= 30)   $score += 5;
+
+        // Activity volume (15 pts) — capped at 5 activities
+        $actCount = $this->activities()->where('type', '!=', 'status_change')->count();
+        $score   += min(15, $actCount * 3);
+
+        // Budget defined (10 pts)
+        if ($this->budget_min || $this->budget_max) $score += 10;
+
+        // Source quality (5 pts)
+        $highValueSources = ['referral', 'walk_in', 'event', 'quote'];
+        if (in_array($this->source, $highValueSources)) $score += 5;
+
+        $score = min(100, $score);
+
+        $this->updateQuietly(['score' => $score, 'score_updated_at' => now()]);
+
+        return $score;
+    }
+
+    public function getScoreLabelAttribute(): string
+    {
+        return match(true) {
+            $this->score >= 80 => 'Muy caliente',
+            $this->score >= 60 => 'Caliente',
+            $this->score >= 40 => 'Tibio',
+            $this->score >= 20 => 'Frío',
+            default            => 'Muy frío',
+        };
+    }
+
+    public function getScoreColorAttribute(): string
+    {
+        return match(true) {
+            $this->score >= 80 => '#ef4444',
+            $this->score >= 60 => '#f97316',
+            $this->score >= 40 => '#eab308',
+            $this->score >= 20 => '#3b82f6',
+            default            => '#94a3b8',
+        };
+    }
+
+    // ── Client Portal ─────────────────────────────────────────────────────────
+
+    public function generatePortalToken(): string
+    {
+        $token = \Illuminate\Support\Str::random(48);
+        $this->update([
+            'portal_token'            => $token,
+            'portal_token_expires_at' => now()->addDays(30),
+        ]);
+        return $token;
+    }
+
+    public function getPortalUrlAttribute(): ?string
+    {
+        if (!$this->portal_token) return null;
+        return route('crm.portal', $this->portal_token);
+    }
+
+    public function isPortalValid(): bool
+    {
+        return $this->portal_token
+            && ($this->portal_token_expires_at === null || $this->portal_token_expires_at->isFuture());
+    }
+
+    // ── Property Matching ─────────────────────────────────────────────────────
+
+    /**
+     * Score a property/vehicle against this lead's preferences.
+     * Returns 0–100.
+     */
+    public function matchScore($property): int
+    {
+        $score = 0;
+
+        // Budget match (40 pts)
+        $price = $property->price ?? $property->sale_price ?? null;
+        if ($price) {
+            $inRange = (!$this->budget_min || $price >= $this->budget_min)
+                    && (!$this->budget_max || $price <= $this->budget_max * 1.1);
+            if ($inRange) $score += 40;
+            elseif ($this->budget_max && $price <= $this->budget_max * 1.25) $score += 20;
+        }
+
+        // Bedrooms match (30 pts)
+        $beds = $property->bedrooms ?? null;
+        if ($beds && ($this->preferred_bedrooms_min || $this->preferred_bedrooms_max)) {
+            $minOk = !$this->preferred_bedrooms_min || $beds >= $this->preferred_bedrooms_min;
+            $maxOk = !$this->preferred_bedrooms_max || $beds <= $this->preferred_bedrooms_max;
+            if ($minOk && $maxOk) $score += 30;
+            elseif ($minOk || $maxOk) $score += 15;
+        } elseif (!$this->preferred_bedrooms_min && !$this->preferred_bedrooms_max) {
+            $score += 15; // No preference = partial match
+        }
+
+        // Zone/sector match (30 pts)
+        $zones = $this->preferred_zones ?? [];
+        if (!empty($zones)) {
+            $propZone = $property->sector?->name ?? $property->sector ?? null;
+            if ($propZone && collect($zones)->contains(fn($z) => stripos($propZone, $z) !== false)) {
+                $score += 30;
+            }
+        } else {
+            $score += 15; // No zone preference = partial match
+        }
+
+        return min(100, $score);
     }
 }
+
