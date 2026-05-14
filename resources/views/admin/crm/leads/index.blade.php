@@ -271,6 +271,11 @@
 
 /* Loading */
 #leads-loading { text-align: center; padding: 10px; font-size: 13px; color: #888; }
+
+/* Fix pagination SVGs del tema */
+#leads-pagination svg { width: 10px !important; height: 10px !important; vertical-align: middle; }
+#leads-pagination .pagination { margin: 0; flex-wrap: wrap; }
+#leads-pagination .page-item .page-link { font-size: 13px; padding: 5px 11px; border-radius: 7px; margin: 0 2px; }
 </style>
 
 <div class="crm-dashboard">
