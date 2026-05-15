@@ -304,8 +304,9 @@ Route::group(['middleware' => 'auth'], function () {
         Route::get('/create', [LeadController::class, 'create'])->name('admin.crm.leads.create');
         // AJAX - búsqueda rápida de leads (debe ir antes del wildcard /{lead})
         Route::get('/quick-search', [LeadController::class, 'quickSearch'])->name('admin.crm.leads.quick-search');
-        Route::get('/import', [LeadController::class, 'import'])->name('admin.crm.leads.import');
-        Route::post('/import', [LeadController::class, 'importStore'])->name('admin.crm.leads.import.store');
+        Route::get('/import', [LeadController::class, 'importForm'])->name('admin.crm.leads.import');
+        Route::post('/import/preview', [LeadController::class, 'importPreview'])->name('admin.crm.leads.import-preview');
+        Route::post('/import/execute', [LeadController::class, 'importExecute'])->name('admin.crm.leads.import-execute');
         Route::post('/', [LeadController::class, 'store'])->name('admin.crm.leads.store');
         Route::get('/{lead}', [LeadController::class, 'show'])->name('admin.crm.leads.show');
         Route::get('/{lead}/edit', [LeadController::class, 'edit'])->name('admin.crm.leads.edit');
