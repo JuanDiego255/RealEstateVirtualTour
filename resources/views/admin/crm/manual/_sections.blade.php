@@ -444,10 +444,10 @@
 @endif
 <thead><tr><th>Variable</th><th>Reemplaza con</th><th>Ejemplo</th></tr></thead>
 <tbody>
-<tr><td>{{'{{'}}nombre{{'}}'}}</td><td>Nombre completo del lead</td><td>Estimado Carlos Rodríguez</td></tr>
-<tr><td>{{'{{'}}agente{{'}}'}}</td><td>Nombre del agente asignado</td><td>Con saludos de María García</td></tr>
-<tr><td>{{'{{'}}propiedad{{'}}'}}</td><td>Nombre de la propiedad de interés</td><td>Casa en Escazú #A-201</td></tr>
-<tr><td>{{'{{'}}fecha{{'}}'}}</td><td>Fecha actual formateada</td><td>15 de mayo de 2026</td></tr>
+<tr><td>{{ '{{nombre}}' }}</td><td>Nombre completo del lead</td><td>Estimado Carlos Rodríguez</td></tr>
+<tr><td>{{ '{{agente}}' }}</td><td>Nombre del agente asignado</td><td>Con saludos de María García</td></tr>
+<tr><td>{{ '{{propiedad}}' }}</td><td>Nombre de la propiedad de interés</td><td>Casa en Escazú #A-201</td></tr>
+<tr><td>{{ '{{fecha}}' }}</td><td>Fecha actual formateada</td><td>15 de mayo de 2026</td></tr>
 </tbody>
 </table>
 
@@ -489,11 +489,11 @@
 @endif
 <thead><tr><th>Variable</th><th>Reemplaza con</th></tr></thead>
 <tbody>
-<tr><td>{{'{{'}}nombre{{'}}'}}</td><td>Nombre completo del lead</td></tr>
-<tr><td>{{'{{'}}agente{{'}}'}}</td><td>Nombre del agente asignado al lead</td></tr>
-<tr><td>{{'{{'}}propiedad{{'}}'}}</td><td>Nombre de la propiedad de interés</td></tr>
-<tr><td>{{'{{'}}fecha{{'}}'}}</td><td>Fecha actual formateada</td></tr>
-<tr><td>{{'{{'}}enlace{{'}}'}}</td><td>URL del portal del cliente o enlace de la propiedad</td></tr>
+<tr><td>{{ '{{nombre}}' }}</td><td>Nombre completo del lead</td></tr>
+<tr><td>{{ '{{agente}}' }}</td><td>Nombre del agente asignado al lead</td></tr>
+<tr><td>{{ '{{propiedad}}' }}</td><td>Nombre de la propiedad de interés</td></tr>
+<tr><td>{{ '{{fecha}}' }}</td><td>Fecha actual formateada</td></tr>
+<tr><td>{{ '{{enlace}}' }}</td><td>URL del portal del cliente o enlace de la propiedad</td></tr>
 </tbody>
 </table>
 
