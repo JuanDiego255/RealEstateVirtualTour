@@ -167,6 +167,9 @@
                                     <li class="{{ Request::routeIs('admin.crm.pipeline-rules.*') ? 'active' : '' }}">
                                         <a href="{{ route('admin.crm.pipeline-rules.index') }}"><i class="fa fa-cogs"></i> Reglas de Pipeline</a>
                                     </li>
+                                    <li class="{{ Request::routeIs('admin.crm.leads.audit') ? 'active' : '' }}">
+                                        <a href="{{ route('admin.crm.leads.audit') }}"><i class="fa fa-shield"></i> Auditoría Leads</a>
+                                    </li>
                                     @endif
                                     <li class="{{ Request::routeIs('admin.crm.quotes.*') ? 'active' : '' }}">
                                         <a href="{{ route('admin.crm.quotes.index') }}"><i class="fa fa-file-text-o"></i> Cotizaciones</a>
