@@ -502,6 +502,9 @@
                     <a href="{{ route('admin.crm.reports.index') }}" class="sidebar-link">
                         <i class="fa fa-file-pdf-o" style="color:#ef4444;"></i> Reportería PDF
                     </a>
+                    <a href="{{ route('admin.crm.manual') }}" class="sidebar-link">
+                        <i class="fa fa-book" style="color:#1a1a2e;"></i> Manual de Usuario
+                    </a>
                     @if(Auth::user()->canAccessModule('crm', 'view'))
                     <a href="{{ route('admin.crm.leads.create') }}" class="sidebar-link">
                         <i class="fa fa-plus-circle" style="color:#22c55e;"></i> Nuevo lead
