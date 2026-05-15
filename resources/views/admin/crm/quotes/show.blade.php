@@ -28,6 +28,30 @@
     <div style="display:grid;grid-template-columns:2fr 1fr;gap:20px;">
         {{-- Main info --}}
         <div>
+            @if($quote->quote_type === 'vehicle')
+            <div class="dashboard-card" style="margin-bottom:18px;">
+                <div class="dc-header" style="background:#1a1a2e;">
+                    <h5 style="color:#fff;"><i class="fa fa-car" style="color:#c2ac1f;"></i> Detalle Financiero del Vehículo</h5>
+                </div>
+                <div class="dc-body" style="padding:20px;">
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:16px;">
+                        <div><div style="font-size:11px;color:#888;text-transform:uppercase;">Precio</div><div style="font-size:16px;font-weight:700;color:#1a1a2e;">₡{{ number_format($quote->vq_vehicle_price,2) }}</div></div>
+                        <div><div style="font-size:11px;color:#888;text-transform:uppercase;">Prima ({{ $quote->vq_down_payment_pct }}%)</div><div style="font-size:16px;font-weight:700;color:#1a1a2e;">₡{{ number_format($quote->vq_down_payment,2) }}</div></div>
+                        <div><div style="font-size:11px;color:#888;text-transform:uppercase;">Plazo</div><div style="font-size:16px;font-weight:700;color:#1a1a2e;">{{ $quote->vq_term_months }} meses</div></div>
+                        <div><div style="font-size:11px;color:#888;text-transform:uppercase;">Tasa anual</div><div style="font-size:16px;font-weight:700;color:#1a1a2e;">{{ number_format($quote->vq_interest_rate * 100, 2) }}%</div></div>
+                        <div><div style="font-size:11px;color:#888;text-transform:uppercase;">Frecuencia</div><div style="font-size:16px;font-weight:700;color:#1a1a2e;">{{ $quote->vq_payment_frequency === 'annual' ? 'Anual' : 'Mensual' }}</div></div>
+                        <div style="background:#1a1a2e;border-radius:10px;padding:14px;text-align:center;"><div style="font-size:11px;color:#aaa;text-transform:uppercase;">Cuota estimada</div><div style="font-size:20px;font-weight:800;color:#c2ac1f;">{{ $quote->formatted_vq_monthly_payment }}</div></div>
+                    </div>
+                    @if($quote->vq_total_interest)
+                    <div style="margin-top:12px;display:flex;gap:20px;font-size:13px;color:#666;">
+                        <span>Total intereses: <strong>₡{{ number_format($quote->vq_total_interest,2) }}</strong></span>
+                        <span>Total a pagar: <strong>₡{{ number_format($quote->vq_total_amount,2) }}</strong></span>
+                    </div>
+                    @endif
+                </div>
+            </div>
+            @endif
+
             <div class="dashboard-card" style="margin-bottom:18px;">
                 <div class="dc-header"><h5><i class="fa fa-info-circle" style="color:#c2ac1f;"></i> Detalle</h5></div>
                 <div class="dc-body">

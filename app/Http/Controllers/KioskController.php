@@ -309,6 +309,37 @@ class KioskController extends Controller
             ->first()
             ?->update(['quoted' => true]);
 
+        // If lead_id is provided, create a draft LeadQuote linked to this kiosk quote
+        if ($request->filled('lead_id') && class_exists(\App\Models\LeadQuote::class)) {
+            $lead = \App\Lead::find($request->lead_id);
+            if ($lead) {
+                \App\Models\LeadQuote::create([
+                    'company_id'          => $quote->company_id,
+                    'lead_id'             => $lead->id,
+                    'user_id'             => $lead->user_id ?? auth()->id(),
+                    'quote_type'          => 'vehicle',
+                    'vehicle_quote_id'    => $quote->id,
+                    'property_id'         => $quote->property_id,
+                    'title'               => 'Cotización kiosko — ' . ($quote->property->name ?? ''),
+                    'status'              => 'draft',
+                    'currency'            => $quote->currency ?? 'CRC',
+                    'vq_vehicle_price'    => $quote->vehicle_price,
+                    'vq_down_payment'     => $quote->down_payment,
+                    'vq_down_payment_pct' => $quote->down_payment_percent,
+                    'vq_term_months'      => $quote->term_months,
+                    'vq_interest_rate'    => $quote->interest_rate,
+                    'vq_payment_frequency'=> $quote->payment_frequency,
+                    'vq_monthly_payment'  => $quote->monthly_payment,
+                    'vq_total_interest'   => $quote->total_interest,
+                    'vq_total_amount'     => $quote->total_amount,
+                    'subtotal'            => $quote->vehicle_price ?? 0,
+                    'discount_pct'        => 0,
+                    'total'               => $quote->vehicle_price ?? 0,
+                    'items'               => [],
+                ]);
+            }
+        }
+
         return response()->json([
             'success' => true,
             'quote_id' => $quote->id,
