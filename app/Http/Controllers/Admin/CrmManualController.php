@@ -8,15 +8,13 @@ class CrmManualController extends Controller
     public function show()
     {
         $company = auth()->user()->company ?? null;
-        $isPdf = false;
-        return view('admin.crm.manual.index', compact('company', 'isPdf'));
+        return view('admin.crm.manual.index', compact('company'));
     }
 
     public function pdf()
     {
         $company = auth()->user()->company ?? null;
-        $isPdf = true;
-        $pdf = Pdf::loadView('admin.crm.manual.index', compact('company', 'isPdf'))
+        $pdf = Pdf::loadView('admin.crm.manual.pdf', compact('company'))
             ->setPaper('letter', 'portrait')
             ->setOptions([
                 'dpi' => 110,
