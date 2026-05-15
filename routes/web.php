@@ -383,6 +383,17 @@ Route::group(['middleware' => 'auth'], function () {
         Route::post('/{rule}/toggle', [\App\Http\Controllers\Admin\PipelineRuleController::class, 'toggle'])->name('admin.crm.pipeline-rules.toggle');
     });
 
+    // --- CRM COTIZACIONES ---
+    Route::group(['prefix' => 'admin/crm/quotes', 'middleware' => ['subscription']], function () {
+        Route::get('/', [\App\Http\Controllers\Admin\LeadQuoteController::class, 'index'])->name('admin.crm.quotes.index');
+        Route::get('/create', [\App\Http\Controllers\Admin\LeadQuoteController::class, 'create'])->name('admin.crm.quotes.create');
+        Route::post('/', [\App\Http\Controllers\Admin\LeadQuoteController::class, 'store'])->name('admin.crm.quotes.store');
+        Route::get('/{quote}', [\App\Http\Controllers\Admin\LeadQuoteController::class, 'show'])->name('admin.crm.quotes.show');
+        Route::patch('/{quote}/status', [\App\Http\Controllers\Admin\LeadQuoteController::class, 'updateStatus'])->name('admin.crm.quotes.update-status');
+        Route::delete('/{quote}', [\App\Http\Controllers\Admin\LeadQuoteController::class, 'destroy'])->name('admin.crm.quotes.destroy');
+        Route::get('/{quote}/pdf', [\App\Http\Controllers\Admin\LeadQuoteController::class, 'pdf'])->name('admin.crm.quotes.pdf');
+    });
+
     // --- REPORTERÍA CRM ---
     Route::group(['prefix' => 'admin/crm/reports', 'middleware' => ['subscription']], function () {
         Route::get('/', [\App\Http\Controllers\Admin\CrmReportController::class, 'index'])->name('admin.crm.reports.index');

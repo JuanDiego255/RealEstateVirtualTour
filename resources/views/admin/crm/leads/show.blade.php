@@ -595,6 +595,38 @@
             </div>
             @endif
 
+            {{-- Cotizaciones --}}
+            <div class="dashboard-card" style="margin-bottom:18px;">
+                <div class="dc-header">
+                    <h5><i class="fa fa-file-text-o"></i> Cotizaciones</h5>
+                    <a href="{{ route('admin.crm.quotes.create', ['lead_id' => $lead->id]) }}" class="action-btn primary" style="font-size:12px;padding:5px 10px;">
+                        <i class="fa fa-plus"></i> Nueva Cotización
+                    </a>
+                </div>
+                <div class="dc-body" style="padding:0;">
+                    @forelse($lead->quotes()->orderByDesc('created_at')->take(5)->get() as $q)
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid #f5f5f5;">
+                        <div>
+                            <div style="font-weight:600;font-size:13px;color:#1a1a2e;">{{ $q->quote_number }} — {{ Str::limit($q->title, 35) }}</div>
+                            <div style="font-size:11px;color:#888;margin-top:2px;">{{ $q->formatted_total }} · {{ $q->created_at->format('d/m/Y') }}</div>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <span class="crm-badge {{ $q->status_color }}">{{ $q->status_label }}</span>
+                            <a href="{{ route('admin.crm.quotes.show', $q) }}" class="action-btn view" style="padding:4px 8px;font-size:11px;"><i class="fa fa-eye"></i></a>
+                            <a href="{{ route('admin.crm.quotes.pdf', $q) }}" class="action-btn secondary" target="_blank" style="padding:4px 8px;font-size:11px;"><i class="fa fa-file-pdf-o"></i></a>
+                        </div>
+                    </div>
+                    @empty
+                    <div style="padding:20px;text-align:center;color:#aaa;font-size:13px;">Sin cotizaciones aún.</div>
+                    @endforelse
+                    @if($lead->quotes()->count() > 5)
+                    <div style="padding:10px 16px;text-align:center;">
+                        <a href="{{ route('admin.crm.quotes.index', ['lead_id' => $lead->id]) }}" style="font-size:12px;color:#c2ac1f;">Ver todas ({{ $lead->quotes()->count() }})</a>
+                    </div>
+                    @endif
+                </div>
+            </div>
+
             {{-- Registrar Actividad --}}
             <div class="dashboard-card">
                 <div class="dc-header">
