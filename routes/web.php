@@ -301,6 +301,7 @@ Route::group(['middleware' => 'auth'], function () {
         Route::get('/', [LeadController::class, 'index'])->name('admin.crm.leads.index');
         Route::get('/pipeline', [LeadController::class, 'pipeline'])->name('admin.crm.leads.pipeline');
         Route::get('/follow-ups', [LeadController::class, 'followUps'])->name('admin.crm.leads.follow-ups');
+        Route::get('/audit', [LeadController::class, 'auditIndex'])->name('admin.crm.leads.audit');
         Route::get('/create', [LeadController::class, 'create'])->name('admin.crm.leads.create');
         // AJAX - búsqueda rápida de leads (debe ir antes del wildcard /{lead})
         Route::get('/quick-search', [LeadController::class, 'quickSearch'])->name('admin.crm.leads.quick-search');

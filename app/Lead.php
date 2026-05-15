@@ -41,6 +41,13 @@ class Lead extends Model
         'preferred_property_types',
         'preferred_bedrooms_min',
         'preferred_bedrooms_max',
+        'preferred_asset_type',
+        'preferred_vehicle_brand',
+        'preferred_vehicle_max_price',
+        'preferred_vehicle_min_year',
+        'preferred_vehicle_max_year',
+        'preferred_vehicle_fuel_type',
+        'preferred_vehicle_transmission',
     ];
 
     protected $casts = [
@@ -55,6 +62,9 @@ class Lead extends Model
         'portal_token_expires_at'  => 'datetime',
         'preferred_zones'          => 'array',
         'preferred_property_types' => 'array',
+        'preferred_vehicle_max_price' => 'decimal:2',
+        'preferred_vehicle_min_year'  => 'integer',
+        'preferred_vehicle_max_year'  => 'integer',
     ];
 
     // Estados del lead
@@ -499,8 +509,17 @@ class Lead extends Model
      * Score a property/vehicle against this lead's preferences.
      * Returns 0–100.
      */
-    public function matchScore($property): int
+    public function matchScore(\App\Properties $property): int
     {
+        // If lead prefers vehicles, use vehicle scoring
+        if (($this->preferred_asset_type ?? 'property') === 'vehicle' && $property->property_type === 'vehicle') {
+            return $this->matchVehicleScore($property);
+        }
+        // If property is a vehicle but lead prefers properties, return 0
+        if ($property->property_type === 'vehicle') {
+            return 0;
+        }
+
         $score = 0;
 
         // Budget match (40 pts)
@@ -535,6 +554,60 @@ class Lead extends Model
         }
 
         return min(100, $score);
+    }
+
+    public function matchVehicleScore(\App\Properties $vehicle): int
+    {
+        $score = 0;
+
+        // Budget match (40 pts): vehicle price vs preferred max price
+        if ($this->preferred_vehicle_max_price && $vehicle->price) {
+            $price = (float) $vehicle->price;
+            $maxPrice = (float) $this->preferred_vehicle_max_price;
+            if ($price <= $maxPrice) {
+                $score += 40;
+            } elseif ($price <= $maxPrice * 1.15) {
+                $score += 20; // within 15% over budget
+            }
+        } elseif (!$this->preferred_vehicle_max_price) {
+            $score += 20; // no price pref — neutral
+        }
+
+        // Brand match (30 pts)
+        if ($this->preferred_vehicle_brand && $vehicle->brand) {
+            if (strtolower(trim($this->preferred_vehicle_brand)) === strtolower(trim($vehicle->brand))) {
+                $score += 30;
+            }
+        } elseif (!$this->preferred_vehicle_brand) {
+            $score += 15; // no pref — neutral
+        }
+
+        // Year range (20 pts)
+        if ($vehicle->year) {
+            $minYear = $this->preferred_vehicle_min_year;
+            $maxYear = $this->preferred_vehicle_max_year;
+            if (!$minYear && !$maxYear) {
+                $score += 10; // neutral
+            } elseif ($vehicle->year >= ($minYear ?? 0) && $vehicle->year <= ($maxYear ?? 9999)) {
+                $score += 20;
+            }
+        }
+
+        // Fuel type (5 pts)
+        if ($this->preferred_vehicle_fuel_type && $vehicle->fuel_type) {
+            if (strtolower($this->preferred_vehicle_fuel_type) === strtolower($vehicle->fuel_type)) {
+                $score += 5;
+            }
+        }
+
+        // Transmission (5 pts)
+        if ($this->preferred_vehicle_transmission && $vehicle->transmission) {
+            if (strtolower($this->preferred_vehicle_transmission) === strtolower($vehicle->transmission)) {
+                $score += 5;
+            }
+        }
+
+        return min($score, 100);
     }
 }
 

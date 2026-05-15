@@ -197,45 +197,131 @@
                     {{-- Preferencias de búsqueda --}}
                     <div class="dashboard-card" style="margin-bottom:18px;">
                         <div class="dc-header">
-                            <h5><i class="fa fa-sliders"></i> Preferencias de Búsqueda <span style="font-size:11px;font-weight:400;color:#aaa;">(para matching de propiedades)</span></h5>
+                            <h5><i class="fa fa-sliders"></i> Preferencias de Búsqueda <span style="font-size:11px;font-weight:400;color:#aaa;">(para matching de propiedades / vehículos)</span></h5>
                         </div>
                         <div class="dc-body">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label style="font-weight:600;font-size:13px;color:#1a1a2e;">Habitaciones mínimas</label>
-                                        <input type="number" name="preferred_bedrooms_min" class="form-control"
-                                               value="{{ old('preferred_bedrooms_min') }}" min="0" max="20" placeholder="Ej: 3">
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label style="font-weight:600;font-size:13px;color:#1a1a2e;">Habitaciones máximas</label>
-                                        <input type="number" name="preferred_bedrooms_max" class="form-control"
-                                               value="{{ old('preferred_bedrooms_max') }}" min="0" max="20" placeholder="Ej: 5">
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label style="font-weight:600;font-size:13px;color:#1a1a2e;">Zonas preferidas</label>
-                                <input type="text" name="preferred_zones" class="form-control"
-                                       value="{{ old('preferred_zones') }}"
-                                       placeholder="Ej: Escazú, Santa Ana, Heredia (separar por comas)">
-                                <small style="color:#aaa;font-size:11px;">Separar múltiples zonas con comas</small>
-                            </div>
-                            <div class="form-group">
-                                <label style="font-weight:600;font-size:13px;color:#1a1a2e;display:block;margin-bottom:8px;">Tipos de propiedad preferidos</label>
-                                <div style="display:flex;gap:16px;flex-wrap:wrap;">
-                                    @foreach(['house' => 'Casa', 'apartment' => 'Apartamento', 'land' => 'Terreno', 'commercial' => 'Comercial'] as $val => $lbl)
-                                    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:500;color:#555;">
-                                        <input type="checkbox" name="preferred_property_types[]" value="{{ $val }}"
-                                               {{ in_array($val, old('preferred_property_types', [])) ? 'checked' : '' }}
-                                               style="accent-color:#c2ac1f;">
-                                        {{ $lbl }}
+
+                            {{-- Asset type toggle --}}
+                            <div class="form-group mb-3">
+                                <label style="font-weight:600; font-size:13px; color:#444;">Tipo de búsqueda</label>
+                                <div style="display:flex; gap:16px; margin-top:6px;">
+                                    <label style="cursor:pointer; display:flex; align-items:center; gap:8px; font-size:14px;">
+                                        <input type="radio" name="preferred_asset_type" value="property"
+                                            {{ old('preferred_asset_type', 'property') === 'property' ? 'checked' : '' }}
+                                            onchange="toggleAssetPrefs(this.value)"
+                                            style="accent-color:#c2ac1f;">
+                                        <i class="fa fa-home"></i> Propiedad / Inmueble
                                     </label>
-                                    @endforeach
+                                    <label style="cursor:pointer; display:flex; align-items:center; gap:8px; font-size:14px;">
+                                        <input type="radio" name="preferred_asset_type" value="vehicle"
+                                            {{ old('preferred_asset_type') === 'vehicle' ? 'checked' : '' }}
+                                            onchange="toggleAssetPrefs(this.value)"
+                                            style="accent-color:#c2ac1f;">
+                                        <i class="fa fa-car"></i> Vehículo
+                                    </label>
                                 </div>
                             </div>
+
+                            {{-- Property preferences --}}
+                            <div id="pref-property-section">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label style="font-weight:600;font-size:13px;color:#1a1a2e;">Habitaciones mínimas</label>
+                                            <input type="number" name="preferred_bedrooms_min" class="form-control"
+                                                   value="{{ old('preferred_bedrooms_min') }}" min="0" max="20" placeholder="Ej: 3">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label style="font-weight:600;font-size:13px;color:#1a1a2e;">Habitaciones máximas</label>
+                                            <input type="number" name="preferred_bedrooms_max" class="form-control"
+                                                   value="{{ old('preferred_bedrooms_max') }}" min="0" max="20" placeholder="Ej: 5">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label style="font-weight:600;font-size:13px;color:#1a1a2e;">Zonas preferidas</label>
+                                    <input type="text" name="preferred_zones" class="form-control"
+                                           value="{{ old('preferred_zones') }}"
+                                           placeholder="Ej: Escazú, Santa Ana, Heredia (separar por comas)">
+                                    <small style="color:#aaa;font-size:11px;">Separar múltiples zonas con comas</small>
+                                </div>
+                                <div class="form-group">
+                                    <label style="font-weight:600;font-size:13px;color:#1a1a2e;display:block;margin-bottom:8px;">Tipos de propiedad preferidos</label>
+                                    <div style="display:flex;gap:16px;flex-wrap:wrap;">
+                                        @foreach(['house' => 'Casa', 'apartment' => 'Apartamento', 'land' => 'Terreno', 'commercial' => 'Comercial'] as $val => $lbl)
+                                        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:500;color:#555;">
+                                            <input type="checkbox" name="preferred_property_types[]" value="{{ $val }}"
+                                                   {{ in_array($val, old('preferred_property_types', [])) ? 'checked' : '' }}
+                                                   style="accent-color:#c2ac1f;">
+                                            {{ $lbl }}
+                                        </label>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- Vehicle preferences --}}
+                            <div id="pref-vehicle-section" style="display:none;">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-3">
+                                            <label style="font-weight:600; font-size:13px; color:#444;">Marca preferida</label>
+                                            <input type="text" name="preferred_vehicle_brand" class="form-control"
+                                                value="{{ old('preferred_vehicle_brand', '') }}"
+                                                placeholder="Ej: Toyota, Honda, Kia..." style="border-radius:9px;">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-3">
+                                            <label style="font-weight:600; font-size:13px; color:#444;">Precio máximo</label>
+                                            <input type="number" name="preferred_vehicle_max_price" class="form-control"
+                                                value="{{ old('preferred_vehicle_max_price', '') }}"
+                                                placeholder="0" min="0" style="border-radius:9px;">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-group mb-3">
+                                            <label style="font-weight:600; font-size:13px; color:#444;">Año mínimo</label>
+                                            <input type="number" name="preferred_vehicle_min_year" class="form-control"
+                                                value="{{ old('preferred_vehicle_min_year', '') }}"
+                                                placeholder="2015" min="1990" max="2030" style="border-radius:9px;">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-group mb-3">
+                                            <label style="font-weight:600; font-size:13px; color:#444;">Año máximo</label>
+                                            <input type="number" name="preferred_vehicle_max_year" class="form-control"
+                                                value="{{ old('preferred_vehicle_max_year', '') }}"
+                                                placeholder="{{ date('Y') }}" min="1990" max="2030" style="border-radius:9px;">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-group mb-3">
+                                            <label style="font-weight:600; font-size:13px; color:#444;">Combustible</label>
+                                            <select name="preferred_vehicle_fuel_type" class="form-control" style="border-radius:9px;">
+                                                <option value="">— Cualquiera —</option>
+                                                <option value="gasoline" {{ old('preferred_vehicle_fuel_type') === 'gasoline' ? 'selected' : '' }}>Gasolina</option>
+                                                <option value="diesel" {{ old('preferred_vehicle_fuel_type') === 'diesel' ? 'selected' : '' }}>Diesel</option>
+                                                <option value="hybrid" {{ old('preferred_vehicle_fuel_type') === 'hybrid' ? 'selected' : '' }}>Híbrido</option>
+                                                <option value="electric" {{ old('preferred_vehicle_fuel_type') === 'electric' ? 'selected' : '' }}>Eléctrico</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-group mb-3">
+                                            <label style="font-weight:600; font-size:13px; color:#444;">Transmisión</label>
+                                            <select name="preferred_vehicle_transmission" class="form-control" style="border-radius:9px;">
+                                                <option value="">— Cualquiera —</option>
+                                                <option value="automatic" {{ old('preferred_vehicle_transmission') === 'automatic' ? 'selected' : '' }}>Automática</option>
+                                                <option value="manual" {{ old('preferred_vehicle_transmission') === 'manual' ? 'selected' : '' }}>Manual</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                         </div>
                     </div>
 
@@ -247,4 +333,17 @@
             </div>
         </div>
     </div>
+@push('script')
+<script>
+function toggleAssetPrefs(val) {
+    document.getElementById('pref-property-section').style.display = val === 'property' ? 'block' : 'none';
+    document.getElementById('pref-vehicle-section').style.display = val === 'vehicle' ? 'block' : 'none';
+}
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    var checked = document.querySelector('input[name="preferred_asset_type"]:checked');
+    if (checked) toggleAssetPrefs(checked.value);
+});
+</script>
+@endpush
 @endsection

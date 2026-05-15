@@ -312,6 +312,13 @@ class LeadController extends Controller
             'notes' => 'nullable|string',
             'requirements' => 'nullable|string',
             'next_follow_up' => 'nullable|date',
+            'preferred_asset_type'           => 'nullable|in:property,vehicle',
+            'preferred_vehicle_brand'        => 'nullable|string|max:100',
+            'preferred_vehicle_max_price'    => 'nullable|numeric|min:0',
+            'preferred_vehicle_min_year'     => 'nullable|integer|min:1990|max:2030',
+            'preferred_vehicle_max_year'     => 'nullable|integer|min:1990|max:2030',
+            'preferred_vehicle_fuel_type'    => 'nullable|string|max:50',
+            'preferred_vehicle_transmission' => 'nullable|string|max:50',
         ]);
 
         $user = auth()->user();
@@ -343,6 +350,13 @@ class LeadController extends Controller
             'preferred_property_types' => $request->input('preferred_property_types', []),
             'preferred_bedrooms_min' => $request->input('preferred_bedrooms_min') ?: null,
             'preferred_bedrooms_max' => $request->input('preferred_bedrooms_max') ?: null,
+            'preferred_asset_type'           => $request->input('preferred_asset_type', 'property'),
+            'preferred_vehicle_brand'        => $request->input('preferred_vehicle_brand') ?: null,
+            'preferred_vehicle_max_price'    => $request->input('preferred_vehicle_max_price') ?: null,
+            'preferred_vehicle_min_year'     => $request->input('preferred_vehicle_min_year') ?: null,
+            'preferred_vehicle_max_year'     => $request->input('preferred_vehicle_max_year') ?: null,
+            'preferred_vehicle_fuel_type'    => $request->input('preferred_vehicle_fuel_type') ?: null,
+            'preferred_vehicle_transmission' => $request->input('preferred_vehicle_transmission') ?: null,
         ]);
 
         // Registrar actividad de creación
@@ -466,17 +480,25 @@ class LeadController extends Controller
     public function matching(Lead $lead)
     {
         $this->authorizeCompanyAccess($lead);
-        $user = auth()->user();
+        $companyId = auth()->user()->company_id;
 
-        $properties = \App\Properties::realEstate()
-            ->whereHas('category', fn($q) => $q->where('company_id', $user->company_id))
-            ->with('category.sector')
-            ->get();
+        // Load correct asset type based on lead preference
+        $assetType = $lead->preferred_asset_type ?? 'property';
 
-        $matched = $properties->map(fn($p) => [
-            'property' => $p,
-            'score'    => $lead->matchScore($p),
-        ])->filter(fn($m) => $m['score'] > 0)->sortByDesc('score');
+        $query = \App\Properties::with('category.sector')
+            ->where('company_id', $companyId)
+            ->where('status', 'available');
+
+        if ($assetType === 'vehicle') {
+            $query->where('property_type', 'vehicle');
+        } else {
+            $query->where('property_type', '!=', 'vehicle');
+        }
+
+        $matched = $query->get()
+            ->map(fn($p) => ['property' => $p, 'score' => $lead->matchScore($p)])
+            ->sortByDesc('score')
+            ->values();
 
         return view('admin.crm.leads.matching', compact('lead', 'matched'));
     }
@@ -531,6 +553,13 @@ class LeadController extends Controller
             'notes' => 'nullable|string',
             'requirements' => 'nullable|string',
             'next_follow_up' => 'nullable|date',
+            'preferred_asset_type'           => 'nullable|in:property,vehicle',
+            'preferred_vehicle_brand'        => 'nullable|string|max:100',
+            'preferred_vehicle_max_price'    => 'nullable|numeric|min:0',
+            'preferred_vehicle_min_year'     => 'nullable|integer|min:1990|max:2030',
+            'preferred_vehicle_max_year'     => 'nullable|integer|min:1990|max:2030',
+            'preferred_vehicle_fuel_type'    => 'nullable|string|max:50',
+            'preferred_vehicle_transmission' => 'nullable|string|max:50',
         ]);
 
         $user = auth()->user();
@@ -548,6 +577,13 @@ class LeadController extends Controller
             'preferred_property_types' => $request->input('preferred_property_types', []),
             'preferred_bedrooms_min' => $request->input('preferred_bedrooms_min') ?: null,
             'preferred_bedrooms_max' => $request->input('preferred_bedrooms_max') ?: null,
+            'preferred_asset_type'           => $request->input('preferred_asset_type', 'property'),
+            'preferred_vehicle_brand'        => $request->input('preferred_vehicle_brand') ?: null,
+            'preferred_vehicle_max_price'    => $request->input('preferred_vehicle_max_price') ?: null,
+            'preferred_vehicle_min_year'     => $request->input('preferred_vehicle_min_year') ?: null,
+            'preferred_vehicle_max_year'     => $request->input('preferred_vehicle_max_year') ?: null,
+            'preferred_vehicle_fuel_type'    => $request->input('preferred_vehicle_fuel_type') ?: null,
+            'preferred_vehicle_transmission' => $request->input('preferred_vehicle_transmission') ?: null,
         ]);
 
         if ($user->role === 'company_admin' || $user->isSuperAdmin()) {
@@ -611,15 +647,44 @@ class LeadController extends Controller
     /**
      * Remove the specified lead.
      */
-    public function destroy(Lead $lead)
+    public function destroy(Request $request, Lead $lead)
     {
         abort_unless(auth()->user()->canAccessModule('crm', 'view'), 403, 'Sin permiso para gestionar leads.');
         $this->authorizeCompanyAccess($lead);
+
+        // Audit log before deletion
+        \App\Models\LeadDeletionAudit::create([
+            'company_id'  => $lead->company_id,
+            'deleted_by'  => auth()->id(),
+            'lead_name'   => $lead->name,
+            'lead_email'  => $lead->email,
+            'lead_phone'  => $lead->phone,
+            'lead_status' => $lead->status,
+            'lead_score'  => $lead->score ?? 0,
+            'reason'      => $request->input('reason'),
+            'deleted_at'  => now(),
+        ]);
 
         $lead->delete();
 
         return redirect()->route('admin.crm.leads.index')
             ->with('success', 'Lead eliminado correctamente.');
+    }
+
+    /**
+     * Audit log of deleted leads (company_admin and super_admin only).
+     */
+    public function auditIndex()
+    {
+        $user = auth()->user();
+        if ($user->role !== 'company_admin' && !$user->isSuperAdmin()) {
+            abort(403, 'Solo administradores pueden ver el registro de auditoría.');
+        }
+        $audits = \App\Models\LeadDeletionAudit::where('company_id', $user->company_id)
+            ->with('deletedBy')
+            ->orderByDesc('deleted_at')
+            ->paginate(30);
+        return view('admin.crm.leads.audit', compact('audits'));
     }
 
     /**

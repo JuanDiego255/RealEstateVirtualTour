@@ -352,6 +352,9 @@
             <a href="{{ route('admin.crm.reports.lead-detail', $lead) }}" target="_blank" class="action-btn gold">
                 <i class="fa fa-file-pdf-o"></i> PDF
             </a>
+            <button type="button" class="action-btn danger" data-toggle="modal" data-target="#modal-eliminar-lead">
+                <i class="fa fa-trash"></i> Eliminar
+            </button>
             <a href="{{ route('admin.crm.leads.index') }}" class="action-btn secondary">
                 <i class="fa fa-arrow-left"></i> Volver
             </a>
@@ -966,6 +969,38 @@
 @endforeach
 
 @endsection
+
+{{-- Modal: Eliminar Lead --}}
+<div class="modal fade" id="modal-eliminar-lead" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content" style="border-radius:12px; border:none;">
+            <div class="modal-header" style="background:#dc2626; border-radius:12px 12px 0 0; padding:16px 20px;">
+                <h5 class="modal-title" style="color:#fff; font-weight:700;"><i class="fa fa-trash"></i> Eliminar Lead</h5>
+                <button type="button" class="close" data-dismiss="modal" style="color:#fff; opacity:1;"><span>&times;</span></button>
+            </div>
+            <form method="POST" action="{{ route('admin.crm.leads.destroy', $lead) }}">
+                @csrf @method('DELETE')
+                <div class="modal-body" style="padding:24px;">
+                    <div class="manual-warn" style="background:#fff1f2;border-left:4px solid #ef4444;border-radius:6px;padding:12px 16px;margin-bottom:16px;">
+                        <strong>¿Eliminar a {{ $lead->name }}?</strong><br>
+                        <span style="font-size:13px;">Esta acción es permanente. Se eliminarán todas las actividades, tareas y citas asociadas.</span>
+                    </div>
+                    <div class="form-group mb-0">
+                        <label style="font-weight:600; font-size:13px; color:#444;">Motivo de eliminación <span class="text-danger">*</span></label>
+                        <textarea name="reason" rows="3" class="form-control" required style="border-radius:8px;"
+                            placeholder="Ej: Lead duplicado, cliente no interesado, datos incorrectos..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-top:1px solid #f0f0f0; padding:14px 20px; display:flex; justify-content:flex-end; gap:8px;">
+                    <button type="button" class="action-btn secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="action-btn danger">
+                        <i class="fa fa-trash"></i> Confirmar Eliminación
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
 @push('script')
 <script>
