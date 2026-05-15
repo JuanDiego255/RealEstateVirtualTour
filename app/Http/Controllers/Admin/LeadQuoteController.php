@@ -74,43 +74,116 @@ class LeadQuoteController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
+        $quoteType = $request->input('quote_type', 'property');
+
+        $baseRules = [
             'lead_id'       => 'required|exists:leads,id',
             'property_id'   => 'nullable|exists:properties,id',
             'title'         => 'required|string|max:200',
             'notes'         => 'nullable|string|max:2000',
-            'validity_days' => 'required|integer|min:1|max:365',
-            'currency'      => 'required|in:CRC,USD',
-            'discount_pct'  => 'nullable|numeric|min:0|max:100',
-            'items'         => 'required|array|min:1',
-            'items.*.description' => 'required|string|max:300',
-            'items.*.qty'   => 'required|numeric|min:0',
-            'items.*.price' => 'required|numeric|min:0',
-        ]);
+            'validity_days' => 'nullable|integer|min:1|max:365',
+            'currency'      => 'nullable|in:CRC,USD',
+            'quote_type'    => 'nullable|in:property,vehicle',
+        ];
+
+        if ($quoteType === 'vehicle') {
+            $baseRules += [
+                'vehicle_quote_id'    => 'nullable|exists:vehicle_quotes,id',
+                'vq_vehicle_price'    => 'nullable|numeric|min:0',
+                'vq_down_payment'     => 'nullable|numeric|min:0',
+                'vq_down_payment_pct' => 'nullable|numeric|min:0|max:100',
+                'vq_term_months'      => 'nullable|integer|in:12,24,36,48,60,72,84',
+                'vq_interest_rate'    => 'nullable|numeric|min:0|max:1',
+                'vq_payment_frequency'=> 'nullable|in:monthly,annual',
+            ];
+        } else {
+            $baseRules += [
+                'discount_pct'        => 'nullable|numeric|min:0|max:100',
+                'items'               => 'nullable|array',
+                'items.*.description' => 'required_with:items|string|max:300',
+                'items.*.qty'         => 'required_with:items|numeric|min:0',
+                'items.*.price'       => 'required_with:items|numeric|min:0',
+            ];
+        }
+
+        $validated = $request->validate($baseRules);
 
         $user = Auth::user();
         Lead::where('company_id', $user->company_id)->findOrFail($validated['lead_id']);
 
-        $items    = $validated['items'];
-        $subtotal = array_sum(array_map(fn($i) => $i['qty'] * $i['price'], $items));
-        $discount = $validated['discount_pct'] ?? 0;
-        $total    = $subtotal * (1 - $discount / 100);
+        if ($quoteType === 'vehicle') {
+            // For vehicle quotes, calculate financials
+            $vehiclePrice  = (float)($request->vq_vehicle_price ?? 0);
+            $downPayPct    = (float)($request->vq_down_payment_pct ?? 50);
+            $downPayment   = $vehiclePrice * ($downPayPct / 100);
+            $principal     = $vehiclePrice - $downPayment;
+            $termMonths    = (int)($request->vq_term_months ?? 36);
+            $rate          = (float)($request->vq_interest_rate ?? 0);
+            $freq          = $request->vq_payment_frequency ?? 'monthly';
 
-        LeadQuote::create([
+            // Calculate payment using French amortization
+            if ($rate > 0) {
+                $periodsPerYear = $freq === 'annual' ? 1 : 12;
+                $periodicRate   = $rate / $periodsPerYear;
+                $nPeriods       = $freq === 'annual' ? ceil($termMonths / 12) : $termMonths;
+                $payment = $principal * ($periodicRate * pow(1 + $periodicRate, $nPeriods)) / (pow(1 + $periodicRate, $nPeriods) - 1);
+            } else {
+                $periodsPerYear = $freq === 'annual' ? 1 : 12;
+                $nPeriods = $freq === 'annual' ? ceil($termMonths / 12) : $termMonths;
+                $payment  = $nPeriods > 0 ? $principal / $nPeriods : 0;
+            }
+            $totalPaid     = $payment * ($freq === 'annual' ? ceil($termMonths / 12) : $termMonths);
+            $totalInterest = $totalPaid - $principal;
+
+            $subtotal  = $vehiclePrice;
+            $total     = $vehiclePrice;
+            $extraData = [
+                'quote_type'          => 'vehicle',
+                'vq_vehicle_price'    => $vehiclePrice,
+                'vq_down_payment'     => $downPayment,
+                'vq_down_payment_pct' => $downPayPct,
+                'vq_term_months'      => $termMonths,
+                'vq_interest_rate'    => $rate,
+                'vq_payment_frequency'=> $freq,
+                'vq_monthly_payment'  => round($payment, 2),
+                'vq_total_interest'   => round(max($totalInterest, 0), 2),
+                'vq_total_amount'     => round($totalPaid + $downPayment, 2),
+                'vehicle_quote_id'    => $request->vehicle_quote_id,
+                'items'               => [],
+                'discount_pct'        => 0,
+            ];
+        } else {
+            // Property quote — existing logic
+            $items     = $validated['items'] ?? [];
+            $subtotal  = count($items) ? array_sum(array_map(fn($i) => $i['qty'] * $i['price'], $items)) : 0;
+            $discount  = $validated['discount_pct'] ?? 0;
+            $total     = $subtotal * (1 - $discount / 100);
+            $extraData = [
+                'quote_type'  => 'property',
+                'items'       => $items,
+                'discount_pct'=> $discount,
+            ];
+        }
+
+        $quote = LeadQuote::create(array_merge([
             'company_id'    => $user->company_id,
             'user_id'       => $user->id,
             'lead_id'       => $validated['lead_id'],
             'property_id'   => $validated['property_id'] ?? null,
             'title'         => $validated['title'],
             'notes'         => $validated['notes'] ?? null,
-            'validity_days' => $validated['validity_days'],
-            'currency'      => $validated['currency'],
-            'items'         => $items,
+            'validity_days' => $validated['validity_days'] ?? 30,
+            'currency'      => $validated['currency'] ?? 'CRC',
             'subtotal'      => $subtotal,
-            'discount_pct'  => $discount,
             'total'         => $total,
             'status'        => 'draft',
-        ]);
+        ], $extraData));
+
+        // If property quote with no items, redirect to quote detail to add items
+        if ($quoteType === 'property' && !count($extraData['items'])) {
+            return redirect()->route('admin.crm.quotes.show', $quote)
+                ->with('success', 'Cotización creada. Agrega los ítems a continuación.');
+        }
 
         return redirect()->route('admin.crm.quotes.index')
             ->with('success', 'Cotización creada correctamente.');
