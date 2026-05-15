@@ -670,22 +670,186 @@ class LeadController extends Controller
     /**
      * Show CSV import form.
      */
-    public function import()
+    public function importForm()
     {
-        return view('admin.crm.leads.import');
+        $columnGuide = [
+            'nombre / name',
+            'correo / email',
+            'telefono / phone',
+            'whatsapp',
+            'fuente / source',
+            'estado / status',
+            'prioridad / priority',
+            'notas / notes',
+            'budget_min',
+            'budget_max',
+        ];
+
+        return view('admin.crm.leads.import', compact('columnGuide'));
     }
 
     /**
-     * Process CSV import.
+     * Preview CSV import.
      */
-    public function importStore(Request $request)
+    public function importPreview(Request $request)
     {
         $request->validate([
-            'csv_file' => 'required|file|mimes:csv,txt|max:2048',
+            'file' => 'required|file|mimes:csv,txt|max:2048',
         ]);
 
+        $columnGuide = [
+            'nombre / name',
+            'correo / email',
+            'telefono / phone',
+            'whatsapp',
+            'fuente / source',
+            'estado / status',
+            'prioridad / priority',
+            'notas / notes',
+            'budget_min',
+            'budget_max',
+        ];
+
+        // Header → internal field mapping
+        $headerMap = [
+            'name'      => 'name',   'nombre'    => 'name',
+            'email'     => 'email',  'correo'    => 'email',
+            'phone'     => 'phone',  'telefono'  => 'phone',  'teléfono' => 'phone',
+            'whatsapp'  => 'whatsapp',
+            'source'    => 'source', 'fuente'    => 'source',
+            'status'    => 'status', 'estado'    => 'status',
+            'priority'  => 'priority', 'prioridad' => 'priority',
+            'notes'     => 'notes',  'notas'     => 'notes',
+            'budget_min' => 'budget_min',
+            'budget_max' => 'budget_max',
+        ];
+
+        // Store the file
+        $request->file('file')->storeAs('imports', 'leads_import_' . auth()->id() . '.csv', 'local');
+
+        // Re-open for parsing
+        $filePath = storage_path('app/imports/leads_import_' . auth()->id() . '.csv');
+        $handle = fopen($filePath, 'r');
+
+        // Parse headers
+        $rawHeaders = fgetcsv($handle);
+        $headers = array_map(fn($h) => strtolower(trim($h)), $rawHeaders);
+
+        $mappedColumns = [];
+        foreach ($headers as $h) {
+            $mappedColumns[$h] = $headerMap[$h] ?? null;
+        }
+
+        // Read preview rows and count total
+        $preview    = [];
+        $totalRows  = 0;
+        while (($row = fgetcsv($handle)) !== false) {
+            $totalRows++;
+            if (count($preview) < 10) {
+                $assoc = [];
+                foreach ($headers as $i => $h) {
+                    $field = $mappedColumns[$h];
+                    if ($field) {
+                        $assoc[$field] = $row[$i] ?? '';
+                    }
+                }
+                $preview[] = $assoc;
+            }
+        }
+        fclose($handle);
+
+        return view('admin.crm.leads.import', compact('columnGuide', 'preview', 'totalRows', 'mappedColumns'));
+    }
+
+    /**
+     * Execute CSV import.
+     */
+    public function importExecute(Request $request)
+    {
+        $request->validate([
+            'confirm' => 'required|in:1',
+        ]);
+
+        $filePath = storage_path('app/imports/leads_import_' . auth()->id() . '.csv');
+        $handle   = fopen($filePath, 'r');
+
+        // Header → field map
+        $headerMap = [
+            'name'      => 'name',   'nombre'    => 'name',
+            'email'     => 'email',  'correo'    => 'email',
+            'phone'     => 'phone',  'telefono'  => 'phone',  'teléfono' => 'phone',
+            'whatsapp'  => 'whatsapp',
+            'source'    => 'source', 'fuente'    => 'source',
+            'status'    => 'status', 'estado'    => 'status',
+            'priority'  => 'priority', 'prioridad' => 'priority',
+            'notes'     => 'notes',  'notas'     => 'notes',
+            'budget_min' => 'budget_min',
+            'budget_max' => 'budget_max',
+        ];
+
+        $rawHeaders = fgetcsv($handle);
+        $headers    = array_map(fn($h) => strtolower(trim($h)), $rawHeaders);
+
+        $mappedColumns = [];
+        foreach ($headers as $h) {
+            $mappedColumns[$h] = $headerMap[$h] ?? null;
+        }
+
+        $companyId = auth()->user()->company_id;
+        $userId    = auth()->id();
+        $now       = now();
+
+        $batch       = [];
+        $importCount = 0;
+
+        while (($row = fgetcsv($handle)) !== false) {
+            $data = [];
+            foreach ($headers as $i => $h) {
+                $field = $mappedColumns[$h];
+                if ($field) {
+                    $data[$field] = trim($row[$i] ?? '');
+                }
+            }
+
+            // Skip rows with no name
+            if (empty($data['name'])) {
+                continue;
+            }
+
+            $batch[] = [
+                'company_id'  => $companyId,
+                'user_id'     => $userId,
+                'name'        => $data['name'],
+                'email'       => $data['email']      ?? null,
+                'phone'       => $data['phone']      ?? null,
+                'whatsapp'    => $data['whatsapp']   ?? null,
+                'source'      => !empty($data['source'])   ? $data['source']   : 'other',
+                'status'      => !empty($data['status'])   ? $data['status']   : 'new',
+                'priority'    => !empty($data['priority']) ? $data['priority'] : 'medium',
+                'notes'       => $data['notes']      ?? null,
+                'budget_min'  => !empty($data['budget_min']) ? $data['budget_min'] : null,
+                'budget_max'  => !empty($data['budget_max']) ? $data['budget_max'] : null,
+                'created_at'  => $now,
+                'updated_at'  => $now,
+            ];
+
+            $importCount++;
+
+            if (count($batch) >= 50) {
+                Lead::insert($batch);
+                $batch = [];
+            }
+        }
+
+        if (!empty($batch)) {
+            Lead::insert($batch);
+        }
+
+        fclose($handle);
+        @unlink($filePath);
+
         return redirect()->route('admin.crm.leads.index')
-            ->with('success', 'Importación procesada correctamente.');
+            ->with('success', "{$importCount} leads importados correctamente.");
     }
 
     /**

@@ -408,6 +408,10 @@ Route::group(['middleware' => 'auth'], function () {
         Route::get('/overdue-reminders', [\App\Http\Controllers\Admin\CrmReportController::class, 'overdueReminders'])->name('admin.crm.reports.overdue-reminders');
     });
 
+    // --- MANUAL DE USUARIO CRM ---
+    Route::get('/admin/crm/manual', [\App\Http\Controllers\Admin\CrmManualController::class, 'show'])->name('admin.crm.manual');
+    Route::get('/admin/crm/manual/pdf', [\App\Http\Controllers\Admin\CrmManualController::class, 'pdf'])->name('admin.crm.manual.pdf');
+
     // --- AGENDA (Citas) ---
     Route::group(['prefix' => 'admin/crm/appointments', 'middleware' => ['subscription']], function () {
         Route::get('/', [AppointmentController::class, 'index'])->name('admin.crm.appointments.index');
