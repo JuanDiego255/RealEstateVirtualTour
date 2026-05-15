@@ -88,12 +88,16 @@
                                 <div class="col-md-6">
                                     <div class="form-group">
                                         <label>Agente Asignado</label>
-                                        <select name="user_id" class="form-control">
-                                            <option value="">-- Seleccionar --</option>
-                                            @foreach($agents as $agent)
-                                                <option value="{{ $agent->id }}" {{ old('user_id', auth()->id()) == $agent->id ? 'selected' : '' }}>{{ $agent->name }}</option>
-                                            @endforeach
-                                        </select>
+                                        @if(Auth::user()->role === 'company_admin' || Auth::user()->isSuperAdmin())
+                                            <select name="user_id" class="form-control">
+                                                <option value="">-- Seleccionar --</option>
+                                                @foreach($agents as $agent)
+                                                    <option value="{{ $agent->id }}" {{ old('user_id', auth()->id()) == $agent->id ? 'selected' : '' }}>{{ $agent->name }}</option>
+                                                @endforeach
+                                            </select>
+                                        @else
+                                            <input type="hidden" name="user_id" value="{{ auth()->id() }}">
+                                        @endif
                                     </div>
                                 </div>
                             </div>

@@ -190,17 +190,16 @@
 
                     <hr>
 
-                    <div class="d-flex justify-content-between">
-                        <form action="{{ route('admin.crm.appointments.destroy', $appointment) }}" method="POST" onsubmit="return confirm('¿Eliminar esta cita?');">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="btn btn-danger"><i class="fa fa-trash"></i> Eliminar</button>
-                        </form>
-                        <div>
-                            <a href="{{ request('_back') ?: route('admin.crm.appointments.show', $appointment) }}" class="btn btn-secondary mr-2">Cancelar</a>
-                            <button type="submit" class="btn btn-primary"><i class="fa fa-save"></i> Guardar Cambios</button>
-                        </div>
+                    <div class="d-flex justify-content-end">
+                        <a href="{{ request('_back') ?: route('admin.crm.appointments.show', $appointment) }}" class="btn btn-secondary mr-2">Cancelar</a>
+                        <button type="submit" class="btn btn-primary"><i class="fa fa-save"></i> Guardar Cambios</button>
                     </div>
+                </form>
+
+                <form action="{{ route('admin.crm.appointments.destroy', $appointment) }}" method="POST" onsubmit="return confirm('¿Eliminar esta cita?');" style="margin-top:10px;">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-danger"><i class="fa fa-trash"></i> Eliminar</button>
                 </form>
             </div>
         </div>

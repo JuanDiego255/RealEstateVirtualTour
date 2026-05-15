@@ -145,18 +145,29 @@
                                     <li class="{{ Request::routeIs('admin.crm.tasks.*') ? 'active' : '' }}">
                                         <a href="{{ route('admin.crm.tasks.index') }}"><i class="fa fa-check-square-o"></i> Tareas</a>
                                     </li>
+                                    {{-- @if(true) -- Plantillas de Actividad (habilitado cuando se active) --}}
+                                    @if(false)
                                     <li class="{{ Request::routeIs('admin.crm.activity-templates.*') ? 'active' : '' }}">
                                         <a href="{{ route('admin.crm.activity-templates.index') }}"><i class="fa fa-list-alt"></i> Plantillas de Actividad</a>
                                     </li>
+                                    @endif
+                                    {{-- @if(true) -- Plantillas de Mensajes (habilitado cuando se active) --}}
+                                    @if(false)
                                     <li class="{{ Request::routeIs('admin.crm.message-templates.*') ? 'active' : '' }}">
                                         <a href="{{ route('admin.crm.message-templates.index') }}"><i class="fa fa-comment"></i> Plantillas de Mensajes</a>
                                     </li>
+                                    @endif
+                                    {{-- @if(true) -- Formularios (habilitado cuando se active) --}}
+                                    @if(false)
                                     <li class="{{ Request::routeIs('admin.crm.forms.*') ? 'active' : '' }}">
                                         <a href="{{ route('admin.crm.forms.index') }}"><i class="fa fa-wpforms"></i> Formularios</a>
                                     </li>
+                                    @endif
+                                    @if($u->role === 'company_admin' || $u->isSuperAdmin())
                                     <li class="{{ Request::routeIs('admin.crm.pipeline-rules.*') ? 'active' : '' }}">
                                         <a href="{{ route('admin.crm.pipeline-rules.index') }}"><i class="fa fa-cogs"></i> Reglas de Pipeline</a>
                                     </li>
+                                    @endif
                                     <li class="{{ Request::routeIs('admin.crm.quotes.*') ? 'active' : '' }}">
                                         <a href="{{ route('admin.crm.quotes.index') }}"><i class="fa fa-file-text-o"></i> Cotizaciones</a>
                                     </li>

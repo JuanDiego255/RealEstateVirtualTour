@@ -8,6 +8,7 @@ use App\Lead;
 use App\Properties;
 use App\User;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Carbon\Carbon;
 
 class AppointmentController extends Controller
@@ -113,7 +114,7 @@ class AppointmentController extends Controller
             'duration' => 'required|integer|min:15|max:480',
             'lead_id' => 'nullable|exists:leads,id',
             'property_id' => 'nullable|exists:properties,id',
-            'vehicle_id' => 'nullable|exists:properties,id',
+            'vehicle_id' => ['nullable', Rule::exists('properties', 'id')->where('property_type', 'vehicle')],
             'user_id' => 'nullable|exists:users,id',
             'location' => 'nullable|string|max:255',
             'address' => 'nullable|string|max:500',
@@ -221,7 +222,7 @@ class AppointmentController extends Controller
             'duration' => 'required|integer|min:15|max:480',
             'lead_id' => 'nullable|exists:leads,id',
             'property_id' => 'nullable|exists:properties,id',
-            'vehicle_id' => 'nullable|exists:properties,id',
+            'vehicle_id' => ['nullable', Rule::exists('properties', 'id')->where('property_type', 'vehicle')],
             'user_id' => 'nullable|exists:users,id',
             'location' => 'nullable|string|max:255',
             'address' => 'nullable|string|max:500',

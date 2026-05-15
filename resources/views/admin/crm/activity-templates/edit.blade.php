@@ -166,15 +166,7 @@
                 </div>
 
             </div>
-            <div style="padding:16px 24px; border-top:1px solid #f0f0f0; display:flex; gap:10px; justify-content:space-between; align-items:center;">
-                {{-- Delete --}}
-                <form method="POST" action="{{ route('admin.crm.activity-templates.destroy', $template) }}"
-                      onsubmit="return confirm('¿Seguro que deseas eliminar esta plantilla? Esta acción no se puede deshacer.');">
-                    @csrf @method('DELETE')
-                    <button type="submit" class="action-btn danger">
-                        <i class="fa fa-trash"></i> Eliminar plantilla
-                    </button>
-                </form>
+            <div style="padding:16px 24px; border-top:1px solid #f0f0f0; display:flex; gap:10px; justify-content:flex-end; align-items:center;">
                 <div style="display:flex; gap:10px;">
                     <a href="{{ route('admin.crm.activity-templates.index') }}" class="action-btn secondary">
                         Cancelar
@@ -187,6 +179,16 @@
             </div>
         </div>
 
+    </form>
+
+    {{-- Delete form OUTSIDE update form --}}
+    <form method="POST" action="{{ route('admin.crm.activity-templates.destroy', $template) }}"
+          onsubmit="return confirm('¿Seguro que deseas eliminar esta plantilla? Esta acción no se puede deshacer.');"
+          style="max-width:760px; margin-top:10px;">
+        @csrf @method('DELETE')
+        <button type="submit" class="action-btn danger">
+            <i class="fa fa-trash"></i> Eliminar plantilla
+        </button>
     </form>
 
 </div>

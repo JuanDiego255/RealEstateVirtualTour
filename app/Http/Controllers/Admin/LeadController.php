@@ -9,6 +9,7 @@ use App\Properties;
 use App\Reminder;
 use App\User;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Carbon\Carbon;
 
 class LeadController extends Controller
@@ -304,7 +305,7 @@ class LeadController extends Controller
             'interest_type' => 'required|in:buy,rent,sell,other',
             'user_id' => 'nullable|exists:users,id',
             'property_id' => 'nullable|exists:properties,id',
-            'vehicle_id' => 'nullable|exists:properties,id',
+            'vehicle_id' => ['nullable', Rule::exists('properties', 'id')->where('property_type', 'vehicle')],
             'budget_min' => 'nullable|numeric|min:0',
             'budget_max' => 'nullable|numeric|min:0',
             'budget_currency' => 'nullable|in:CRC,USD',
@@ -320,7 +321,7 @@ class LeadController extends Controller
 
         $lead = Lead::create([
             'company_id' => $user->company_id,
-            'user_id' => $request->user_id ?? $user->id,
+            'user_id' => ($user->role === 'company_admin' || $user->isSuperAdmin()) ? ($request->user_id ?? $user->id) : $user->id,
             'property_id' => $request->property_id,
             'vehicle_id' => $request->vehicle_id,
             'name' => $request->name,
@@ -523,7 +524,7 @@ class LeadController extends Controller
             'interest_type' => 'required|in:buy,rent,sell,other',
             'user_id' => 'nullable|exists:users,id',
             'property_id' => 'nullable|exists:properties,id',
-            'vehicle_id' => 'nullable|exists:properties,id',
+            'vehicle_id' => ['nullable', Rule::exists('properties', 'id')->where('property_type', 'vehicle')],
             'budget_min' => 'nullable|numeric|min:0',
             'budget_max' => 'nullable|numeric|min:0',
             'budget_currency' => 'nullable|in:CRC,USD',
@@ -532,12 +533,14 @@ class LeadController extends Controller
             'next_follow_up' => 'nullable|date',
         ]);
 
+        $user = auth()->user();
+
         // Handle preferred_zones (comma-separated → array)
         $preferredZones = array_values(array_filter(array_map('trim', explode(',', $request->input('preferred_zones', '')))));
 
-        $lead->update(array_merge($request->only([
+        $data = array_merge($request->only([
             'name', 'email', 'phone', 'whatsapp', 'source', 'priority',
-            'interest_type', 'user_id', 'property_id', 'vehicle_id',
+            'interest_type', 'property_id', 'vehicle_id',
             'budget_min', 'budget_max', 'budget_currency', 'notes',
             'requirements', 'next_follow_up',
         ]), [
@@ -545,7 +548,13 @@ class LeadController extends Controller
             'preferred_property_types' => $request->input('preferred_property_types', []),
             'preferred_bedrooms_min' => $request->input('preferred_bedrooms_min') ?: null,
             'preferred_bedrooms_max' => $request->input('preferred_bedrooms_max') ?: null,
-        ]));
+        ]);
+
+        if ($user->role === 'company_admin' || $user->isSuperAdmin()) {
+            $data['user_id'] = $request->user_id ?? $lead->user_id;
+        }
+
+        $lead->update($data);
 
         return redirect()->route('admin.crm.leads.show', $lead)
             ->with('success', 'Lead actualizado correctamente.');
