@@ -299,6 +299,14 @@
             <a href="{{ route('admin.crm.reports.index') }}" class="action-btn more">
                 <i class="fa fa-file-pdf-o"></i> Reportes
             </a>
+            <a href="{{ route('admin.crm.leads.index', array_merge(request()->query(), ['hot_leads' => 1])) }}"
+               class="action-btn {{ request('hot_leads') ? 'primary' : 'secondary' }}"
+               style="{{ request('hot_leads') ? 'background:#ef4444;border-color:#ef4444;color:#fff;' : '' }}">
+                <i class="fa fa-fire"></i> Calientes
+            </a>
+            <a href="{{ route('admin.crm.leads.import') }}" class="action-btn secondary">
+                <i class="fa fa-upload"></i> Importar CSV
+            </a>
             @if(Auth::user()->canAccessModule('crm', 'view'))
             <a href="{{ route('admin.crm.leads.create') }}"
                style="background:linear-gradient(135deg,#c2ac1f,#a89617);color:#000;border-radius:10px;padding:7px 16px;font-size:13px;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">

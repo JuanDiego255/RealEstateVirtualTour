@@ -9,10 +9,12 @@ class ActivityTemplate extends Model
     protected $fillable = [
         'company_id', 'created_by', 'name', 'type',
         'subject', 'body', 'stage', 'is_active', 'sort_order',
+        'auto_create_task', 'task_due_hours',
     ];
 
     protected $casts = [
-        'is_active' => 'boolean',
+        'is_active'        => 'boolean',
+        'auto_create_task' => 'boolean',
     ];
 
     public function company()  { return $this->belongsTo(\App\Company::class); }

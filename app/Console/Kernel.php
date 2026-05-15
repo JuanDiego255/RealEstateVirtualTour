@@ -26,6 +26,7 @@ class Kernel extends ConsoleKernel
     {
         // Verificar suscripciones por vencer (diariamente a las 8am)
         $schedule->command('subscriptions:check-expiring --days=7')->dailyAt('08:00');
+        $schedule->command('crm:run-pipeline-rules')->dailyAt('07:00');
     }
 
     /**

@@ -143,6 +143,28 @@
                     </div>
                 </div>
 
+                {{-- Secuencia automática --}}
+                <div class="row align-items-center mb-2" style="margin-top:12px;">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label style="font-size:13px; font-weight:600; color:#444; margin-bottom:6px; display:block;">
+                                Horas hasta vencimiento de tarea
+                            </label>
+                            <input type="number" name="task_due_hours" value="{{ old('task_due_hours', $template->task_due_hours) }}"
+                                   class="form-control" min="1" max="720"
+                                   style="border-radius:9px; border:1px solid #e5e7eb; font-size:14px;">
+                        </div>
+                    </div>
+                    <div class="col-md-8 d-flex align-items-center" style="padding-top:24px;">
+                        <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px; font-weight:500; color:#444;">
+                            <input type="checkbox" name="auto_create_task" value="1"
+                                   {{ old('auto_create_task', $template->auto_create_task) ? 'checked' : '' }}
+                                   style="width:18px; height:18px; accent-color:#c2ac1f;">
+                            Crear tarea automáticamente al entrar en esta etapa
+                        </label>
+                    </div>
+                </div>
+
             </div>
             <div style="padding:16px 24px; border-top:1px solid #f0f0f0; display:flex; gap:10px; justify-content:space-between; align-items:center;">
                 {{-- Delete --}}

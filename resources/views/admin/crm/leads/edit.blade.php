@@ -214,6 +214,51 @@
 
                     <hr>
 
+                    {{-- Preferencias de búsqueda --}}
+                    <div class="dashboard-card" style="margin-bottom:18px;">
+                        <div class="dc-header">
+                            <h5><i class="fa fa-sliders"></i> Preferencias de Búsqueda <span style="font-size:11px;font-weight:400;color:#aaa;">(para matching de propiedades)</span></h5>
+                        </div>
+                        <div class="dc-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label style="font-weight:600;font-size:13px;color:#1a1a2e;">Habitaciones mínimas</label>
+                                        <input type="number" name="preferred_bedrooms_min" class="form-control"
+                                               value="{{ old('preferred_bedrooms_min', $lead->preferred_bedrooms_min) }}" min="0" max="20" placeholder="Ej: 3">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label style="font-weight:600;font-size:13px;color:#1a1a2e;">Habitaciones máximas</label>
+                                        <input type="number" name="preferred_bedrooms_max" class="form-control"
+                                               value="{{ old('preferred_bedrooms_max', $lead->preferred_bedrooms_max) }}" min="0" max="20" placeholder="Ej: 5">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label style="font-weight:600;font-size:13px;color:#1a1a2e;">Zonas preferidas</label>
+                                <input type="text" name="preferred_zones" class="form-control"
+                                       value="{{ old('preferred_zones', is_array($lead->preferred_zones) ? implode(', ', $lead->preferred_zones) : '') }}"
+                                       placeholder="Ej: Escazú, Santa Ana, Heredia (separar por comas)">
+                                <small style="color:#aaa;font-size:11px;">Separar múltiples zonas con comas</small>
+                            </div>
+                            <div class="form-group">
+                                <label style="font-weight:600;font-size:13px;color:#1a1a2e;display:block;margin-bottom:8px;">Tipos de propiedad preferidos</label>
+                                <div style="display:flex;gap:16px;flex-wrap:wrap;">
+                                    @foreach(['house' => 'Casa', 'apartment' => 'Apartamento', 'land' => 'Terreno', 'commercial' => 'Comercial'] as $val => $lbl)
+                                    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:500;color:#555;">
+                                        <input type="checkbox" name="preferred_property_types[]" value="{{ $val }}"
+                                               {{ in_array($val, old('preferred_property_types', $lead->preferred_property_types ?? [])) ? 'checked' : '' }}
+                                               style="accent-color:#c2ac1f;">
+                                        {{ $lbl }}
+                                    </label>
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="d-flex justify-content-between">
                         <button type="submit" form="delete-form" class="btn btn-danger"
                             onclick="return confirm('¿Estás seguro de eliminar este lead?');">

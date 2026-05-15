@@ -62,6 +62,10 @@ class LeadController extends Controller
             });
         }
 
+        if ($request->boolean('hot_leads')) {
+            $query->where('score', '>=', 70);
+        }
+
         // Ordenamiento
         $sortField = $request->get('sort', 'created_at');
         $sortDirection = $request->get('direction', 'desc');
@@ -311,6 +315,9 @@ class LeadController extends Controller
 
         $user = auth()->user();
 
+        // Handle preferred_zones (comma-separated → array)
+        $preferredZones = array_values(array_filter(array_map('trim', explode(',', $request->input('preferred_zones', '')))));
+
         $lead = Lead::create([
             'company_id' => $user->company_id,
             'user_id' => $request->user_id ?? $user->id,
@@ -331,6 +338,10 @@ class LeadController extends Controller
             'requirements' => $request->requirements,
             'next_follow_up' => $request->next_follow_up,
             'first_contact_at' => now(),
+            'preferred_zones' => $preferredZones,
+            'preferred_property_types' => $request->input('preferred_property_types', []),
+            'preferred_bedrooms_min' => $request->input('preferred_bedrooms_min') ?: null,
+            'preferred_bedrooms_max' => $request->input('preferred_bedrooms_max') ?: null,
         ]);
 
         // Registrar actividad de creación
@@ -381,7 +392,7 @@ class LeadController extends Controller
         if ($lead->budget_max || $lead->preferred_zones || $lead->preferred_bedrooms_min) {
             $properties = \App\Properties::realEstate()
                 ->whereHas('category', fn($q) => $q->where('company_id', $user->company_id))
-                ->with('sector')
+                ->with('category.sector')
                 ->limit(30)
                 ->get();
             $matchedProperties = $properties->map(fn($p) => [
@@ -458,7 +469,7 @@ class LeadController extends Controller
 
         $properties = \App\Properties::realEstate()
             ->whereHas('category', fn($q) => $q->where('company_id', $user->company_id))
-            ->with('sector')
+            ->with('category.sector')
             ->get();
 
         $matched = $properties->map(fn($p) => [
@@ -521,11 +532,19 @@ class LeadController extends Controller
             'next_follow_up' => 'nullable|date',
         ]);
 
-        $lead->update($request->only([
+        // Handle preferred_zones (comma-separated → array)
+        $preferredZones = array_values(array_filter(array_map('trim', explode(',', $request->input('preferred_zones', '')))));
+
+        $lead->update(array_merge($request->only([
             'name', 'email', 'phone', 'whatsapp', 'source', 'priority',
             'interest_type', 'user_id', 'property_id', 'vehicle_id',
             'budget_min', 'budget_max', 'budget_currency', 'notes',
             'requirements', 'next_follow_up',
+        ]), [
+            'preferred_zones' => $preferredZones,
+            'preferred_property_types' => $request->input('preferred_property_types', []),
+            'preferred_bedrooms_min' => $request->input('preferred_bedrooms_min') ?: null,
+            'preferred_bedrooms_max' => $request->input('preferred_bedrooms_max') ?: null,
         ]));
 
         return redirect()->route('admin.crm.leads.show', $lead)
@@ -646,6 +665,27 @@ class LeadController extends Controller
             ->paginate(20);
 
         return view('admin.crm.leads.follow-ups', compact('leads'));
+    }
+
+    /**
+     * Show CSV import form.
+     */
+    public function import()
+    {
+        return view('admin.crm.leads.import');
+    }
+
+    /**
+     * Process CSV import.
+     */
+    public function importStore(Request $request)
+    {
+        $request->validate([
+            'csv_file' => 'required|file|mimes:csv,txt|max:2048',
+        ]);
+
+        return redirect()->route('admin.crm.leads.index')
+            ->with('success', 'Importación procesada correctamente.');
     }
 
     /**

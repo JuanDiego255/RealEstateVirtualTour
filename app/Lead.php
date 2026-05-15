@@ -221,6 +221,11 @@ class Lead extends Model
         return $this->hasMany(LeadTask::class);
     }
 
+    public function quotes()
+    {
+        return $this->hasMany(\App\Models\LeadQuote::class);
+    }
+
     // Scopes
     public function scopeByCompany($query, $companyId)
     {
@@ -361,6 +366,29 @@ class Lead extends Model
             'description' => $note,
         ]);
 
+        // Auto-create tasks from active templates configured for this stage
+        if ($this->company_id) {
+            \App\ActivityTemplate::where('company_id', $this->company_id)
+                ->where('stage', $newStatus)
+                ->where('is_active', true)
+                ->where('auto_create_task', true)
+                ->get()
+                ->each(function ($tpl) {
+                    \App\LeadTask::create([
+                        'company_id'  => $this->company_id,
+                        'lead_id'     => $this->id,
+                        'created_by'  => auth()->id() ?? $this->user_id,
+                        'assigned_to' => $this->user_id,
+                        'title'       => $tpl->name,
+                        'type'        => $tpl->type,
+                        'priority'    => 'medium',
+                        'status'      => 'pending',
+                        'description' => $tpl->body,
+                        'due_at'      => now()->addHours($tpl->task_due_hours ?? 24),
+                    ]);
+                });
+        }
+
         $this->recalculateScore();
     }
 
@@ -476,7 +504,7 @@ class Lead extends Model
         $score = 0;
 
         // Budget match (40 pts)
-        $price = $property->price ?? $property->sale_price ?? null;
+        $price = (float) $property->price;
         if ($price) {
             $inRange = (!$this->budget_min || $price >= $this->budget_min)
                     && (!$this->budget_max || $price <= $this->budget_max * 1.1);
@@ -485,7 +513,7 @@ class Lead extends Model
         }
 
         // Bedrooms match (30 pts)
-        $beds = $property->bedrooms ?? null;
+        $beds = (int) $property->rooms ?? null;
         if ($beds && ($this->preferred_bedrooms_min || $this->preferred_bedrooms_max)) {
             $minOk = !$this->preferred_bedrooms_min || $beds >= $this->preferred_bedrooms_min;
             $maxOk = !$this->preferred_bedrooms_max || $beds <= $this->preferred_bedrooms_max;
@@ -498,7 +526,7 @@ class Lead extends Model
         // Zone/sector match (30 pts)
         $zones = $this->preferred_zones ?? [];
         if (!empty($zones)) {
-            $propZone = $property->sector?->name ?? $property->sector ?? null;
+            $propZone = $property->category?->sector?->name ?? null;
             if ($propZone && collect($zones)->contains(fn($z) => stripos($propZone, $z) !== false)) {
                 $score += 30;
             }
