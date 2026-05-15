@@ -197,7 +197,7 @@
                                     </td>
                                     <td>
                                         <span class="crm-badge {{ $task->priority }}">
-                                            {{ \App\LeadTask::getPriorities()[$task->priority] ?? $task->priority }}
+                                            {{ \App\LeadTask::getPriorities()[$task->priority]['label'] }}
                                         </span>
                                     </td>
                                     <td>
