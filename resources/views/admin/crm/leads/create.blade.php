@@ -126,12 +126,24 @@
                             @if($vehicles->count() > 0)
                             <div class="form-group">
                                 <label>Vehículo de Interés</label>
-                                <select name="vehicle_id" class="form-control">
+                                <select name="vehicle_id" id="vehicle_id_select" class="form-control">
                                     <option value="">-- Ninguno --</option>
                                     @foreach($vehicles as $vehicle)
-                                        <option value="{{ $vehicle->id }}" {{ old('vehicle_id') == $vehicle->id ? 'selected' : '' }}>{{ $vehicle->name }}</option>
+                                        @php $imgUrl = $vehicle->images->first()?->url ?? ($vehicle->image ? route('file', $vehicle->image) : ''); @endphp
+                                        <option value="{{ $vehicle->id }}"
+                                            data-img="{{ $imgUrl }}"
+                                            {{ old('vehicle_id') == $vehicle->id ? 'selected' : '' }}>
+                                            @if($vehicle->brand || $vehicle->year)
+                                                {{ trim($vehicle->brand . ' ' . $vehicle->model) }} ({{ $vehicle->year }}) — {{ $vehicle->name }}
+                                            @else
+                                                {{ $vehicle->name }}
+                                            @endif
+                                        </option>
                                     @endforeach
                                 </select>
+                                <div id="vehicle-preview" style="margin-top:8px;display:none;">
+                                    <img id="vehicle-preview-img" src="" alt="Vista previa" style="width:50px;height:50px;object-fit:cover;border-radius:6px;border:1px solid #ddd;">
+                                </div>
                             </div>
                             @endif
                         </div>

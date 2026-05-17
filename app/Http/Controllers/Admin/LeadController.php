@@ -284,7 +284,9 @@ class LeadController extends Controller
 
         $vehicles = Properties::vehicles()->whereHas('category', function ($q) use ($user) {
             $q->where('company_id', $user->company_id);
-        })->whereIn('status', ['available', 'reserved', 'negotiating'])->get();
+        })->whereIn('status', ['available', 'reserved', 'negotiating'])
+          ->with(['images' => fn($q) => $q->orderBy('sort_order')->limit(1)])
+          ->get();
 
         return view('admin.crm.leads.create', compact('agents', 'properties', 'vehicles'));
     }
@@ -523,7 +525,8 @@ class LeadController extends Controller
 
         $vehicles = Properties::vehicles()->whereHas('category', function ($q) use ($user) {
             $q->where('company_id', $user->company_id);
-        })->get();
+        })->with(['images' => fn($q) => $q->orderBy('sort_order')->limit(1)])
+          ->get();
 
         return view('admin.crm.leads.edit', compact('lead', 'agents', 'properties', 'vehicles'));
     }
