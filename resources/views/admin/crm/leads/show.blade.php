@@ -605,8 +605,7 @@
                     class="action-btn primary">
                     <i class="fa fa-edit"></i> Editar
                 </a>
-                <a href="{{ route('admin.crm.appointments.create', ['lead_id' => $lead->id]) }}?_back={{ urlencode(url()->current()) }}"
-                    class="action-btn success">
+                <a href="#" class="action-btn secondary" data-toggle="modal" data-target="#modal-nueva-cita">
                     <i class="fa fa-calendar-plus-o"></i> Nueva Cita
                 </a>
                 @if (isset($portalUrl))
@@ -780,7 +779,7 @@
                         </div>
                         <div class="dc-body">
                             @foreach ($lead->appointments as $appointment)
-                                <div class="appt-item">
+                                <div class="appt-item" style="cursor:pointer;" data-toggle="modal" data-target="#modal-cita-{{ $appointment->id }}">
                                     <div>
                                         <div class="ai-title">{{ $appointment->title }}</div>
                                         <div class="ai-date"><i class="fa fa-clock-o"></i>
@@ -874,8 +873,7 @@
                     <div class="dashboard-card" style="margin-bottom:18px;">
                         <div class="dc-header">
                             <h5><i class="fa fa-tasks"></i> Tareas Pendientes</h5>
-                            <a href="{{ route('admin.crm.tasks.create', ['lead_id' => $lead->id]) }}"
-                                class="action-btn success" style="padding:4px 10px;font-size:11px;">
+                            <a href="#" class="action-btn primary" data-toggle="modal" data-target="#modal-nueva-tarea" style="padding:4px 10px;font-size:11px;">
                                 <i class="fa fa-plus"></i>
                             </a>
                         </div>
@@ -916,8 +914,7 @@
                     <div class="dashboard-card" style="margin-bottom:18px;">
                         <div class="dc-header">
                             <h5><i class="fa fa-tasks"></i> Tareas</h5>
-                            <a href="{{ route('admin.crm.tasks.create', ['lead_id' => $lead->id]) }}"
-                                class="action-btn success" style="padding:4px 10px;font-size:11px;">
+                            <a href="#" class="action-btn primary" data-toggle="modal" data-target="#modal-nueva-tarea" style="padding:4px 10px;font-size:11px;">
                                 <i class="fa fa-plus"></i> Nueva
                             </a>
                         </div>
@@ -931,8 +928,7 @@
                 <div class="dashboard-card" style="margin-bottom:18px;">
                     <div class="dc-header">
                         <h5><i class="fa fa-file-text-o"></i> Cotizaciones</h5>
-                        <a href="{{ route('admin.crm.quotes.create', ['lead_id' => $lead->id]) }}"
-                            class="action-btn primary" style="font-size:12px;padding:5px 10px;">
+                        <a href="#" class="action-btn primary" data-toggle="modal" data-target="#modal-nueva-cotizacion" style="font-size:12px;padding:5px 10px;">
                             <i class="fa fa-plus"></i> Nueva Cotización
                         </a>
                     </div>
@@ -1067,6 +1063,253 @@
             </div>
         </div>
     </div>
+
+{{-- ══════════════════════════════════════════════════════
+     MODALS: Nueva Tarea / Nueva Cita / Nueva Cotización / Detalle Citas
+════════════════════════════════════════════════════════ --}}
+
+{{-- Modal: Nueva Tarea --}}
+<div class="modal fade" id="modal-nueva-tarea" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content" style="border-radius:12px; border:none; box-shadow:0 10px 40px rgba(0,0,0,0.15);">
+            <div class="modal-header" style="background:#1a1a2e; border-radius:12px 12px 0 0; padding:16px 20px;">
+                <h5 class="modal-title" style="color:#fff; font-weight:700;"><i class="fa fa-tasks" style="color:#c2ac1f;"></i> Nueva Tarea</h5>
+                <button type="button" class="close" data-dismiss="modal" style="color:#fff; opacity:1;"><span>&times;</span></button>
+            </div>
+            <form method="POST" action="{{ route('admin.crm.tasks.store') }}">
+                @csrf
+                <input type="hidden" name="lead_id" value="{{ $lead->id }}">
+                <input type="hidden" name="_back" value="{{ url()->current() }}">
+                <div class="modal-body" style="padding:24px;">
+                    <div class="form-group mb-3">
+                        <label style="font-weight:600; font-size:13px; color:#444;">Título <span class="text-danger">*</span></label>
+                        <input type="text" name="title" class="form-control" required placeholder="Ej: Llamar al cliente para agendar visita" style="border-radius:8px;">
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label style="font-weight:600; font-size:13px; color:#444;">Tipo</label>
+                                <select name="type" class="form-control" style="border-radius:8px;">
+                                    @foreach(\App\LeadTask::getTypes() as $key => $info)
+                                        <option value="{{ $key }}" {{ $key === 'call' ? 'selected' : '' }}>{{ $info['label'] }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label style="font-weight:600; font-size:13px; color:#444;">Prioridad</label>
+                                <select name="priority" class="form-control" style="border-radius:8px;">
+                                    @foreach(\App\LeadTask::getPriorities() as $key => $info)
+                                        <option value="{{ $key }}" {{ $key === 'medium' ? 'selected' : '' }}>{{ is_array($info) ? $info['label'] : $info }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label style="font-weight:600; font-size:13px; color:#444;">Fecha límite</label>
+                        <input type="datetime-local" name="due_at" class="form-control" style="border-radius:8px;">
+                    </div>
+                    <div class="form-group mb-0">
+                        <label style="font-weight:600; font-size:13px; color:#444;">Descripción</label>
+                        <textarea name="description" rows="3" class="form-control" style="border-radius:8px;" placeholder="Detalles o instrucciones..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-top:1px solid #f0f0f0; padding:14px 20px; gap:8px; display:flex; justify-content:flex-end;">
+                    <button type="button" class="action-btn secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="action-btn" style="background:linear-gradient(135deg,#c2ac1f,#a89617); color:#000; font-weight:700;">
+                        <i class="fa fa-save"></i> Guardar Tarea
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- Modal: Nueva Cita --}}
+<div class="modal fade" id="modal-nueva-cita" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content" style="border-radius:12px; border:none; box-shadow:0 10px 40px rgba(0,0,0,0.15);">
+            <div class="modal-header" style="background:#1a1a2e; border-radius:12px 12px 0 0; padding:16px 20px;">
+                <h5 class="modal-title" style="color:#fff; font-weight:700;"><i class="fa fa-calendar-plus-o" style="color:#c2ac1f;"></i> Nueva Cita</h5>
+                <button type="button" class="close" data-dismiss="modal" style="color:#fff; opacity:1;"><span>&times;</span></button>
+            </div>
+            <form method="POST" action="{{ route('admin.crm.appointments.store') }}">
+                @csrf
+                <input type="hidden" name="lead_id" value="{{ $lead->id }}">
+                <input type="hidden" name="user_id" value="{{ $lead->user_id }}">
+                <div class="modal-body" style="padding:24px;">
+                    <div class="form-group mb-3">
+                        <label style="font-weight:600; font-size:13px; color:#444;">Título <span class="text-danger">*</span></label>
+                        <input type="text" name="title" class="form-control" required placeholder="Ej: Visita a propiedad en Escazú" style="border-radius:8px;">
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group mb-3">
+                                <label style="font-weight:600; font-size:13px; color:#444;">Tipo</label>
+                                <select name="type" class="form-control" style="border-radius:8px;">
+                                    @foreach(\App\Appointment::getTypes() as $key => $label)
+                                        <option value="{{ $key }}">{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group mb-3">
+                                <label style="font-weight:600; font-size:13px; color:#444;">Inicio <span class="text-danger">*</span></label>
+                                <input type="datetime-local" name="starts_at" class="form-control" required style="border-radius:8px;">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group mb-3">
+                                <label style="font-weight:600; font-size:13px; color:#444;">Fin</label>
+                                <input type="datetime-local" name="ends_at" class="form-control" style="border-radius:8px;">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label style="font-weight:600; font-size:13px; color:#444;">Descripción</label>
+                        <textarea name="description" rows="2" class="form-control" style="border-radius:8px;" placeholder="Notas sobre la cita..."></textarea>
+                    </div>
+                    @if(isset($properties) && $properties->count() > 0)
+                    <div class="form-group mb-0">
+                        <label style="font-weight:600; font-size:13px; color:#444;">Propiedad / Vehículo vinculado</label>
+                        <select name="property_id" class="form-control" style="border-radius:8px;">
+                            <option value="">— Ninguno —</option>
+                            @foreach($properties->take(50) as $prop)
+                                <option value="{{ $prop->id }}" {{ $lead->property_id == $prop->id ? 'selected' : '' }}>{{ $prop->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    @endif
+                </div>
+                <div class="modal-footer" style="border-top:1px solid #f0f0f0; padding:14px 20px; display:flex; justify-content:flex-end; gap:8px;">
+                    <button type="button" class="action-btn secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="action-btn" style="background:linear-gradient(135deg,#c2ac1f,#a89617); color:#000; font-weight:700;">
+                        <i class="fa fa-save"></i> Guardar Cita
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- Modal: Nueva Cotización --}}
+<div class="modal fade" id="modal-nueva-cotizacion" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content" style="border-radius:12px; border:none; box-shadow:0 10px 40px rgba(0,0,0,0.15);">
+            <div class="modal-header" style="background:#1a1a2e; border-radius:12px 12px 0 0; padding:16px 20px;">
+                <h5 class="modal-title" style="color:#fff; font-weight:700;"><i class="fa fa-file-text-o" style="color:#c2ac1f;"></i> Nueva Cotización</h5>
+                <button type="button" class="close" data-dismiss="modal" style="color:#fff; opacity:1;"><span>&times;</span></button>
+            </div>
+            <form method="POST" action="{{ route('admin.crm.quotes.store') }}">
+                @csrf
+                <input type="hidden" name="lead_id" value="{{ $lead->id }}">
+                <input type="hidden" name="validity_days" value="30">
+                <input type="hidden" name="currency" value="CRC">
+                <div class="modal-body" style="padding:24px;">
+                    <div class="form-group mb-3">
+                        <label style="font-weight:600; font-size:13px; color:#444;">Título <span class="text-danger">*</span></label>
+                        <input type="text" name="title" class="form-control" required placeholder="Ej: Cotización Casa Escazú" style="border-radius:8px;">
+                    </div>
+                    <div class="form-group mb-3">
+                        <label style="font-weight:600; font-size:13px; color:#444;">Tipo</label>
+                        <select name="quote_type" class="form-control" style="border-radius:8px;">
+                            <option value="property">Inmueble / Propiedad</option>
+                            <option value="vehicle">Vehículo</option>
+                        </select>
+                    </div>
+                    <div class="form-group mb-0">
+                        <label style="font-weight:600; font-size:13px; color:#444;">Notas iniciales</label>
+                        <textarea name="notes" rows="2" class="form-control" style="border-radius:8px;" placeholder="Observaciones..."></textarea>
+                    </div>
+                    <p style="font-size:12px; color:#888; margin-top:10px; margin-bottom:0;"><i class="fa fa-info-circle"></i> Podrá agregar ítems y detalles después de crear la cotización.</p>
+                </div>
+                <div class="modal-footer" style="border-top:1px solid #f0f0f0; padding:14px 20px; display:flex; justify-content:flex-end; gap:8px;">
+                    <button type="button" class="action-btn secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="action-btn" style="background:linear-gradient(135deg,#c2ac1f,#a89617); color:#000; font-weight:700;">
+                        <i class="fa fa-save"></i> Crear Cotización
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- Modals: Detalle de Citas --}}
+@foreach($lead->appointments as $appointment)
+<div class="modal fade" id="modal-cita-{{ $appointment->id }}" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content" style="border-radius:12px; border:none; box-shadow:0 10px 40px rgba(0,0,0,0.15);">
+            <div class="modal-header" style="background:#1a1a2e; border-radius:12px 12px 0 0; padding:16px 20px;">
+                <h5 class="modal-title" style="color:#fff; font-weight:700;">
+                    <i class="fa fa-calendar" style="color:#c2ac1f;"></i>
+                    {{ $appointment->title }}
+                </h5>
+                <button type="button" class="close" data-dismiss="modal" style="color:#fff; opacity:1;"><span>&times;</span></button>
+            </div>
+            <div class="modal-body" style="padding:24px;">
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+                    <div>
+                        <div style="font-size:11px; color:#888; font-weight:600; text-transform:uppercase; margin-bottom:4px;">Tipo</div>
+                        <div style="font-size:14px; color:#333;">{{ $appointment->type_label }}</div>
+                    </div>
+                    <div>
+                        <div style="font-size:11px; color:#888; font-weight:600; text-transform:uppercase; margin-bottom:4px;">Estado</div>
+                        <span class="crm-badge {{ $appointment->status }}">{{ $appointment->status_label }}</span>
+                    </div>
+                    <div>
+                        <div style="font-size:11px; color:#888; font-weight:600; text-transform:uppercase; margin-bottom:4px;">Inicio</div>
+                        <div style="font-size:14px; color:#333;">{{ $appointment->starts_at->format('d/m/Y H:i') }}</div>
+                    </div>
+                    <div>
+                        <div style="font-size:11px; color:#888; font-weight:600; text-transform:uppercase; margin-bottom:4px;">Fin</div>
+                        <div style="font-size:14px; color:#333;">{{ $appointment->ends_at ? $appointment->ends_at->format('d/m/Y H:i') : '—' }}</div>
+                    </div>
+                </div>
+                @if($appointment->location ?? $appointment->address ?? null)
+                <div style="margin-bottom:12px;">
+                    <div style="font-size:11px; color:#888; font-weight:600; text-transform:uppercase; margin-bottom:4px;">Ubicación</div>
+                    <div style="font-size:13px; color:#333;">{{ $appointment->location ?? $appointment->address }}</div>
+                </div>
+                @endif
+                @if($appointment->description)
+                <div style="margin-bottom:12px;">
+                    <div style="font-size:11px; color:#888; font-weight:600; text-transform:uppercase; margin-bottom:4px;">Descripción</div>
+                    <div style="font-size:13px; color:#333; line-height:1.5;">{{ $appointment->description }}</div>
+                </div>
+                @endif
+                @if($appointment->outcome_notes ?? null)
+                <div style="background:#f0f9ff; border-left:4px solid #3b82f6; border-radius:6px; padding:10px 14px; margin-top:12px; font-size:13px;">
+                    <strong style="color:#1d4ed8;">Resultado:</strong> {{ $appointment->outcome_notes }}
+                </div>
+                @endif
+            </div>
+            <div class="modal-footer" style="border-top:1px solid #f0f0f0; padding:14px 20px; display:flex; gap:8px; flex-wrap:wrap;">
+                <a href="{{ route('admin.crm.appointments.edit', $appointment) }}" class="action-btn secondary" style="padding:6px 14px; font-size:13px;">
+                    <i class="fa fa-pencil"></i> Editar
+                </a>
+                @if($appointment->status === 'scheduled')
+                <form method="POST" action="{{ route('admin.crm.appointments.complete', $appointment) }}" style="display:inline;">
+                    @csrf @method('PATCH')
+                    <button type="submit" class="action-btn" style="background:#22c55e; color:#fff; padding:6px 14px; font-size:13px;">
+                        <i class="fa fa-check"></i> Completar
+                    </button>
+                </form>
+                <form method="POST" action="{{ route('admin.crm.appointments.cancel', $appointment) }}" style="display:inline;" onsubmit="return confirm('¿Cancelar esta cita?');">
+                    @csrf @method('PATCH')
+                    <button type="submit" class="action-btn danger" style="padding:6px 14px; font-size:13px;">
+                        <i class="fa fa-times"></i> Cancelar
+                    </button>
+                </form>
+                @endif
+                <button type="button" class="action-btn secondary" data-dismiss="modal" style="margin-left:auto;">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+@endforeach
 
 {{-- Modal: Eliminar Lead con motivo de auditoría --}}
 <div class="modal fade" id="modal-eliminar-lead" tabindex="-1" role="dialog">
