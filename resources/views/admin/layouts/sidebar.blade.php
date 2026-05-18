@@ -106,7 +106,7 @@
                             </li>
                         @endif
 
-                        {{-- CRM + Agenda --}}
+                        {{-- CRM --}}
                         @if ($u->canAccessModule('crm') && $hasAccess)
                             @php
                                 $dueReminders  = \App\Reminder::byCompany($u->company_id)->due()->count();
@@ -115,95 +115,94 @@
                                 $crmActive     = Request::routeIs('admin.crm.*');
                             @endphp
 
-                            {{-- Dashboard de Hoy --}}
-                            <li class="{{ Request::routeIs('admin.crm.dashboard') ? 'active' : '' }}">
-                                <a href="{{ route('admin.crm.dashboard') }}">
-                                    <i class="fa fa-sun-o"></i><span>Dashboard Hoy</span>
+                            <li class="{{ $crmActive ? 'active' : '' }}">
+                                <a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
+                                    <i class="fa fa-address-book"></i><span>CRM</span>
                                     @if($pendingAlerts > 0)
                                         <span class="badge badge-warning float-right">{{ $pendingAlerts }}</span>
                                     @endif
                                 </a>
-                            </li>
-
-                            {{-- Gestión: Leads, Pipeline, Agenda, Reportes --}}
-                            <li class="{{ ($crmActive && !Request::routeIs('admin.crm.dashboard') && !Request::routeIs('admin.crm.quotes.*') && !Request::routeIs('admin.crm.reminders.*') && !Request::routeIs('admin.crm.tasks.*') && !Request::routeIs('admin.crm.pipeline-rules.*') && !Request::routeIs('admin.crm.leads.audit')) ? 'active' : '' }}">
-                                <a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
-                                    <i class="fa fa-th-large"></i><span>Gestión</span>
-                                </a>
                                 <ul>
-                                    <li class="{{ Request::routeIs('admin.crm.leads.*') && !Request::routeIs('admin.crm.leads.pipeline') && !Request::routeIs('admin.crm.leads.audit') ? 'active' : '' }}">
-                                        <a href="{{ route('admin.crm.leads.index') }}"><i class="fa fa-users"></i> Leads</a>
-                                    </li>
-                                    <li class="{{ Request::routeIs('admin.crm.leads.pipeline') ? 'active' : '' }}">
-                                        <a href="{{ route('admin.crm.leads.pipeline') }}"><i class="fa fa-columns"></i> Pipeline</a>
-                                    </li>
-                                    <li class="{{ Request::routeIs('admin.crm.appointments.*') ? 'active' : '' }}">
-                                        <a href="{{ route('admin.crm.appointments.index') }}"><i class="fa fa-calendar"></i> Agenda</a>
-                                    </li>
-                                    <li class="{{ Request::routeIs('admin.crm.reports.*') ? 'active' : '' }}">
-                                        <a href="{{ route('admin.crm.reports.index') }}"><i class="fa fa-bar-chart"></i> Reportes</a>
-                                    </li>
-                                </ul>
-                            </li>
-
-                            {{-- Operaciones: Cotizaciones, Citas, Recordatorios, Tareas --}}
-                            <li class="{{ (Request::routeIs('admin.crm.quotes.*') || Request::routeIs('admin.crm.reminders.*') || Request::routeIs('admin.crm.tasks.*')) ? 'active' : '' }}">
-                                <a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
-                                    <i class="fa fa-briefcase"></i><span>Operaciones</span>
-                                </a>
-                                <ul>
-                                    <li class="{{ Request::routeIs('admin.crm.quotes.*') ? 'active' : '' }}">
-                                        <a href="{{ route('admin.crm.quotes.index') }}"><i class="fa fa-file-text-o"></i> Cotizaciones</a>
-                                    </li>
-                                    <li class="{{ Request::routeIs('admin.crm.appointments.*') ? 'active' : '' }}">
-                                        <a href="{{ route('admin.crm.appointments.index') }}"><i class="fa fa-calendar-o"></i> Citas</a>
-                                    </li>
-                                    <li class="{{ Request::routeIs('admin.crm.reminders.*') ? 'active' : '' }}">
-                                        <a href="{{ route('admin.crm.reminders.index') }}">
-                                            <i class="fa fa-bell"></i> Recordatorios
-                                            @if ($dueReminders > 0)
-                                                <span class="badge badge-warning">{{ $dueReminders }}</span>
+                                    {{-- Dashboard de Hoy --}}
+                                    <li class="{{ Request::routeIs('admin.crm.dashboard') ? 'active' : '' }}">
+                                        <a href="{{ route('admin.crm.dashboard') }}">
+                                            <i class="fa fa-sun-o"></i> Dashboard Hoy
+                                            @if($pendingAlerts > 0)
+                                                <span class="badge badge-warning">{{ $pendingAlerts }}</span>
                                             @endif
                                         </a>
                                     </li>
-                                    <li class="{{ Request::routeIs('admin.crm.tasks.*') ? 'active' : '' }}">
-                                        <a href="{{ route('admin.crm.tasks.index') }}">
-                                            <i class="fa fa-check-square-o"></i> Tareas
-                                            @if($overdueTasks > 0)
-                                                <span class="badge badge-danger">{{ $overdueTasks }}</span>
-                                            @endif
-                                        </a>
-                                    </li>
-                                </ul>
-                            </li>
 
-                            {{-- Alertas --}}
-                            <li class="{{ Request::routeIs('admin.crm.dashboard') && request('alertas') ? 'active' : '' }}">
-                                <a href="{{ route('admin.crm.dashboard') }}">
-                                    <i class="fa fa-bell{{ $pendingAlerts > 0 ? '' : '-slash-o' }}" style="{{ $pendingAlerts > 0 ? 'color:#ef4444;' : '' }}"></i>
-                                    <span style="{{ $pendingAlerts > 0 ? 'color:#ef4444;font-weight:600;' : '' }}">Alertas</span>
-                                    @if($pendingAlerts > 0)
-                                        <span class="badge badge-danger float-right">{{ $pendingAlerts }}</span>
+                                    {{-- Gestión: Leads, Pipeline, Agenda, Reportes --}}
+                                    <li class="{{ ($crmActive && !Request::routeIs('admin.crm.dashboard') && !Request::routeIs('admin.crm.quotes.*') && !Request::routeIs('admin.crm.reminders.*') && !Request::routeIs('admin.crm.tasks.*') && !Request::routeIs('admin.crm.pipeline-rules.*') && !Request::routeIs('admin.crm.leads.audit')) ? 'active' : '' }}">
+                                        <a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
+                                            <i class="fa fa-th-large"></i> Gestión
+                                        </a>
+                                        <ul>
+                                            <li class="{{ Request::routeIs('admin.crm.leads.*') && !Request::routeIs('admin.crm.leads.pipeline') && !Request::routeIs('admin.crm.leads.audit') ? 'active' : '' }}">
+                                                <a href="{{ route('admin.crm.leads.index') }}"><i class="fa fa-users"></i> Leads</a>
+                                            </li>
+                                            <li class="{{ Request::routeIs('admin.crm.leads.pipeline') ? 'active' : '' }}">
+                                                <a href="{{ route('admin.crm.leads.pipeline') }}"><i class="fa fa-columns"></i> Pipeline</a>
+                                            </li>
+                                            <li class="{{ Request::routeIs('admin.crm.appointments.*') ? 'active' : '' }}">
+                                                <a href="{{ route('admin.crm.appointments.index') }}"><i class="fa fa-calendar"></i> Agenda</a>
+                                            </li>
+                                            <li class="{{ Request::routeIs('admin.crm.reports.*') ? 'active' : '' }}">
+                                                <a href="{{ route('admin.crm.reports.index') }}"><i class="fa fa-bar-chart"></i> Reportes</a>
+                                            </li>
+                                        </ul>
+                                    </li>
+
+                                    {{-- Operaciones: Cotizaciones, Citas, Recordatorios, Tareas --}}
+                                    <li class="{{ (Request::routeIs('admin.crm.quotes.*') || Request::routeIs('admin.crm.reminders.*') || Request::routeIs('admin.crm.tasks.*')) ? 'active' : '' }}">
+                                        <a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
+                                            <i class="fa fa-briefcase"></i> Operaciones
+                                        </a>
+                                        <ul>
+                                            <li class="{{ Request::routeIs('admin.crm.quotes.*') ? 'active' : '' }}">
+                                                <a href="{{ route('admin.crm.quotes.index') }}"><i class="fa fa-file-text-o"></i> Cotizaciones</a>
+                                            </li>
+                                            <li class="{{ Request::routeIs('admin.crm.appointments.*') ? 'active' : '' }}">
+                                                <a href="{{ route('admin.crm.appointments.index') }}"><i class="fa fa-calendar-o"></i> Citas</a>
+                                            </li>
+                                            <li class="{{ Request::routeIs('admin.crm.reminders.*') ? 'active' : '' }}">
+                                                <a href="{{ route('admin.crm.reminders.index') }}">
+                                                    <i class="fa fa-bell"></i> Recordatorios
+                                                    @if ($dueReminders > 0)
+                                                        <span class="badge badge-warning">{{ $dueReminders }}</span>
+                                                    @endif
+                                                </a>
+                                            </li>
+                                            <li class="{{ Request::routeIs('admin.crm.tasks.*') ? 'active' : '' }}">
+                                                <a href="{{ route('admin.crm.tasks.index') }}">
+                                                    <i class="fa fa-check-square-o"></i> Tareas
+                                                    @if($overdueTasks > 0)
+                                                        <span class="badge badge-danger">{{ $overdueTasks }}</span>
+                                                    @endif
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </li>
+
+                                    {{-- Configuración (solo company_admin / super_admin) --}}
+                                    @if($u->role === 'company_admin' || $u->isSuperAdmin())
+                                    <li class="{{ Request::routeIs('admin.crm.pipeline-rules.*') || Request::routeIs('admin.crm.leads.audit') ? 'active' : '' }}">
+                                        <a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
+                                            <i class="fa fa-cog"></i> Configuración
+                                        </a>
+                                        <ul>
+                                            <li class="{{ Request::routeIs('admin.crm.pipeline-rules.*') ? 'active' : '' }}">
+                                                <a href="{{ route('admin.crm.pipeline-rules.index') }}"><i class="fa fa-sitemap"></i> Reglas de Pipeline</a>
+                                            </li>
+                                            <li class="{{ Request::routeIs('admin.crm.leads.audit') ? 'active' : '' }}">
+                                                <a href="{{ route('admin.crm.leads.audit') }}"><i class="fa fa-shield"></i> Auditoría Leads</a>
+                                            </li>
+                                        </ul>
+                                    </li>
                                     @endif
-                                </a>
-                            </li>
-
-                            {{-- Configuración (solo company_admin / super_admin) --}}
-                            @if($u->role === 'company_admin' || $u->isSuperAdmin())
-                            <li class="{{ Request::routeIs('admin.crm.pipeline-rules.*') || Request::routeIs('admin.crm.leads.audit') ? 'active' : '' }}">
-                                <a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
-                                    <i class="fa fa-cog"></i><span>Configuración</span>
-                                </a>
-                                <ul>
-                                    <li class="{{ Request::routeIs('admin.crm.pipeline-rules.*') ? 'active' : '' }}">
-                                        <a href="{{ route('admin.crm.pipeline-rules.index') }}"><i class="fa fa-sitemap"></i> Reglas de Pipeline</a>
-                                    </li>
-                                    <li class="{{ Request::routeIs('admin.crm.leads.audit') ? 'active' : '' }}">
-                                        <a href="{{ route('admin.crm.leads.audit') }}"><i class="fa fa-shield"></i> Auditoría Leads</a>
-                                    </li>
                                 </ul>
                             </li>
-                            @endif
                         @endif
 
                         {{-- Métricas de Agentes (company_admin y super_admin) --}}
