@@ -557,6 +557,56 @@
             color: #bbb;
             margin-top: 4px;
         }
+
+        /* ── Lead Tabs ── */
+        .crm-lead-tabs {
+            border-bottom: 2px solid #f0f0f0;
+            margin-bottom: 22px;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+        .crm-lead-tabs .nav-link {
+            border: none;
+            border-radius: 10px 10px 0 0;
+            padding: 10px 18px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #888;
+            background: transparent;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all .15s;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+        }
+        .crm-lead-tabs .nav-link:hover {
+            color: #1a1a2e;
+            background: #f8f9fa;
+        }
+        .crm-lead-tabs .nav-link.active {
+            color: #1a1a2e;
+            background: #fff;
+            border-bottom: 3px solid #c2ac1f;
+        }
+        .crm-lead-tabs .tab-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 18px;
+            height: 18px;
+            border-radius: 9px;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 0 5px;
+            background: #e5e7eb;
+            color: #6b7280;
+        }
+        .crm-lead-tabs .tab-badge.danger {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+        .crm-tab-content .tab-pane { padding-top: 4px; }
     </style>
 
     <div class="lead-detail-wrap">
@@ -638,294 +688,406 @@
             </div>
         </div>
 
-        {{-- ── Detail Grid ── --}}
-        <div class="detail-grid">
+        {{-- ── Tab Nav ── --}}
+        @php
+            $overdueTaskCount = isset($pendingTasks) ? $pendingTasks->where('is_overdue', true)->count() : 0;
+            $activeRemCount   = $lead->reminders->count();
+            $urgentCount      = $overdueTaskCount + ($lead->appointments->where('status','scheduled')->count());
+            $quotesCount      = $lead->quotes()->count();
+        @endphp
+        <ul class="nav crm-lead-tabs" id="leadTabs" role="tablist">
+            <li class="nav-item">
+                <a class="nav-link" id="tab-resumen-lnk" data-toggle="tab" href="#tab-resumen" role="tab">
+                    <i class="fa fa-user"></i> Resumen
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="tab-actividad-lnk" data-toggle="tab" href="#tab-actividad" role="tab">
+                    <i class="fa fa-history"></i> Actividad
+                    @if($lead->activities->count() > 0)
+                        <span class="tab-badge">{{ $lead->activities->count() }}</span>
+                    @endif
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="tab-citas-lnk" data-toggle="tab" href="#tab-citas" role="tab">
+                    <i class="fa fa-calendar"></i> Citas & Tareas
+                    @if($urgentCount > 0)
+                        <span class="tab-badge danger">{{ $urgentCount }}</span>
+                    @endif
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="tab-cotizaciones-lnk" data-toggle="tab" href="#tab-cotizaciones" role="tab">
+                    <i class="fa fa-file-text-o"></i> Cotizaciones
+                    @if($quotesCount > 0)
+                        <span class="tab-badge">{{ $quotesCount }}</span>
+                    @endif
+                </a>
+            </li>
+        </ul>
 
-            {{-- ────── Columna izquierda ────── --}}
-            <div>
+        <div class="tab-content crm-tab-content" id="leadTabContent">
 
-                {{-- Contacto --}}
-                <div class="dashboard-card">
-                    <div class="dc-header">
-                        <h5><i class="fa fa-address-card-o"></i> Contacto</h5>
-                    </div>
-                    <div class="dc-body">
-                        <table class="detail-list">
-                            @if ($lead->email)
-                                <tr>
-                                    <td><i class="fa fa-envelope" style="color:#aaa;"></i> Email</td>
-                                    <td><a href="mailto:{{ $lead->email }}"
-                                            style="color:#1a1a2e;">{{ $lead->email }}</a></td>
-                                </tr>
-                            @endif
-                            @if ($lead->phone)
-                                <tr>
-                                    <td><i class="fa fa-phone" style="color:#aaa;"></i> Teléfono</td>
-                                    <td><a href="tel:{{ $lead->phone }}" style="color:#1a1a2e;">{{ $lead->phone }}</a>
-                                    </td>
-                                </tr>
-                            @endif
-                            @if ($lead->whatsapp)
-                                <tr>
-                                    <td><i class="fa fa-whatsapp" style="color:#25d366;"></i> WhatsApp</td>
-                                    <td><a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $lead->whatsapp) }}"
-                                            target="_blank" style="color:#25d366;">{{ $lead->whatsapp }}</a></td>
-                                </tr>
-                            @endif
-                        </table>
-                    </div>
-                </div>
-
-                {{-- Detalles --}}
-                <div class="dashboard-card">
-                    <div class="dc-header">
-                        <h5><i class="fa fa-info-circle"></i> Detalles</h5>
-                    </div>
-                    <div class="dc-body">
-                        <table class="detail-list">
-                            <tr>
-                                <td>Fuente</td>
-                                <td>{{ $lead->source_label }}</td>
-                            </tr>
-                            <tr>
-                                <td>Interés</td>
-                                <td>{{ $lead->interest_type_label }}</td>
-                            </tr>
-                            <tr>
-                                <td>Presupuesto</td>
-                                <td>{{ $lead->budget_range }}</td>
-                            </tr>
-                            @if ($lead->property)
-                                <tr>
-                                    <td>Propiedad</td>
-                                    <td>{{ $lead->property->title }}</td>
-                                </tr>
-                            @endif
-                            @if ($lead->vehicle)
-                                <tr>
-                                    <td>Vehículo</td>
-                                    <td>{{ $lead->vehicle->name }}</td>
-                                </tr>
-                            @endif
-                            <tr>
-                                <td>Primer contacto</td>
-                                <td>{{ $lead->first_contact_at ? $lead->first_contact_at->format('d/m/Y H:i') : '—' }}</td>
-                            </tr>
-                            <tr>
-                                <td>Último contacto</td>
-                                <td>{{ $lead->last_contact_at ? $lead->last_contact_at->format('d/m/Y H:i') : '—' }}</td>
-                            </tr>
-                        </table>
-                    </div>
-                </div>
-
-                {{-- Cambiar Estado --}}
-                <div class="dashboard-card">
-                    <div class="dc-header">
-                        <h5><i class="fa fa-exchange"></i> Cambiar Estado</h5>
-                    </div>
-                    <div class="dc-body">
-                        <form action="{{ route('admin.crm.leads.update-status', $lead) }}" method="POST">
-                            @csrf
-                            @method('PATCH')
-                            <select name="status" class="status-select">
-                                @foreach (\App\Lead::getStatuses() as $key => $label)
-                                    <option value="{{ $key }}" {{ $lead->status == $key ? 'selected' : '' }}>
-                                        {{ $label }}</option>
-                                @endforeach
-                            </select>
-                            <textarea name="note" class="status-textarea" placeholder="Nota (opcional)"></textarea>
-                            <button type="submit" class="action-btn primary" style="width:100%; justify-content:center;">
-                                <i class="fa fa-check"></i> Actualizar Estado
-                            </button>
-                        </form>
-                    </div>
-                </div>
-
-                {{-- Recordatorios --}}
-                @if ($lead->reminders->count() > 0)
-                    <div class="dashboard-card">
-                        <div class="dc-header">
-                            <h5><i class="fa fa-bell"></i> Recordatorios</h5>
-                            <span style="font-size:12px; color:#aaa;">{{ $lead->reminders->count() }}</span>
-                        </div>
-                        <div class="dc-body">
-                            @foreach ($lead->reminders as $reminder)
-                                <div class="reminder-item {{ $reminder->isDue() ? 'due' : '' }}">
-                                    <div>
-                                        <div class="ri-title">{{ $reminder->title }}</div>
-                                        <div class="ri-date"><i class="fa fa-clock-o"></i>
-                                            {{ $reminder->remind_at->format('d/m/Y H:i') }}</div>
-                                    </div>
-                                    <form action="{{ route('admin.crm.reminders.complete', $reminder) }}" method="POST">
-                                        @csrf
-                                        <button type="submit" class="action-btn success" title="Completar"
-                                            style="padding:5px 9px;">
-                                            <i class="fa fa-check"></i>
-                                        </button>
-                                    </form>
-                                </div>
-                            @endforeach
-                        </div>
-                    </div>
-                @endif
-
-                {{-- Citas --}}
-                @if ($lead->appointments->count() > 0)
-                    <div class="dashboard-card">
-                        <div class="dc-header">
-                            <h5><i class="fa fa-calendar"></i> Citas</h5>
-                            <span style="font-size:12px; color:#aaa;">{{ $lead->appointments->count() }}</span>
-                        </div>
-                        <div class="dc-body">
-                            @foreach ($lead->appointments as $appointment)
-                                <div class="appt-item" style="cursor:pointer;" data-toggle="modal" data-target="#modal-cita-{{ $appointment->id }}">
-                                    <div>
-                                        <div class="ai-title">{{ $appointment->title }}</div>
-                                        <div class="ai-date"><i class="fa fa-clock-o"></i>
-                                            {{ $appointment->starts_at->format('d/m/Y H:i') }}</div>
-                                    </div>
-                                    <span
-                                        class="crm-badge {{ $appointment->status }}">{{ $appointment->status_label }}</span>
-                                </div>
-                            @endforeach
-                        </div>
-                    </div>
-                @endif
-
-            </div>
-
-            {{-- ────── Columna derecha ────── --}}
-            <div>
-
-                {{-- Notas / Requerimientos --}}
-                @if ($lead->requirements || $lead->notes)
-                    <div class="dashboard-card">
-                        <div class="dc-body">
-                            @if ($lead->requirements)
-                                <h6 style="font-size:13px; font-weight:600; color:#1a1a2e; margin-bottom:6px;">
-                                    <i class="fa fa-list-ul" style="color:#c2ac1f;"></i> Lo que busca
-                                </h6>
-                                <p style="font-size:13px; color:#555; margin-bottom:{{ $lead->notes ? '14px' : '0' }};">
-                                    {{ $lead->requirements }}</p>
-                            @endif
-                            @if ($lead->notes)
-                                <h6 style="font-size:13px; font-weight:600; color:#1a1a2e; margin-bottom:6px;">
-                                    <i class="fa fa-sticky-note-o" style="color:#c2ac1f;"></i> Notas internas
-                                </h6>
-                                <p style="font-size:13px; color:#555; margin:0;">{{ $lead->notes }}</p>
-                            @endif
-                        </div>
-                    </div>
-                @endif
-
-                {{-- Property Matching --}}
-                @if (isset($matchedProperties) && $matchedProperties->count() > 0)
-                    <div class="dashboard-card" style="margin-bottom:18px;">
-                        <div class="dc-header" style="background:#1a1a2e;">
-                            <h5 style="color:#fff;"><i class="fa fa-home" style="color:#c2ac1f;"></i> Propiedades
-                                Sugeridas</h5>
-                            <span style="font-size:12px;color:#aaa;">{{ $matchedProperties->count() }}
-                                coincidencias</span>
-                        </div>
-                        @foreach ($matchedProperties->take(3) as $pm)
-                            <div
-                                style="display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid #f5f5f5;">
-                                <div style="flex:1;min-width:0;">
-                                    <div
-                                        style="font-weight:600;color:#1a1a2e;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-                                        {{ $pm['property']->title ?? ($pm['property']->name ?? 'Propiedad') }}
-                                    </div>
-                                    <div style="font-size:11px;color:#aaa;margin-top:2px;">
-                                        {{ $pm['property']->sector?->name ?? '' }}
-                                        @if ($pm['property']->bedrooms)
-                                            · {{ $pm['property']->bedrooms }} hab.
-                                        @endif
-                                    </div>
-                                </div>
-                                <div style="text-align:right;flex-shrink:0;">
-                                    <div
-                                        style="font-size:11px;font-weight:700;color:{{ $pm['score'] >= 70 ? '#22c55e' : ($pm['score'] >= 40 ? '#f59e0b' : '#94a3b8') }};">
-                                        {{ $pm['score'] }}% match
-                                    </div>
-                                    <div
-                                        style="height:4px;width:60px;background:#f0f0f0;border-radius:4px;margin-top:3px;overflow:hidden;">
-                                        <div
-                                            style="height:100%;width:{{ $pm['score'] }}%;background:{{ $pm['score'] >= 70 ? '#22c55e' : ($pm['score'] >= 40 ? '#f59e0b' : '#94a3b8') }};">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        @endforeach
-                        @if ($matchedProperties->count() > 3)
-                            <div style="padding:10px 18px;text-align:center;">
-                                <a href="{{ route('admin.crm.leads.matching', $lead) }}"
-                                    style="font-size:12px;color:#c2ac1f;">
-                                    Ver todas ({{ $matchedProperties->count() }})
+            {{-- ══════════ TAB: RESUMEN ══════════ --}}
+            <div class="tab-pane fade" id="tab-resumen" role="tabpanel">
+                <div class="detail-grid">
+                    {{-- Columna izquierda: Contacto + Detalles --}}
+                    <div>
+                        {{-- Contacto --}}
+                        <div class="dashboard-card">
+                            <div class="dc-header">
+                                <h5><i class="fa fa-address-card-o"></i> Contacto</h5>
+                                @if($lead->whatsapp)
+                                <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $lead->whatsapp) }}" target="_blank"
+                                   class="action-btn success" style="padding:4px 10px;font-size:12px;">
+                                    <i class="fa fa-whatsapp"></i> WhatsApp
                                 </a>
+                                @endif
                             </div>
-                        @endif
-                    </div>
-                @endif
-
-                {{-- Tasks preview --}}
-                @if (isset($pendingTasks) && $pendingTasks->count() > 0)
-                    <div class="dashboard-card" style="margin-bottom:18px;">
-                        <div class="dc-header">
-                            <h5><i class="fa fa-tasks"></i> Tareas Pendientes</h5>
-                            <a href="#" class="action-btn primary" data-toggle="modal" data-target="#modal-nueva-tarea" style="padding:4px 10px;font-size:11px;">
-                                <i class="fa fa-plus"></i>
-                            </a>
+                            <div class="dc-body">
+                                <table class="detail-list">
+                                    @if ($lead->email)
+                                        <tr>
+                                            <td><i class="fa fa-envelope" style="color:#aaa;"></i> Email</td>
+                                            <td><a href="mailto:{{ $lead->email }}" style="color:#1a1a2e;">{{ $lead->email }}</a></td>
+                                        </tr>
+                                    @endif
+                                    @if ($lead->phone)
+                                        <tr>
+                                            <td><i class="fa fa-phone" style="color:#aaa;"></i> Teléfono</td>
+                                            <td><a href="tel:{{ $lead->phone }}" style="color:#1a1a2e;">{{ $lead->phone }}</a></td>
+                                        </tr>
+                                    @endif
+                                    @if ($lead->whatsapp)
+                                        <tr>
+                                            <td><i class="fa fa-whatsapp" style="color:#25d366;"></i> WhatsApp</td>
+                                            <td><a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $lead->whatsapp) }}"
+                                                    target="_blank" style="color:#25d366;">{{ $lead->whatsapp }}</a></td>
+                                        </tr>
+                                    @endif
+                                </table>
+                            </div>
                         </div>
-                        @foreach ($pendingTasks as $task)
-                            <div
-                                style="display:flex;align-items:center;gap:10px;padding:10px 18px;border-bottom:1px solid #f5f5f5;">
-                                <form action="{{ route('admin.crm.tasks.complete', $task) }}" method="POST"
-                                    class="d-inline">
-                                    @csrf
-                                    <button type="submit"
-                                        style="width:18px;height:18px;border-radius:4px;border:2px solid #d1d5db;background:transparent;cursor:pointer;"
-                                        title="Completar"></button>
-                                </form>
-                                <div style="flex:1;min-width:0;">
-                                    <div style="font-size:13px;font-weight:500;color:#1a1a2e;">{{ $task->title }}</div>
-                                    @if ($task->due_at)
-                                        <div class="fu-{{ $task->is_overdue ? 'overdue' : ($task->is_due_today ? 'today' : 'ok') }}"
-                                            style="font-size:11px;margin-top:1px;">
-                                            <i class="fa fa-clock-o"></i> {{ $task->due_at->format('d/m/Y H:i') }}
-                                        </div>
+
+                        {{-- Detalles --}}
+                        <div class="dashboard-card">
+                            <div class="dc-header">
+                                <h5><i class="fa fa-info-circle"></i> Detalles</h5>
+                            </div>
+                            <div class="dc-body">
+                                <table class="detail-list">
+                                    <tr><td>Fuente</td><td>{{ $lead->source_label }}</td></tr>
+                                    <tr><td>Interés</td><td>{{ $lead->interest_type_label }}</td></tr>
+                                    <tr><td>Presupuesto</td><td>{{ $lead->budget_range }}</td></tr>
+                                    @if ($lead->property)
+                                        <tr><td>Propiedad</td><td>{{ $lead->property->title }}</td></tr>
+                                    @endif
+                                    @if ($lead->vehicle)
+                                        <tr><td>Vehículo</td><td>{{ $lead->vehicle->name }}</td></tr>
+                                    @endif
+                                    <tr>
+                                        <td>Primer contacto</td>
+                                        <td>{{ $lead->first_contact_at ? $lead->first_contact_at->format('d/m/Y H:i') : '—' }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Último contacto</td>
+                                        <td>{{ $lead->last_contact_at ? $lead->last_contact_at->format('d/m/Y H:i') : '—' }}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+
+                        {{-- Notas / Requerimientos --}}
+                        @if ($lead->requirements || $lead->notes)
+                            <div class="dashboard-card">
+                                <div class="dc-body">
+                                    @if ($lead->requirements)
+                                        <h6 style="font-size:13px; font-weight:600; color:#1a1a2e; margin-bottom:6px;">
+                                            <i class="fa fa-list-ul" style="color:#c2ac1f;"></i> Lo que busca
+                                        </h6>
+                                        <p style="font-size:13px; color:#555; margin-bottom:{{ $lead->notes ? '14px' : '0' }};">
+                                            {{ $lead->requirements }}</p>
+                                    @endif
+                                    @if ($lead->notes)
+                                        <h6 style="font-size:13px; font-weight:600; color:#1a1a2e; margin-bottom:6px;">
+                                            <i class="fa fa-sticky-note-o" style="color:#c2ac1f;"></i> Notas internas
+                                        </h6>
+                                        <p style="font-size:13px; color:#555; margin:0;">{{ $lead->notes }}</p>
                                     @endif
                                 </div>
-                                <span class="crm-badge {{ $task->priority }}">
-                                    {{ \App\LeadTask::getPriorities()[$task->priority]['label'] }}
-                                </span>
-                            </div>
-                        @endforeach
-                        @if ($lead->tasks()->pending()->count() > $pendingTasks->count())
-                            <div style="padding:8px 18px;text-align:center;">
-                                <a href="{{ route('admin.crm.tasks.index', ['lead_id' => $lead->id]) }}"
-                                    style="font-size:12px;color:#c2ac1f;">
-                                    Ver todas
-                                </a>
                             </div>
                         @endif
                     </div>
-                @else
-                    <div class="dashboard-card" style="margin-bottom:18px;">
-                        <div class="dc-header">
-                            <h5><i class="fa fa-tasks"></i> Tareas</h5>
-                            <a href="#" class="action-btn primary" data-toggle="modal" data-target="#modal-nueva-tarea" style="padding:4px 10px;font-size:11px;">
-                                <i class="fa fa-plus"></i> Nueva
-                            </a>
+
+                    {{-- Columna derecha: Cambiar Estado + Property Matching --}}
+                    <div>
+                        {{-- Cambiar Estado --}}
+                        <div class="dashboard-card">
+                            <div class="dc-header">
+                                <h5><i class="fa fa-exchange"></i> Cambiar Estado</h5>
+                            </div>
+                            <div class="dc-body">
+                                <form action="{{ route('admin.crm.leads.update-status', $lead) }}" method="POST">
+                                    @csrf
+                                    @method('PATCH')
+                                    <select name="status" class="status-select">
+                                        @foreach (\App\Lead::getStatuses() as $key => $label)
+                                            <option value="{{ $key }}" {{ $lead->status == $key ? 'selected' : '' }}>{{ $label }}</option>
+                                        @endforeach
+                                    </select>
+                                    <textarea name="note" class="status-textarea" placeholder="Nota (opcional)"></textarea>
+                                    <button type="submit" class="action-btn primary" style="width:100%; justify-content:center;">
+                                        <i class="fa fa-check"></i> Actualizar Estado
+                                    </button>
+                                </form>
+                            </div>
                         </div>
-                        <div style="padding:16px 18px;text-align:center;color:#ccc;font-size:13px;">
-                            Sin tareas pendientes
+
+                        {{-- Property / Vehicle Matching --}}
+                        @if (isset($matchedProperties) && $matchedProperties->count() > 0)
+                            <div class="dashboard-card" style="margin-bottom:18px;">
+                                <div class="dc-header" style="background:#1a1a2e;">
+                                    <h5 style="color:#fff;">
+                                        <i class="fa fa-home" style="color:#c2ac1f;"></i>
+                                        {{ $lead->preferred_asset_type === 'vehicle' ? 'Vehículos Sugeridos' : 'Propiedades Sugeridas' }}
+                                    </h5>
+                                    <span style="font-size:12px;color:#aaa;">{{ $matchedProperties->count() }} coincidencias</span>
+                                </div>
+                                @foreach ($matchedProperties->take(3) as $pm)
+                                    <div style="display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid #f5f5f5;">
+                                        <div style="flex:1;min-width:0;">
+                                            <div style="font-weight:600;color:#1a1a2e;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                                                {{ $pm['property']->title ?? ($pm['property']->name ?? 'Propiedad') }}
+                                            </div>
+                                            <div style="font-size:11px;color:#aaa;margin-top:2px;">
+                                                {{ $pm['property']->sector?->name ?? '' }}
+                                                @if ($pm['property']->bedrooms)· {{ $pm['property']->bedrooms }} hab.@endif
+                                            </div>
+                                        </div>
+                                        <div style="text-align:right;flex-shrink:0;">
+                                            <div style="font-size:11px;font-weight:700;color:{{ $pm['score'] >= 70 ? '#22c55e' : ($pm['score'] >= 40 ? '#f59e0b' : '#94a3b8') }};">
+                                                {{ $pm['score'] }}% match
+                                            </div>
+                                            <div style="height:4px;width:60px;background:#f0f0f0;border-radius:4px;margin-top:3px;overflow:hidden;">
+                                                <div style="height:100%;width:{{ $pm['score'] }}%;background:{{ $pm['score'] >= 70 ? '#22c55e' : ($pm['score'] >= 40 ? '#f59e0b' : '#94a3b8') }};"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endforeach
+                                @if ($matchedProperties->count() > 3)
+                                    <div style="padding:10px 18px;text-align:center;">
+                                        <a href="{{ route('admin.crm.leads.matching', $lead) }}" style="font-size:12px;color:#c2ac1f;">
+                                            Ver todas ({{ $matchedProperties->count() }})
+                                        </a>
+                                    </div>
+                                @endif
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            </div>{{-- /tab-resumen --}}
+
+            {{-- ══════════ TAB: ACTIVIDAD ══════════ --}}
+            <div class="tab-pane fade" id="tab-actividad" role="tabpanel">
+                <div class="detail-grid">
+                    {{-- Registrar Actividad --}}
+                    <div>
+                        <div class="dashboard-card">
+                            <div class="dc-header">
+                                <h5><i class="fa fa-plus-circle"></i> Registrar Actividad</h5>
+                            </div>
+                            <div class="dc-body">
+                                <form action="{{ route('admin.crm.leads.add-activity', $lead) }}" method="POST">
+                                    @csrf
+                                    <div style="display:grid; grid-template-columns:1fr 2fr; gap:10px; margin-bottom:10px;">
+                                        <select name="type" class="act-select" required>
+                                            @foreach (\App\LeadActivity::getTypes() as $key => $label)
+                                                @if ($key !== 'status_change')
+                                                    <option value="{{ $key }}">{{ $label }}</option>
+                                                @endif
+                                            @endforeach
+                                        </select>
+                                        <input type="text" name="subject" class="act-input" placeholder="Asunto (opcional)">
+                                    </div>
+                                    <textarea name="description" class="act-textarea" placeholder="Descripción de la actividad..." style="margin-bottom:10px;"></textarea>
+                                    <div id="call-fields" style="display:none; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+                                        <select name="call_result" class="act-select">
+                                            <option value="">Resultado de llamada</option>
+                                            @foreach (\App\LeadActivity::getCallResults() as $key => $label)
+                                                <option value="{{ $key }}">{{ $label }}</option>
+                                            @endforeach
+                                        </select>
+                                        <input type="number" name="call_duration" class="act-input" placeholder="Duración (seg.)" min="0">
+                                    </div>
+                                    <button type="submit" class="action-btn primary">
+                                        <i class="fa fa-save"></i> Registrar
+                                    </button>
+                                </form>
+                            </div>
                         </div>
                     </div>
-                @endif
 
-                {{-- Cotizaciones --}}
-                <div class="dashboard-card" style="margin-bottom:18px;">
+                    {{-- Timeline de Actividades --}}
+                    <div>
+                        <div class="dashboard-card">
+                            <div class="dc-header">
+                                <h5><i class="fa fa-history"></i> Historial de Actividades</h5>
+                                <span style="font-size:12px; color:#aaa;">{{ $lead->activities->count() }} registros</span>
+                            </div>
+                            <div class="dc-body">
+                                @forelse($lead->activities as $activity)
+                                    <div class="activity-item">
+                                        <div class="act-icon-wrap {{ $activity->type }}">
+                                            <i class="{{ $activity->type_icon }}"></i>
+                                        </div>
+                                        <div class="act-body">
+                                            <div>
+                                                <span class="act-type">{{ $activity->type_label }}</span>
+                                                <span class="act-time">{{ $activity->activity_at->format('d/m/Y H:i') }}</span>
+                                            </div>
+                                            @if ($activity->subject)
+                                                <div class="act-subject">{{ $activity->subject }}</div>
+                                            @endif
+                                            @if ($activity->type === 'status_change')
+                                                <div class="act-desc">
+                                                    <span class="crm-badge {{ $activity->old_status ?? '' }}" style="font-size:10px;">{{ \App\Lead::getStatuses()[$activity->old_status] ?? $activity->old_status }}</span>
+                                                    <i class="fa fa-arrow-right" style="color:#aaa; margin:0 4px; font-size:10px;"></i>
+                                                    <span class="crm-badge {{ $activity->new_status ?? '' }}" style="font-size:10px;">{{ \App\Lead::getStatuses()[$activity->new_status] ?? $activity->new_status }}</span>
+                                                    @if ($activity->description)
+                                                        <div style="margin-top:4px; color:#666;">{{ $activity->description }}</div>
+                                                    @endif
+                                                </div>
+                                            @elseif($activity->description)
+                                                <div class="act-desc">{{ $activity->description }}</div>
+                                            @endif
+                                            @if ($activity->call_result)
+                                                <div class="act-desc" style="color:#888;">
+                                                    <i class="fa fa-phone"></i> {{ $activity->call_result_label }}
+                                                    @if ($activity->call_duration_formatted)
+                                                        ({{ $activity->call_duration_formatted }})
+                                                    @endif
+                                                </div>
+                                            @endif
+                                            <div class="act-by">Por: {{ $activity->user->name ?? 'Sistema' }}</div>
+                                        </div>
+                                    </div>
+                                @empty
+                                    <div style="text-align:center; padding:36px 0; color:#ccc;">
+                                        <i class="fa fa-history" style="font-size:32px; display:block; margin-bottom:10px;"></i>
+                                        <span style="font-size:13px; color:#aaa;">No hay actividades registradas</span>
+                                    </div>
+                                @endforelse
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>{{-- /tab-actividad --}}
+
+            {{-- ══════════ TAB: CITAS & TAREAS ══════════ --}}
+            <div class="tab-pane fade" id="tab-citas" role="tabpanel">
+                <div class="detail-grid">
+                    {{-- Columna izquierda: Recordatorios + Citas --}}
+                    <div>
+                        {{-- Recordatorios --}}
+                        <div class="dashboard-card">
+                            <div class="dc-header">
+                                <h5><i class="fa fa-bell"></i> Recordatorios</h5>
+                                <span style="font-size:12px; color:#aaa;">{{ $lead->reminders->count() }}</span>
+                            </div>
+                            <div class="dc-body">
+                                @forelse($lead->reminders as $reminder)
+                                    <div class="reminder-item {{ $reminder->isDue() ? 'due' : '' }}">
+                                        <div>
+                                            <div class="ri-title">{{ $reminder->title }}</div>
+                                            <div class="ri-date"><i class="fa fa-clock-o"></i> {{ $reminder->remind_at->format('d/m/Y H:i') }}</div>
+                                        </div>
+                                        <form action="{{ route('admin.crm.reminders.complete', $reminder) }}" method="POST">
+                                            @csrf
+                                            <button type="submit" class="action-btn success" title="Completar" style="padding:5px 9px;">
+                                                <i class="fa fa-check"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                @empty
+                                    <div style="padding:16px 18px;text-align:center;color:#ccc;font-size:13px;">Sin recordatorios</div>
+                                @endforelse
+                            </div>
+                        </div>
+
+                        {{-- Citas --}}
+                        <div class="dashboard-card">
+                            <div class="dc-header">
+                                <h5><i class="fa fa-calendar"></i> Citas</h5>
+                                <div style="display:flex;align-items:center;gap:8px;">
+                                    <span style="font-size:12px; color:#aaa;">{{ $lead->appointments->count() }}</span>
+                                    <a href="#" class="action-btn primary" data-toggle="modal" data-target="#modal-nueva-cita" style="padding:4px 10px;font-size:11px;">
+                                        <i class="fa fa-plus"></i> Nueva
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="dc-body">
+                                @forelse($lead->appointments as $appointment)
+                                    <div class="appt-item" style="cursor:pointer;" data-toggle="modal" data-target="#modal-cita-{{ $appointment->id }}">
+                                        <div>
+                                            <div class="ai-title">{{ $appointment->title }}</div>
+                                            <div class="ai-date"><i class="fa fa-clock-o"></i> {{ $appointment->starts_at->format('d/m/Y H:i') }}</div>
+                                        </div>
+                                        <span class="crm-badge {{ $appointment->status }}">{{ $appointment->status_label }}</span>
+                                    </div>
+                                @empty
+                                    <div style="padding:16px 18px;text-align:center;color:#ccc;font-size:13px;">Sin citas agendadas</div>
+                                @endforelse
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Columna derecha: Tareas --}}
+                    <div>
+                        <div class="dashboard-card">
+                            <div class="dc-header">
+                                <h5><i class="fa fa-tasks"></i> Tareas</h5>
+                                <a href="#" class="action-btn primary" data-toggle="modal" data-target="#modal-nueva-tarea" style="padding:4px 10px;font-size:11px;">
+                                    <i class="fa fa-plus"></i> Nueva
+                                </a>
+                            </div>
+                            @if (isset($pendingTasks) && $pendingTasks->count() > 0)
+                                @foreach ($pendingTasks as $task)
+                                    <div style="display:flex;align-items:center;gap:10px;padding:10px 18px;border-bottom:1px solid #f5f5f5;">
+                                        <form action="{{ route('admin.crm.tasks.complete', $task) }}" method="POST" class="d-inline">
+                                            @csrf
+                                            <button type="submit" style="width:18px;height:18px;border-radius:4px;border:2px solid #d1d5db;background:transparent;cursor:pointer;" title="Completar"></button>
+                                        </form>
+                                        <div style="flex:1;min-width:0;">
+                                            <div style="font-size:13px;font-weight:500;color:#1a1a2e;">{{ $task->title }}</div>
+                                            @if ($task->due_at)
+                                                <div class="fu-{{ $task->is_overdue ? 'overdue' : ($task->is_due_today ? 'today' : 'ok') }}" style="font-size:11px;margin-top:1px;">
+                                                    <i class="fa fa-clock-o"></i> {{ $task->due_at->format('d/m/Y H:i') }}
+                                                </div>
+                                            @endif
+                                        </div>
+                                        <span class="crm-badge {{ $task->priority }}">{{ \App\LeadTask::getPriorities()[$task->priority]['label'] }}</span>
+                                    </div>
+                                @endforeach
+                                @if ($lead->tasks()->pending()->count() > $pendingTasks->count())
+                                    <div style="padding:8px 18px;text-align:center;">
+                                        <a href="{{ route('admin.crm.tasks.index', ['lead_id' => $lead->id]) }}" style="font-size:12px;color:#c2ac1f;">Ver todas</a>
+                                    </div>
+                                @endif
+                            @else
+                                <div style="padding:20px 18px;text-align:center;color:#ccc;font-size:13px;">
+                                    <i class="fa fa-check-circle" style="font-size:24px;display:block;margin-bottom:8px;color:#d1fae5;"></i>
+                                    Sin tareas pendientes
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </div>{{-- /tab-citas --}}
+
+            {{-- ══════════ TAB: COTIZACIONES ══════════ --}}
+            <div class="tab-pane fade" id="tab-cotizaciones" role="tabpanel">
+                <div class="dashboard-card">
                     <div class="dc-header">
                         <h5><i class="fa fa-file-text-o"></i> Cotizaciones</h5>
                         <a href="#" class="action-btn primary" data-toggle="modal" data-target="#modal-nueva-cotizacion" style="font-size:12px;padding:5px 10px;">
@@ -933,136 +1095,30 @@
                         </a>
                     </div>
                     <div class="dc-body" style="padding:0;">
-                        @forelse($lead->quotes()->orderByDesc('created_at')->take(5)->get() as $q)
-                            <div
-                                style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid #f5f5f5;">
+                        @forelse($lead->quotes()->orderByDesc('created_at')->get() as $q)
+                            <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:1px solid #f5f5f5;">
                                 <div>
-                                    <div style="font-weight:600;font-size:13px;color:#1a1a2e;">{{ $q->quote_number }} —
-                                        {{ Str::limit($q->title, 35) }}</div>
-                                    <div style="font-size:11px;color:#888;margin-top:2px;">{{ $q->formatted_total }} ·
-                                        {{ $q->created_at->format('d/m/Y') }}</div>
+                                    <div style="font-weight:600;font-size:13px;color:#1a1a2e;">{{ $q->quote_number }} — {{ Str::limit($q->title, 40) }}</div>
+                                    <div style="font-size:11px;color:#888;margin-top:2px;">{{ $q->formatted_total }} · {{ $q->created_at->format('d/m/Y') }}</div>
                                 </div>
                                 <div style="display:flex;align-items:center;gap:8px;">
                                     <span class="crm-badge {{ $q->status_color }}">{{ $q->status_label }}</span>
-                                    <a href="{{ route('admin.crm.quotes.show', $q) }}" class="action-btn view"
-                                        style="padding:4px 8px;font-size:11px;"><i class="fa fa-eye"></i></a>
-                                    <a href="{{ route('admin.crm.quotes.pdf', $q) }}" class="action-btn secondary"
-                                        target="_blank" style="padding:4px 8px;font-size:11px;"><i
-                                            class="fa fa-file-pdf-o"></i></a>
+                                    <a href="{{ route('admin.crm.quotes.show', $q) }}" class="action-btn view" style="padding:4px 8px;font-size:11px;"><i class="fa fa-eye"></i></a>
+                                    <a href="{{ route('admin.crm.quotes.pdf', $q) }}" class="action-btn secondary" target="_blank" style="padding:4px 8px;font-size:11px;"><i class="fa fa-file-pdf-o"></i></a>
                                 </div>
                             </div>
                         @empty
-                            <div style="padding:20px;text-align:center;color:#aaa;font-size:13px;">Sin cotizaciones aún.
-                            </div>
-                        @endforelse
-                        @if ($lead->quotes()->count() > 5)
-                            <div style="padding:10px 16px;text-align:center;">
-                                <a href="{{ route('admin.crm.quotes.index', ['lead_id' => $lead->id]) }}"
-                                    style="font-size:12px;color:#c2ac1f;">Ver todas ({{ $lead->quotes()->count() }})</a>
-                            </div>
-                        @endif
-                    </div>
-                </div>
-
-                {{-- Registrar Actividad --}}
-                <div class="dashboard-card">
-                    <div class="dc-header">
-                        <h5><i class="fa fa-plus-circle"></i> Registrar Actividad</h5>
-                    </div>
-                    <div class="dc-body">
-                        <form action="{{ route('admin.crm.leads.add-activity', $lead) }}" method="POST">
-                            @csrf
-                            <div style="display:grid; grid-template-columns:1fr 2fr; gap:10px; margin-bottom:10px;">
-                                <select name="type" class="act-select" required>
-                                    @foreach (\App\LeadActivity::getTypes() as $key => $label)
-                                        @if ($key !== 'status_change')
-                                            <option value="{{ $key }}">{{ $label }}</option>
-                                        @endif
-                                    @endforeach
-                                </select>
-                                <input type="text" name="subject" class="act-input" placeholder="Asunto (opcional)">
-                            </div>
-                            <textarea name="description" class="act-textarea" placeholder="Descripción de la actividad..."
-                                style="margin-bottom:10px;"></textarea>
-
-                            <div id="call-fields"
-                                style="display:none; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
-                                <select name="call_result" class="act-select">
-                                    <option value="">Resultado de llamada</option>
-                                    @foreach (\App\LeadActivity::getCallResults() as $key => $label)
-                                        <option value="{{ $key }}">{{ $label }}</option>
-                                    @endforeach
-                                </select>
-                                <input type="number" name="call_duration" class="act-input"
-                                    placeholder="Duración (seg.)" min="0">
-                            </div>
-
-                            <button type="submit" class="action-btn primary">
-                                <i class="fa fa-save"></i> Registrar
-                            </button>
-                        </form>
-                    </div>
-                </div>
-
-                {{-- Timeline de Actividades --}}
-                <div class="dashboard-card">
-                    <div class="dc-header">
-                        <h5><i class="fa fa-history"></i> Historial de Actividades</h5>
-                        <span style="font-size:12px; color:#aaa;">{{ $lead->activities->count() }} registros</span>
-                    </div>
-                    <div class="dc-body">
-                        @forelse($lead->activities as $activity)
-                            <div class="activity-item">
-                                <div class="act-icon-wrap {{ $activity->type }}">
-                                    <i class="{{ $activity->type_icon }}"></i>
-                                </div>
-                                <div class="act-body">
-                                    <div>
-                                        <span class="act-type">{{ $activity->type_label }}</span>
-                                        <span class="act-time">{{ $activity->activity_at->format('d/m/Y H:i') }}</span>
-                                    </div>
-                                    @if ($activity->subject)
-                                        <div class="act-subject">{{ $activity->subject }}</div>
-                                    @endif
-                                    @if ($activity->type === 'status_change')
-                                        <div class="act-desc">
-                                            <span class="crm-badge {{ $activity->old_status ?? '' }}"
-                                                style="font-size:10px;">{{ \App\Lead::getStatuses()[$activity->old_status] ?? $activity->old_status }}</span>
-                                            <i class="fa fa-arrow-right"
-                                                style="color:#aaa; margin:0 4px; font-size:10px;"></i>
-                                            <span class="crm-badge {{ $activity->new_status ?? '' }}"
-                                                style="font-size:10px;">{{ \App\Lead::getStatuses()[$activity->new_status] ?? $activity->new_status }}</span>
-                                            @if ($activity->description)
-                                                <div style="margin-top:4px; color:#666;">{{ $activity->description }}
-                                                </div>
-                                            @endif
-                                        </div>
-                                    @elseif($activity->description)
-                                        <div class="act-desc">{{ $activity->description }}</div>
-                                    @endif
-                                    @if ($activity->call_result)
-                                        <div class="act-desc" style="color:#888;">
-                                            <i class="fa fa-phone"></i> {{ $activity->call_result_label }}
-                                            @if ($activity->call_duration_formatted)
-                                                ({{ $activity->call_duration_formatted }})
-                                            @endif
-                                        </div>
-                                    @endif
-                                    <div class="act-by">Por: {{ $activity->user->name ?? 'Sistema' }}</div>
-                                </div>
-                            </div>
-                        @empty
-                            <div style="text-align:center; padding:36px 0; color:#ccc;">
-                                <i class="fa fa-history" style="font-size:32px; display:block; margin-bottom:10px;"></i>
-                                <span style="font-size:13px; color:#aaa;">No hay actividades registradas</span>
+                            <div style="padding:36px;text-align:center;color:#aaa;">
+                                <i class="fa fa-file-text-o" style="font-size:28px;display:block;margin-bottom:10px;"></i>
+                                Sin cotizaciones aún.
                             </div>
                         @endforelse
                     </div>
                 </div>
+            </div>{{-- /tab-cotizaciones --}}
 
-            </div>
-        </div>
-    </div>
+        </div>{{-- /tab-content --}}
+    </div>{{-- /lead-detail-wrap --}}
 
 {{-- ══════════════════════════════════════════════════════
      MODALS: Nueva Tarea / Nueva Cita / Nueva Cotización / Detalle Citas
@@ -1621,5 +1677,34 @@ function calcModalQuote() {
 document.getElementById('modal-nueva-cotizacion')?.addEventListener('shown.bs.modal', function() {
     toggleModalQuoteType('property');
 });
+
+// ── Tab persistence via ?tab= URL param ──
+(function() {
+    var tabMap = {
+        'resumen':       '#tab-resumen-lnk',
+        'actividad':     '#tab-actividad-lnk',
+        'citas':         '#tab-citas-lnk',
+        'cotizaciones':  '#tab-cotizaciones-lnk',
+    };
+    // Read ?tab= from URL and activate that tab
+    var params = new URLSearchParams(window.location.search);
+    var activeTab = params.get('tab');
+    if (activeTab && tabMap[activeTab]) {
+        $(tabMap[activeTab]).tab('show');
+    } else {
+        // Default: show Resumen
+        $('#tab-resumen-lnk').tab('show');
+    }
+    // Update URL when user clicks a tab (no page reload)
+    Object.keys(tabMap).forEach(function(key) {
+        var el = document.querySelector(tabMap[key]);
+        if (!el) return;
+        el.addEventListener('shown.bs.tab', function() {
+            var url = new URL(window.location.href);
+            url.searchParams.set('tab', key);
+            history.replaceState(null, '', url.toString());
+        });
+    });
+})();
 </script>
 @endpush

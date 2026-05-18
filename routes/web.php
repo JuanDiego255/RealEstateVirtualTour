@@ -296,6 +296,11 @@ Route::group(['middleware' => 'auth'], function () {
     // CRM + AGENDA
     // =====================================================
 
+    // --- CRM DASHBOARD ---
+    Route::get('/admin/crm/dashboard', [\App\Http\Controllers\Admin\CrmDashboardController::class, 'today'])
+        ->middleware(['subscription'])
+        ->name('admin.crm.dashboard');
+
     // --- LEADS (CRM) ---
     Route::group(['prefix' => 'admin/crm/leads', 'middleware' => ['subscription']], function () {
         Route::get('/', [LeadController::class, 'index'])->name('admin.crm.leads.index');
