@@ -179,6 +179,11 @@ class LeadQuoteController extends Controller
             'status'        => 'draft',
         ], $extraData));
 
+        // If created from lead detail modal, go back to the lead's cotizaciones tab
+        if (request()->filled('_back')) {
+            return redirect(request()->_back)->with('success', 'Cotización creada correctamente.');
+        }
+
         // If property quote with no items, redirect to quote detail to add items
         if ($quoteType === 'property' && !count($extraData['items'])) {
             return redirect()->route('admin.crm.quotes.show', $quote)

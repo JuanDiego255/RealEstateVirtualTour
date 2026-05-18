@@ -396,11 +396,12 @@ class LeadController extends Controller
         // Portal URL if token exists and valid
         $portalUrl = $lead->isPortalValid() ? $lead->portal_url : null;
 
-        // Pending tasks preview (up to 5)
+        // Pending tasks preview (up to 10, with creator to check permissions)
         $pendingTasks = $lead->tasks()
+            ->with('creator')
             ->where('status', 'pending')
             ->orderBy('due_at')
-            ->limit(5)
+            ->limit(10)
             ->get();
 
         // Property matching

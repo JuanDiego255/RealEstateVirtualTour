@@ -147,9 +147,14 @@ class LeadTaskController extends Controller
             'status'      => $validated['status'] ?? 'pending',
         ]));
 
+        if ($request->filled('_back')) {
+            return redirect($request->_back)->with('success', 'Tarea creada correctamente.');
+        }
+
         if ($request->filled('lead_id')) {
             return redirect()->route('admin.crm.leads.show', $validated['lead_id'])
-                             ->with('success', 'Tarea creada correctamente.');
+                             ->with('success', 'Tarea creada correctamente.')
+                             ->withFragment('tab=citas');
         }
 
         return redirect()->route('admin.crm.tasks.index')

@@ -395,15 +395,32 @@
                                     <span class="crm-badge {{ $lead->status }}" style="font-size:10px;">{{ $lead->status_label }}</span>
                                     &nbsp;
                                     @if($lead->next_follow_up && $lead->next_follow_up->isPast())
+                                        {{-- Follow-up vencido --}}
                                         <span style="color:#dc2626; font-size:11px;">
-                                            <i class="fa fa-clock-o"></i> Seguim. vencido {{ $lead->next_follow_up->diffForHumans() }}
+                                            <i class="fa fa-clock-o"></i>
+                                            Seguimiento vencido {{ $lead->next_follow_up->diffForHumans() }} — requiere atención
                                         </span>
-                                    @elseif($lead->last_contact_at)
+                                    @elseif($lead->last_contact_at && $lead->last_contact_at->diffInDays(now()) >= 7)
+                                        {{-- Tiene contacto pero fue hace 7+ días --}}
+                                        <span style="color:#b45309; font-size:11px;">
+                                            <i class="fa fa-calendar-o"></i>
+                                            Última actividad hace {{ $lead->last_contact_at->diffInDays(now()) }} días — se recomienda dar seguimiento
+                                        </span>
+                                    @elseif(!$lead->last_contact_at && $lead->first_contact_at)
+                                        {{-- Fue ingresado (ej. kiosco/evento) pero sin actividad manual registrada --}}
+                                        <span style="color:#7c3aed; font-size:11px;">
+                                            <i class="fa fa-user-plus"></i>
+                                            Sin seguimiento desde que fue registrado el {{ $lead->first_contact_at->format('d/m/Y') }}
+                                        </span>
+                                    @elseif(!$lead->last_contact_at)
+                                        <span style="color:#ef4444; font-size:11px;">
+                                            <i class="fa fa-exclamation-circle"></i>
+                                            Sin ningún contacto registrado
+                                        </span>
+                                    @else
                                         <span style="color:#888; font-size:11px;">
                                             Último contacto {{ $lead->last_contact_at->diffForHumans() }}
                                         </span>
-                                    @else
-                                        <span style="color:#ef4444; font-size:11px;">Sin contacto registrado</span>
                                     @endif
                                 </div>
                             </div>

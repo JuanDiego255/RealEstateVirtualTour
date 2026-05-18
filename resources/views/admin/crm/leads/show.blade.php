@@ -1053,6 +1053,10 @@
                             </div>
                             @if (isset($pendingTasks) && $pendingTasks->count() > 0)
                                 @foreach ($pendingTasks as $task)
+                                    @php
+                                        $taskCreatorIsAdmin = $task->creator?->role === 'company_admin';
+                                        $canEdit = Auth::user()->isAdmin() || !$taskCreatorIsAdmin;
+                                    @endphp
                                     <div style="display:flex;align-items:center;gap:10px;padding:10px 18px;border-bottom:1px solid #f5f5f5;">
                                         <form action="{{ route('admin.crm.tasks.complete', $task) }}" method="POST" class="d-inline">
                                             @csrf
@@ -1067,6 +1071,13 @@
                                             @endif
                                         </div>
                                         <span class="crm-badge {{ $task->priority }}">{{ \App\LeadTask::getPriorities()[$task->priority]['label'] }}</span>
+                                        @if($canEdit)
+                                            <a href="{{ route('admin.crm.tasks.edit', $task) }}" class="action-btn secondary" style="padding:3px 7px;font-size:11px;" title="Editar"><i class="fa fa-pencil"></i></a>
+                                            <form action="{{ route('admin.crm.tasks.destroy', $task) }}" method="POST" class="d-inline" onsubmit="return confirm('¿Eliminar esta tarea?')">
+                                                @csrf @method('DELETE')
+                                                <button type="submit" class="action-btn danger" style="padding:3px 7px;font-size:11px;" title="Eliminar"><i class="fa fa-trash"></i></button>
+                                            </form>
+                                        @endif
                                     </div>
                                 @endforeach
                                 @if ($lead->tasks()->pending()->count() > $pendingTasks->count())
@@ -1101,10 +1112,16 @@
                                     <div style="font-weight:600;font-size:13px;color:#1a1a2e;">{{ $q->quote_number }} — {{ Str::limit($q->title, 40) }}</div>
                                     <div style="font-size:11px;color:#888;margin-top:2px;">{{ $q->formatted_total }} · {{ $q->created_at->format('d/m/Y') }}</div>
                                 </div>
-                                <div style="display:flex;align-items:center;gap:8px;">
+                                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                                     <span class="crm-badge {{ $q->status_color }}">{{ $q->status_label }}</span>
-                                    <a href="{{ route('admin.crm.quotes.show', $q) }}" class="action-btn view" style="padding:4px 8px;font-size:11px;"><i class="fa fa-eye"></i></a>
-                                    <a href="{{ route('admin.crm.quotes.pdf', $q) }}" class="action-btn secondary" target="_blank" style="padding:4px 8px;font-size:11px;"><i class="fa fa-file-pdf-o"></i></a>
+                                    <a href="{{ route('admin.crm.quotes.show', $q) }}" class="action-btn view" style="padding:4px 8px;font-size:11px;" title="Ver detalle"><i class="fa fa-eye"></i></a>
+                                    <a href="{{ route('admin.crm.quotes.pdf', $q) }}" class="action-btn secondary" target="_blank" style="padding:4px 8px;font-size:11px;" title="Ver PDF"><i class="fa fa-file-pdf-o"></i></a>
+                                    @if(Auth::user()->isAdmin())
+                                    <form action="{{ route('admin.crm.quotes.destroy', $q) }}" method="POST" class="d-inline" onsubmit="return confirm('¿Eliminar esta cotización?')">
+                                        @csrf @method('DELETE')
+                                        <button type="submit" class="action-btn danger" style="padding:4px 8px;font-size:11px;" title="Eliminar"><i class="fa fa-trash"></i></button>
+                                    </form>
+                                    @endif
                                 </div>
                             </div>
                         @empty
@@ -1135,7 +1152,7 @@
             <form method="POST" action="{{ route('admin.crm.tasks.store') }}">
                 @csrf
                 <input type="hidden" name="lead_id" value="{{ $lead->id }}">
-                <input type="hidden" name="_back" value="{{ url()->current() }}">
+                <input type="hidden" name="_back" value="{{ url()->current() }}?tab=citas">
                 <div class="modal-body" style="padding:24px;">
                     <div class="form-group mb-3">
                         <label style="font-weight:600; font-size:13px; color:#444;">Título <span class="text-danger">*</span></label>
@@ -1195,6 +1212,7 @@
                 @csrf
                 <input type="hidden" name="lead_id" value="{{ $lead->id }}">
                 <input type="hidden" name="user_id" value="{{ $lead->user_id }}">
+                <input type="hidden" name="_back" value="{{ url()->current() }}?tab=citas">
                 <div class="modal-body" style="padding:24px;">
                     <div class="form-group mb-3">
                         <label style="font-weight:600; font-size:13px; color:#444;">Título <span class="text-danger">*</span></label>
@@ -1213,32 +1231,43 @@
                         </div>
                         <div class="col-md-4">
                             <div class="form-group mb-3">
-                                <label style="font-weight:600; font-size:13px; color:#444;">Inicio <span class="text-danger">*</span></label>
-                                <input type="datetime-local" name="starts_at" class="form-control" required style="border-radius:8px;">
+                                <label style="font-weight:600; font-size:13px; color:#444;">Fecha <span class="text-danger">*</span></label>
+                                <input type="date" name="starts_at_date" class="form-control" required style="border-radius:8px;">
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="form-group mb-3">
-                                <label style="font-weight:600; font-size:13px; color:#444;">Fin</label>
-                                <input type="datetime-local" name="ends_at" class="form-control" style="border-radius:8px;">
+                                <label style="font-weight:600; font-size:13px; color:#444;">Hora inicio <span class="text-danger">*</span></label>
+                                <input type="time" name="starts_at_time" class="form-control" required style="border-radius:8px;" value="09:00">
                             </div>
                         </div>
                     </div>
-                    <div class="form-group mb-3">
-                        <label style="font-weight:600; font-size:13px; color:#444;">Descripción</label>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label style="font-weight:600; font-size:13px; color:#444;">Duración <span class="text-danger">*</span></label>
+                                <select name="duration" class="form-control" style="border-radius:8px;">
+                                    <option value="30">30 minutos</option>
+                                    <option value="60" selected>1 hora</option>
+                                    <option value="90">1 hora 30 min</option>
+                                    <option value="120">2 horas</option>
+                                    <option value="180">3 horas</option>
+                                    <option value="240">4 horas</option>
+                                    <option value="480">Todo el día</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label style="font-weight:600; font-size:13px; color:#444;">Ubicación</label>
+                                <input type="text" name="location" class="form-control" style="border-radius:8px;" placeholder="Dirección o enlace de reunión">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group mb-0">
+                        <label style="font-weight:600; font-size:13px; color:#444;">Descripción / Notas</label>
                         <textarea name="description" rows="2" class="form-control" style="border-radius:8px;" placeholder="Notas sobre la cita..."></textarea>
                     </div>
-                    @if(isset($properties) && $properties->count() > 0)
-                    <div class="form-group mb-0">
-                        <label style="font-weight:600; font-size:13px; color:#444;">Propiedad / Vehículo vinculado</label>
-                        <select name="property_id" class="form-control" style="border-radius:8px;">
-                            <option value="">— Ninguno —</option>
-                            @foreach($properties->take(50) as $prop)
-                                <option value="{{ $prop->id }}" {{ $lead->property_id == $prop->id ? 'selected' : '' }}>{{ $prop->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    @endif
                 </div>
                 <div class="modal-footer" style="border-top:1px solid #f0f0f0; padding:14px 20px; display:flex; justify-content:flex-end; gap:8px;">
                     <button type="button" class="action-btn secondary" data-dismiss="modal">Cancelar</button>
@@ -1264,6 +1293,7 @@
                 <input type="hidden" name="lead_id" value="{{ $lead->id }}">
                 <input type="hidden" name="validity_days" value="30">
                 <input type="hidden" name="currency" value="CRC">
+                <input type="hidden" name="_back" value="{{ url()->current() }}?tab=cotizaciones">
                 <div class="modal-body" style="padding:24px;">
 
                     {{-- Título --}}

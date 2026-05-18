@@ -160,6 +160,10 @@ class AppointmentController extends Controller
             ]);
         }
 
+        if ($request->filled('_back')) {
+            return redirect($request->_back)->with('success', 'Cita programada correctamente.');
+        }
+
         return redirect()->route('admin.crm.appointments.index')
             ->with('success', 'Cita programada correctamente.');
     }
