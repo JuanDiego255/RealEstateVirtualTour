@@ -525,8 +525,11 @@ Route::post('/f/{slug}', [\App\Http\Controllers\CrmFormPublicController::class, 
 
 // Client Portal
 Route::get('/portal/{token}', function($token) {
-    $lead = \App\Lead::where('portal_token', $token)->firstOrFail();
+    $lead = \App\Lead::with(['quotes' => fn($q) => $q->where('status', '!=', 'draft')->latest()])
+        ->where('portal_token', $token)->firstOrFail();
     if (!$lead->isPortalValid()) abort(410);
+    // Auto-mark sent quotes as viewed
+    $lead->quotes()->where('status', 'sent')->update(['status' => 'viewed']);
     return view('crm.portal', compact('lead'));
 })->name('crm.portal');
 

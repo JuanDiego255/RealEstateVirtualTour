@@ -141,14 +141,24 @@
                             @if ($vehicles->count() > 0)
                                 <div class="form-group">
                                     <label>Vehículo de Interés</label>
-                                    <select name="vehicle_id" class="form-control">
+                                    <select name="vehicle_id" id="vehicle_id_select_edit" class="form-control">
                                         <option value="">-- Ninguno --</option>
                                         @foreach ($vehicles as $vehicle)
+                                            @php $imgUrl = $vehicle->images->first()?->url ?? ($vehicle->image ? route('file', $vehicle->image) : ''); @endphp
                                             <option value="{{ $vehicle->id }}"
+                                                data-img="{{ $imgUrl }}"
                                                 {{ old('vehicle_id', $lead->vehicle_id) == $vehicle->id ? 'selected' : '' }}>
-                                                {{ $vehicle->name }}</option>
+                                                @if($vehicle->brand || $vehicle->year)
+                                                    {{ trim($vehicle->brand . ' ' . $vehicle->model) }} ({{ $vehicle->year }}) — {{ $vehicle->name }}
+                                                @else
+                                                    {{ $vehicle->name }}
+                                                @endif
+                                            </option>
                                         @endforeach
                                     </select>
+                                    <div id="vehicle-preview-edit" style="margin-top:8px;display:none;">
+                                        <img id="vehicle-preview-img-edit" src="" alt="Vista previa" style="width:50px;height:50px;object-fit:cover;border-radius:6px;border:1px solid #ddd;">
+                                    </div>
                                 </div>
                             @endif
                         </div>
@@ -173,17 +183,17 @@
                                 <div class="col-md-4">
                                     <div class="form-group">
                                         <label>Mínimo</label>
-                                        <input type="number" name="budget_min" class="form-control"
-                                            value="{{ old('budget_min', $lead->budget_min) }}" min="0"
-                                            step="0.01">
+                                        <input type="text" name="budget_min_display" data-money="budget_min" class="form-control"
+                                            value="{{ old('budget_min', $lead->budget_min) }}" placeholder="0">
+                                        <input type="hidden" name="budget_min" value="{{ old('budget_min', $lead->budget_min) }}">
                                     </div>
                                 </div>
                                 <div class="col-md-4">
                                     <div class="form-group">
                                         <label>Máximo</label>
-                                        <input type="number" name="budget_max" class="form-control"
-                                            value="{{ old('budget_max', $lead->budget_max) }}" min="0"
-                                            step="0.01">
+                                        <input type="text" name="budget_max_display" data-money="budget_max" class="form-control"
+                                            value="{{ old('budget_max', $lead->budget_max) }}" placeholder="0">
+                                        <input type="hidden" name="budget_max" value="{{ old('budget_max', $lead->budget_max) }}">
                                     </div>
                                 </div>
                             </div>
@@ -378,10 +388,45 @@ function toggleAssetPrefs(val) {
     document.getElementById('pref-property-section').style.display = val === 'property' ? 'block' : 'none';
     document.getElementById('pref-vehicle-section').style.display = val === 'vehicle' ? 'block' : 'none';
 }
-// Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
+    // Asset prefs toggle
     var checked = document.querySelector('input[name="preferred_asset_type"]:checked');
     if (checked) toggleAssetPrefs(checked.value);
+
+    // Vehicle image preview
+    var vSel = document.getElementById('vehicle_id_select_edit');
+    if (vSel) {
+        function updateVehiclePreview() {
+            var opt = vSel.options[vSel.selectedIndex];
+            var img = opt ? opt.getAttribute('data-img') : '';
+            var previewDiv = document.getElementById('vehicle-preview-edit');
+            var previewImg = document.getElementById('vehicle-preview-img-edit');
+            if (img) { previewImg.src = img; previewDiv.style.display = 'block'; }
+            else { previewDiv.style.display = 'none'; }
+        }
+        vSel.addEventListener('change', updateVehiclePreview);
+        updateVehiclePreview();
+    }
+
+    // Budget thousand separator
+    document.querySelectorAll('[data-money]').forEach(function(el) {
+        var hiddenName = el.getAttribute('data-money');
+        var hidden = document.querySelector('input[type="hidden"][name="' + hiddenName + '"]');
+        function fmt(v) {
+            var raw = v.replace(/[^0-9]/g, '');
+            return raw ? parseInt(raw, 10).toLocaleString('es-CR') : '';
+        }
+        el.addEventListener('input', function() {
+            var raw = this.value.replace(/[^0-9]/g, '');
+            if (hidden) hidden.value = raw;
+            this.value = fmt(this.value);
+        });
+        if (el.value) {
+            var raw = el.value.replace(/[^0-9]/g, '');
+            if (hidden) hidden.value = raw;
+            el.value = raw ? parseInt(raw, 10).toLocaleString('es-CR') : '';
+        }
+    });
 });
 </script>
 @endpush

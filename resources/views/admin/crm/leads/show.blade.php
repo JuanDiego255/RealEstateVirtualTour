@@ -1197,7 +1197,7 @@
 
 {{-- Modal: Nueva Cotización --}}
 <div class="modal fade" id="modal-nueva-cotizacion" tabindex="-1" role="dialog">
-    <div class="modal-dialog" role="document">
+    <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content" style="border-radius:12px; border:none; box-shadow:0 10px 40px rgba(0,0,0,0.15);">
             <div class="modal-header" style="background:#1a1a2e; border-radius:12px 12px 0 0; padding:16px 20px;">
                 <h5 class="modal-title" style="color:#fff; font-weight:700;"><i class="fa fa-file-text-o" style="color:#c2ac1f;"></i> Nueva Cotización</h5>
@@ -1209,27 +1209,131 @@
                 <input type="hidden" name="validity_days" value="30">
                 <input type="hidden" name="currency" value="CRC">
                 <div class="modal-body" style="padding:24px;">
+
+                    {{-- Título --}}
                     <div class="form-group mb-3">
                         <label style="font-weight:600; font-size:13px; color:#444;">Título <span class="text-danger">*</span></label>
                         <input type="text" name="title" class="form-control" required placeholder="Ej: Cotización Casa Escazú" style="border-radius:8px;">
                     </div>
+
+                    {{-- Toggle tipo --}}
                     <div class="form-group mb-3">
-                        <label style="font-weight:600; font-size:13px; color:#444;">Tipo</label>
-                        <select name="quote_type" class="form-control" style="border-radius:8px;">
-                            <option value="property">Inmueble / Propiedad</option>
-                            <option value="vehicle">Vehículo</option>
-                        </select>
+                        <label style="font-weight:600; font-size:13px; color:#444;">Tipo de cotización</label>
+                        <div style="display:flex; gap:16px; margin-top:6px;">
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; color:#333;">
+                                <input type="radio" name="quote_type" value="property" id="mqt-property" checked onchange="toggleModalQuoteType(this.value)">
+                                <i class="fa fa-home" style="color:#1a1a2e;"></i> Inmueble / Propiedad
+                            </label>
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; color:#333;">
+                                <input type="radio" name="quote_type" value="vehicle" id="mqt-vehicle" onchange="toggleModalQuoteType(this.value)">
+                                <i class="fa fa-car" style="color:#c2ac1f;"></i> Vehículo
+                            </label>
+                        </div>
                     </div>
+
+                    {{-- Sección Vehículo con calculadora (oculta por defecto) --}}
+                    <div id="mq-vehicle-section" style="display:none;">
+                        <div style="background:#1a1a2e; border-radius:10px 10px 0 0; padding:12px 16px; margin-bottom:0;">
+                            <span style="color:#fff; font-weight:700; font-size:13px;"><i class="fa fa-car" style="color:#c2ac1f;"></i> Datos del Vehículo y Financiamiento</span>
+                        </div>
+                        <div style="border:1px solid #e5e7eb; border-top:none; border-radius:0 0 10px 10px; padding:20px; margin-bottom:16px;">
+                            {{-- Selector vehículo --}}
+                            <div class="form-group mb-3">
+                                <label style="font-weight:600; font-size:13px; color:#444;">Vehículo <span class="text-danger" id="mq-veh-req">*</span></label>
+                                <select name="property_id" id="mq-vehicle-select" class="form-control" style="border-radius:8px;">
+                                    <option value="">— Seleccionar vehículo —</option>
+                                    @foreach(\App\Properties::vehicles()->whereHas('category', fn($q) => $q->where('company_id', auth()->user()->company_id))->get() as $veh)
+                                        <option value="{{ $veh->id }}">
+                                            {{ $veh->brand ?? '' }} {{ $veh->model ?? '' }}{{ ($veh->year ?? '') ? ' ('.$veh->year.')' : '' }} — {{ $veh->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-group mb-3">
+                                        <label style="font-weight:600; font-size:13px; color:#444;">Precio del vehículo</label>
+                                        <input type="number" name="vq_vehicle_price" id="mq-price" class="form-control" step="0.01" min="0" placeholder="0.00" style="border-radius:8px;" oninput="calcModalQuote()">
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group mb-3">
+                                        <label style="font-weight:600; font-size:13px; color:#444;">Prima (%)</label>
+                                        <input type="number" name="vq_down_payment_pct" id="mq-pct" class="form-control" step="0.1" min="0" max="100" value="50" style="border-radius:8px;" oninput="calcModalQuote()">
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group mb-3">
+                                        <label style="font-weight:600; font-size:13px; color:#444;">Prima (monto)</label>
+                                        <input type="number" name="vq_down_payment" id="mq-down" class="form-control" step="0.01" readonly style="border-radius:8px; background:#f8f8f8;">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-group mb-3">
+                                        <label style="font-weight:600; font-size:13px; color:#444;">Plazo (meses)</label>
+                                        <select name="vq_term_months" id="mq-term" class="form-control" style="border-radius:8px;" onchange="calcModalQuote()">
+                                            <option value="12">12 meses</option>
+                                            <option value="24">24 meses</option>
+                                            <option value="36">36 meses</option>
+                                            <option value="48">48 meses</option>
+                                            <option value="60" selected>60 meses</option>
+                                            <option value="72">72 meses</option>
+                                            <option value="84">84 meses</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group mb-3">
+                                        <label style="font-weight:600; font-size:13px; color:#444;">Tasa de interés (anual %)</label>
+                                        <input type="number" name="vq_interest_rate_pct" id="mq-rate-pct" class="form-control" step="0.01" min="0" max="100" placeholder="Ej: 12.5" style="border-radius:8px;" oninput="calcModalQuote()">
+                                        <input type="hidden" name="vq_interest_rate" id="mq-rate">
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group mb-3">
+                                        <label style="font-weight:600; font-size:13px; color:#444;">Frecuencia de pago</label>
+                                        <select name="vq_payment_frequency" id="mq-freq" class="form-control" style="border-radius:8px;" onchange="calcModalQuote()">
+                                            <option value="monthly">Mensual</option>
+                                            <option value="annual">Anual</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- Resultado del cálculo --}}
+                            <div id="mq-result" style="display:none; background:linear-gradient(135deg,#1a1a2e,#2d2d4e); border-radius:10px; padding:18px; margin-top:4px;">
+                                <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px; text-align:center;">
+                                    <div>
+                                        <div style="font-size:10px; color:#aaa; text-transform:uppercase; margin-bottom:4px;">Cuota estimada</div>
+                                        <div id="mq-payment-display" style="font-size:20px; font-weight:700; color:#c2ac1f;"></div>
+                                    </div>
+                                    <div>
+                                        <div style="font-size:10px; color:#aaa; text-transform:uppercase; margin-bottom:4px;">Total intereses</div>
+                                        <div id="mq-interest-display" style="font-size:16px; font-weight:600; color:#fff;"></div>
+                                    </div>
+                                    <div>
+                                        <div style="font-size:10px; color:#aaa; text-transform:uppercase; margin-bottom:4px;">Total a pagar</div>
+                                        <div id="mq-total-display" style="font-size:16px; font-weight:600; color:#fff;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Notas --}}
                     <div class="form-group mb-0">
-                        <label style="font-weight:600; font-size:13px; color:#444;">Notas iniciales</label>
-                        <textarea name="notes" rows="2" class="form-control" style="border-radius:8px;" placeholder="Observaciones..."></textarea>
+                        <label style="font-weight:600; font-size:13px; color:#444;">Notas</label>
+                        <textarea name="notes" rows="2" class="form-control" style="border-radius:8px;" placeholder="Condiciones, observaciones..."></textarea>
                     </div>
-                    <p style="font-size:12px; color:#888; margin-top:10px; margin-bottom:0;"><i class="fa fa-info-circle"></i> Podrá agregar ítems y detalles después de crear la cotización.</p>
                 </div>
                 <div class="modal-footer" style="border-top:1px solid #f0f0f0; padding:14px 20px; display:flex; justify-content:flex-end; gap:8px;">
                     <button type="button" class="action-btn secondary" data-dismiss="modal">Cancelar</button>
                     <button type="submit" class="action-btn" style="background:linear-gradient(135deg,#c2ac1f,#a89617); color:#000; font-weight:700;">
-                        <i class="fa fa-save"></i> Crear Cotización
+                        <i class="fa fa-save"></i> Guardar Cotización
                     </button>
                 </div>
             </form>
@@ -1460,4 +1564,62 @@
             $('#modal-send-email').modal('show');
         });
     </script>
+@endpush
+
+@push('script')
+<script>
+// Modal cotización: toggle tipo inmueble / vehículo
+function toggleModalQuoteType(val) {
+    var vSec = document.getElementById('mq-vehicle-section');
+    var vSel = document.getElementById('mq-vehicle-select');
+    var isVehicle = val === 'vehicle';
+    if (vSec) vSec.style.display = isVehicle ? 'block' : 'none';
+    if (vSel) vSel.required = isVehicle;
+}
+
+// Calculadora de financiamiento del modal
+function calcModalQuote() {
+    var price   = parseFloat(document.getElementById('mq-price').value) || 0;
+    var pct     = parseFloat(document.getElementById('mq-pct').value) || 50;
+    var term    = parseInt(document.getElementById('mq-term').value) || 60;
+    var ratePct = parseFloat(document.getElementById('mq-rate-pct').value) || 0;
+    var freq    = document.getElementById('mq-freq').value;
+
+    var downPayment = price * (pct / 100);
+    document.getElementById('mq-down').value = downPayment.toFixed(2);
+
+    var rate = ratePct / 100;
+    document.getElementById('mq-rate').value = rate;
+
+    var principal = price - downPayment;
+    var periodsPerYear = freq === 'annual' ? 1 : 12;
+    var nPeriods = freq === 'annual' ? Math.ceil(term / 12) : term;
+    var periodicRate = rate / periodsPerYear;
+
+    var payment;
+    if (rate > 0 && nPeriods > 0) {
+        payment = principal * (periodicRate * Math.pow(1 + periodicRate, nPeriods)) / (Math.pow(1 + periodicRate, nPeriods) - 1);
+    } else {
+        payment = nPeriods > 0 ? principal / nPeriods : 0;
+    }
+
+    var totalPaid     = payment * nPeriods;
+    var totalInterest = Math.max(totalPaid - principal, 0);
+    var grandTotal    = downPayment + totalPaid;
+
+    var fmt = function(n) { return n.toLocaleString('es-CR', {minimumFractionDigits:2, maximumFractionDigits:2}); };
+
+    if (price > 0) {
+        document.getElementById('mq-result').style.display = 'block';
+        document.getElementById('mq-payment-display').textContent  = '₡' + fmt(payment);
+        document.getElementById('mq-interest-display').textContent = '₡' + fmt(totalInterest);
+        document.getElementById('mq-total-display').textContent    = '₡' + fmt(grandTotal);
+    }
+}
+
+// Inicializar al abrir el modal
+document.getElementById('modal-nueva-cotizacion')?.addEventListener('shown.bs.modal', function() {
+    toggleModalQuoteType('property');
+});
+</script>
 @endpush

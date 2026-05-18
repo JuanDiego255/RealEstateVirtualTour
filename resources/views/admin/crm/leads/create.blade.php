@@ -165,13 +165,15 @@
                                 <div class="col-md-4">
                                     <div class="form-group">
                                         <label>Mínimo</label>
-                                        <input type="number" name="budget_min" class="form-control" value="{{ old('budget_min') }}" min="0" step="0.01">
+                                        <input type="text" name="budget_min_display" data-money="budget_min" class="form-control" value="{{ old('budget_min') }}" placeholder="0">
+                                        <input type="hidden" name="budget_min" value="{{ old('budget_min') }}">
                                     </div>
                                 </div>
                                 <div class="col-md-4">
                                     <div class="form-group">
                                         <label>Máximo</label>
-                                        <input type="number" name="budget_max" class="form-control" value="{{ old('budget_max') }}" min="0" step="0.01">
+                                        <input type="text" name="budget_max_display" data-money="budget_max" class="form-control" value="{{ old('budget_max') }}" placeholder="0">
+                                        <input type="hidden" name="budget_max" value="{{ old('budget_max') }}">
                                     </div>
                                 </div>
                             </div>
@@ -351,10 +353,45 @@ function toggleAssetPrefs(val) {
     document.getElementById('pref-property-section').style.display = val === 'property' ? 'block' : 'none';
     document.getElementById('pref-vehicle-section').style.display = val === 'vehicle' ? 'block' : 'none';
 }
-// Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
+    // Asset prefs toggle
     var checked = document.querySelector('input[name="preferred_asset_type"]:checked');
     if (checked) toggleAssetPrefs(checked.value);
+
+    // Vehicle image preview
+    var vSel = document.getElementById('vehicle_id_select');
+    if (vSel) {
+        function updateVehiclePreview() {
+            var opt = vSel.options[vSel.selectedIndex];
+            var img = opt ? opt.getAttribute('data-img') : '';
+            var previewDiv = document.getElementById('vehicle-preview');
+            var previewImg = document.getElementById('vehicle-preview-img');
+            if (img) { previewImg.src = img; previewDiv.style.display = 'block'; }
+            else { previewDiv.style.display = 'none'; }
+        }
+        vSel.addEventListener('change', updateVehiclePreview);
+        updateVehiclePreview();
+    }
+
+    // Budget thousand separator
+    document.querySelectorAll('[data-money]').forEach(function(el) {
+        var hiddenName = el.getAttribute('data-money');
+        var hidden = document.querySelector('input[type="hidden"][name="' + hiddenName + '"]');
+        function fmt(v) {
+            var raw = v.replace(/[^0-9]/g, '');
+            return raw ? parseInt(raw, 10).toLocaleString('es-CR') : '';
+        }
+        el.addEventListener('input', function() {
+            var raw = this.value.replace(/[^0-9]/g, '');
+            if (hidden) hidden.value = raw;
+            this.value = fmt(this.value);
+        });
+        if (el.value) {
+            var raw = el.value.replace(/[^0-9]/g, '');
+            if (hidden) hidden.value = raw;
+            el.value = raw ? parseInt(raw, 10).toLocaleString('es-CR') : '';
+        }
+    });
 });
 </script>
 @endpush
