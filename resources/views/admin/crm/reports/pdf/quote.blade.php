@@ -60,12 +60,13 @@ td { padding: 6px 10px; border-bottom: 1px solid #f0f0f0; font-size: 11px; verti
     </table>
 </div>
 
-{{-- ── Vehicle Quote ── --}}
-@if($quote->quote_type === 'vehicle' && $quote->vq_vehicle_price)
+@php $isVehicleQuote = $quote->quote_type === 'vehicle' && $quote->vq_vehicle_price; @endphp
+
+@if($isVehicleQuote)
 @php
-    $freq     = $quote->vq_payment_frequency === 'annual' ? 'anual' : 'mensual';
-    $termYrs  = $quote->vq_term_months ? round($quote->vq_term_months / 12, 1) : null;
-    $ratePct  = $quote->vq_interest_rate ? number_format($quote->vq_interest_rate * 100, 2) : '0.00';
+    $freq    = $quote->vq_payment_frequency === 'annual' ? 'anual' : 'mensual';
+    $termYrs = $quote->vq_term_months ? round($quote->vq_term_months / 12, 1) : null;
+    $ratePct = $quote->vq_interest_rate ? number_format($quote->vq_interest_rate * 100, 2) : '0.00';
 @endphp
 @if($quote->property)
 <div class="section">
@@ -83,7 +84,7 @@ td { padding: 6px 10px; border-bottom: 1px solid #f0f0f0; font-size: 11px; verti
     <table class="info-grid" style="margin-bottom:12px;">
         <tr>
             <td width="25%"><div class="info-label">Prima ({{ number_format($quote->vq_down_payment_pct, 0) }}%)</div><div class="info-value">₡{{ number_format($quote->vq_down_payment, 0, ',', '.') }}</div></td>
-            <td width="25%"><div class="info-label">Plazo</div><div class="info-value">{{ $quote->vq_term_months }} meses@if($termYrs) ({{ $termYrs }} años)@endif</div></td>
+            <td width="25%"><div class="info-label">Plazo</div><div class="info-value">{{ $quote->vq_term_months }} meses{{ $termYrs ? ' ('.$termYrs.' años)' : '' }}</div></td>
             <td width="25%"><div class="info-label">Tasa anual</div><div class="info-value">{{ $ratePct }}%</div></td>
             <td width="25%"><div class="info-label">Frecuencia pago</div><div class="info-value">{{ ucfirst($freq) }}</div></td>
         </tr>
@@ -102,9 +103,9 @@ td { padding: 6px 10px; border-bottom: 1px solid #f0f0f0; font-size: 11px; verti
     </table>
     <p style="font-size:9px;color:#aaa;margin-top:6px;">* Cuota calculada bajo el método francés de amortización. Condiciones finales sujetas a aprobación crediticia.</p>
 </div>
+@endif
 
-{{-- ── Property Quote ── --}}
-@else
+@if(!$isVehicleQuote)
 @if($quote->property)
 <div class="section">
     <div class="section-title">Propiedad de Referencia</div>
