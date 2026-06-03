@@ -1584,19 +1584,31 @@
                 var pnlmEl = document.getElementById('pannellum');
                 if (!pnlmEl) return;
 
-                var dragging   = false;
-                var lastYaw    = 0, lastPitch = 0, lastTime = 0;
-                var velYaw     = 0, velPitch  = 0;
-                var rafId      = null;
-                var FRICTION   = 0.88;   // cuánto se desacelera por frame (0=para ya, 1=nunca para)
-                var MIN_VEL    = 0.04;   // velocidad mínima antes de parar
-                var MAX_VEL    = 6;      // cap para evitar lanzadas extremas
+                var dragging  = false;
+                var lastYaw   = 0, lastPitch = 0, lastTime = 0;
+                var velYaw    = 0, velPitch  = 0;
+                var rafId     = null;
+                var MIN_VEL   = 0.012;
+                var MAX_VEL   = 10;
+
+                // Historial de velocidades para el lanzamiento (últimos 120ms)
+                var _velBuf = [];
+                var VEL_WIN = 120; // ms
 
                 function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
 
+                // Fricción tiered: glide largo al inicio, freno final preciso
+                function getFriction() {
+                    var spd = Math.sqrt(velYaw * velYaw + velPitch * velPitch);
+                    return spd > 2   ? 0.96
+                         : spd > 0.4 ? 0.93
+                         : 0.88;
+                }
+
                 function applyMomentum() {
-                    velYaw   *= FRICTION;
-                    velPitch *= FRICTION;
+                    var f = getFriction();
+                    velYaw   *= f;
+                    velPitch *= f;
 
                     if (Math.abs(velYaw) < MIN_VEL && Math.abs(velPitch) < MIN_VEL) return;
 
@@ -1610,10 +1622,11 @@
 
                 function stopMomentum() {
                     velYaw = velPitch = 0;
+                    _velBuf = [];
                     if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
                 }
 
-                function onDragStart(cx, cy) {
+                function onDragStart() {
                     stopMomentum();
                     dragging  = true;
                     lastTime  = performance.now();
@@ -1623,7 +1636,7 @@
                     } catch(e) {}
                 }
 
-                function onDragMove(cx, cy) {
+                function onDragMove() {
                     if (!dragging) return;
                     var now = performance.now();
                     var dt  = now - lastTime;
@@ -1632,11 +1645,15 @@
                     try {
                         var curYaw   = viewer.getYaw();
                         var curPitch = viewer.getPitch();
-                        var dYaw     = lastYaw   - curYaw;
-                        var dPitch   = curPitch  - lastPitch;
-                        // Exponential moving average — suaviza picos bruscos
-                        velYaw   = velYaw   * 0.55 + clamp(dYaw   / dt * 16, -MAX_VEL, MAX_VEL) * 0.45;
-                        velPitch = velPitch * 0.55 + clamp(dPitch / dt * 16, -MAX_VEL, MAX_VEL) * 0.45;
+                        var rawVY = clamp((lastYaw - curYaw)   / dt * 16, -MAX_VEL, MAX_VEL);
+                        var rawVP = clamp((curPitch - lastPitch) / dt * 16, -MAX_VEL, MAX_VEL);
+
+                        // Acumular en historial de velocidades
+                        _velBuf.push({ vy: rawVY, vp: rawVP, t: now });
+                        // Descartar entradas fuera de la ventana
+                        var cutoff = now - VEL_WIN;
+                        while (_velBuf.length > 1 && _velBuf[0].t < cutoff) _velBuf.shift();
+
                         lastYaw   = curYaw;
                         lastPitch = curPitch;
                     } catch(e) {}
@@ -1647,24 +1664,35 @@
                 function onDragEnd() {
                     if (!dragging) return;
                     dragging = false;
+
+                    if (_velBuf.length === 0) return;
+
+                    // Promedio ponderado del historial (más reciente = más peso)
+                    var sumVY = 0, sumVP = 0, totalW = 0;
+                    _velBuf.forEach(function(e, i) {
+                        var w = (i + 1); // peso lineal
+                        sumVY  += e.vy * w;
+                        sumVP  += e.vp * w;
+                        totalW += w;
+                    });
+                    velYaw   = sumVY / totalW;
+                    velPitch = sumVP / totalW;
+                    _velBuf  = [];
+
                     if (Math.abs(velYaw) > MIN_VEL || Math.abs(velPitch) > MIN_VEL) {
                         rafId = requestAnimationFrame(applyMomentum);
                     }
                 }
 
                 // Mouse
-                pnlmEl.addEventListener('mousedown', function(e) { onDragStart(e.clientX, e.clientY); });
-                window.addEventListener('mousemove', function(e) { onDragMove(e.clientX,  e.clientY); });
+                pnlmEl.addEventListener('mousedown', onDragStart);
+                window.addEventListener('mousemove', onDragMove);
                 window.addEventListener('mouseup',   onDragEnd);
 
                 // Touch
-                pnlmEl.addEventListener('touchstart', function(e) {
-                    if (e.touches[0]) onDragStart(e.touches[0].clientX, e.touches[0].clientY);
-                }, { passive: true });
-                window.addEventListener('touchmove', function(e) {
-                    if (e.touches[0]) onDragMove(e.touches[0].clientX, e.touches[0].clientY);
-                }, { passive: true });
-                window.addEventListener('touchend',  onDragEnd);
+                pnlmEl.addEventListener('touchstart', onDragStart, { passive: true });
+                window.addEventListener('touchmove',  onDragMove,  { passive: true });
+                window.addEventListener('touchend',   onDragEnd);
 
                 // Cancelar inercia si el usuario empieza a rotar automático
                 viewer.on('autorotatechange', stopMomentum);
@@ -1873,18 +1901,28 @@
 
                     var prevSrc = sourcePoints && sourcePoints[lastValidIdx];
                     if (prevSrc && prevSrc.smooth) {
-                        var prevPrevIdx = lastValidIdx > 0 ? lastValidIdx - 1 : (closed ? n - 1 : lastValidIdx);
-                        var nextIdx     = i < n - 1 ? i + 1 : (closed ? 0 : i);
-                        var P0 = screenPoints[prevPrevIdx] || screenPoints[lastValidIdx];
-                        var P1 = screenPoints[lastValidIdx];
-                        var P2 = sc;
-                        var P3 = screenPoints[nextIdx] || sc;
-
-                        var cp1x = P1.x + (P2.x - P0.x) / 6;
-                        var cp1y = P1.y + (P2.y - P0.y) / 6;
-                        var cp2x = P2.x - (P3.x - P1.x) / 6;
-                        var cp2y = P2.y - (P3.y - P1.y) / 6;
-
+                        var cp1x, cp1y, cp2x, cp2y;
+                        if (prevSrc.cp && prevSrc.cp2) {
+                            var cp1Sc = getPolygonScreenCoords(prevSrc.cp.yaw,  prevSrc.cp.pitch);
+                            var cp2Sc = getPolygonScreenCoords(prevSrc.cp2.yaw, prevSrc.cp2.pitch);
+                            if (cp1Sc && cp2Sc) {
+                                cp1x = cp1Sc.x; cp1y = cp1Sc.y;
+                                cp2x = cp2Sc.x; cp2y = cp2Sc.y;
+                            } else {
+                                var P1f = screenPoints[lastValidIdx];
+                                cp1x = P1f.x; cp1y = P1f.y; cp2x = sc.x; cp2y = sc.y;
+                            }
+                        } else {
+                            var prevPrevIdx = lastValidIdx > 0 ? lastValidIdx - 1 : (closed ? n - 1 : lastValidIdx);
+                            var nextIdx     = i < n - 1 ? i + 1 : (closed ? 0 : i);
+                            var P0 = screenPoints[prevPrevIdx] || screenPoints[lastValidIdx];
+                            var P1 = screenPoints[lastValidIdx];
+                            var P3 = screenPoints[nextIdx] || sc;
+                            cp1x = P1.x + (sc.x - P0.x) / 6;
+                            cp1y = P1.y + (sc.y - P0.y) / 6;
+                            cp2x = sc.x  - (P3.x - P1.x) / 6;
+                            cp2y = sc.y  - (P3.y - P1.y) / 6;
+                        }
                         pathData += ' C ' + cp1x.toFixed(1) + ',' + cp1y.toFixed(1) +
                                     ' ' + cp2x.toFixed(1) + ',' + cp2y.toFixed(1) +
                                     ' ' + sc.x.toFixed(1) + ',' + sc.y.toFixed(1);

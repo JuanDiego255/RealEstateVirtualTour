@@ -147,6 +147,7 @@ $(document).ready(function() {
     var polygonUpdateTimer = null; // kept for clearInterval on scene change
     var _previewCursorPos = null;
     var _polyRafRunning = false;
+    var _cpDrag = null; // { pointIdx, type: 'cp'|'cp2' } — handle bezier arrastrado
 
     // URL base para AJAX de polígonos
     var polygonBaseUrl = "{{ url('/') }}";
@@ -383,10 +384,32 @@ $(document).ready(function() {
     $(document).on('click', '.btn-curve-toggle', function() {
         var edgeIdx = parseInt($(this).data('edge'));
         if (edgeIdx >= 0 && edgeIdx < currentPoints.length) {
-            currentPoints[edgeIdx].smooth = !currentPoints[edgeIdx].smooth;
+            var p = currentPoints[edgeIdx];
+            p.smooth = !p.smooth;
+            // Al desactivar, limpiar control points manuales
+            if (!p.smooth) { delete p.cp; delete p.cp2; }
             updateEdgeLabelsUI();
             renderAllPolygons();
         }
+    });
+
+    // ====== Drag de handles bezier ======
+    window.addEventListener('mousemove', function(ev) {
+        if (!_cpDrag || !polygonViewer) return;
+        try {
+            var coords = polygonViewer.mouseEventToCoords(ev);
+            if (coords) {
+                var p = currentPoints[_cpDrag.pointIdx];
+                if (p) {
+                    // mouseEventToCoords retorna [pitch, yaw]
+                    p[_cpDrag.type] = { yaw: coords[1], pitch: coords[0] };
+                    renderAllPolygons();
+                }
+            }
+        } catch(e) {}
+    });
+    window.addEventListener('mouseup', function() {
+        _cpDrag = null;
     });
 
     // ====== Deshacer / Limpiar ======
@@ -551,7 +574,72 @@ $(document).ready(function() {
             }
         });
 
-        // 5. Línea fantasma desde el último punto hasta el cursor
+        // 5. Handles bezier arrastrables para segmentos smooth
+        var closed5 = currentPoints.length >= 3;
+        var n5 = currentPoints.length;
+        currentPoints.forEach(function(p, i) {
+            if (!p.smooth) return;
+            var nextIdx = closed5 ? (i + 1) % n5 : Math.min(i + 1, n5 - 1);
+            if (nextIdx === i) return;
+
+            var pSc    = getScreenCoords(p.yaw, p.pitch);
+            var nextSc = getScreenCoords(currentPoints[nextIdx].yaw, currentPoints[nextIdx].pitch);
+            if (!pSc || !nextSc) return;
+
+            // Si no existen cp/cp2, calcular desde Catmull-Rom y asignar
+            if (!p.cp || !p.cp2) {
+                var prevIdx = i > 0 ? i - 1 : (closed5 ? n5 - 1 : i);
+                var afterIdx = nextIdx < n5 - 1 ? nextIdx + 1 : (closed5 ? 0 : nextIdx);
+                var P0p = currentPoints[prevIdx], P1p = p, P2p = currentPoints[nextIdx], P3p = currentPoints[afterIdx];
+                p.cp  = { yaw: P1p.yaw + (P2p.yaw - P0p.yaw) / 6, pitch: P1p.pitch + (P2p.pitch - P0p.pitch) / 6 };
+                p.cp2 = { yaw: P2p.yaw - (P3p.yaw - P1p.yaw) / 6, pitch: P2p.pitch - (P3p.pitch - P1p.pitch) / 6 };
+            }
+
+            var cp1Sc = getScreenCoords(p.cp.yaw,  p.cp.pitch);
+            var cp2Sc = getScreenCoords(p.cp2.yaw, p.cp2.pitch);
+
+            // Líneas guía punteadas hacia los control points
+            if (cp1Sc) {
+                var gl1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                gl1.setAttribute('x1', pSc.x);   gl1.setAttribute('y1', pSc.y);
+                gl1.setAttribute('x2', cp1Sc.x); gl1.setAttribute('y2', cp1Sc.y);
+                gl1.setAttribute('stroke', '#00FFFF'); gl1.setAttribute('stroke-width', '1');
+                gl1.setAttribute('stroke-dasharray', '3,3'); gl1.setAttribute('opacity', '0.7');
+                svgOverlay.appendChild(gl1);
+            }
+            if (cp2Sc) {
+                var gl2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                gl2.setAttribute('x1', nextSc.x); gl2.setAttribute('y1', nextSc.y);
+                gl2.setAttribute('x2', cp2Sc.x);  gl2.setAttribute('y2', cp2Sc.y);
+                gl2.setAttribute('stroke', '#00FFFF'); gl2.setAttribute('stroke-width', '1');
+                gl2.setAttribute('stroke-dasharray', '3,3'); gl2.setAttribute('opacity', '0.7');
+                svgOverlay.appendChild(gl2);
+            }
+
+            // Handle cp1 (diamante cian)
+            function makeHandle(sx, sy, ptIdx, cpType) {
+                var SIZE = 6;
+                var rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                rect.setAttribute('x', sx - SIZE); rect.setAttribute('y', sy - SIZE);
+                rect.setAttribute('width', SIZE * 2); rect.setAttribute('height', SIZE * 2);
+                rect.setAttribute('fill', '#00FFFF'); rect.setAttribute('stroke', '#005588');
+                rect.setAttribute('stroke-width', '1.5');
+                rect.setAttribute('transform', 'rotate(45 ' + sx + ' ' + sy + ')');
+                rect.style.pointerEvents = 'all';
+                rect.style.cursor = 'move';
+                rect.addEventListener('mousedown', function(ev) {
+                    ev.stopPropagation();
+                    ev.preventDefault();
+                    _cpDrag = { pointIdx: ptIdx, type: cpType };
+                });
+                svgOverlay.appendChild(rect);
+            }
+
+            if (cp1Sc) makeHandle(cp1Sc.x, cp1Sc.y, i, 'cp');
+            if (cp2Sc) makeHandle(cp2Sc.x, cp2Sc.y, i, 'cp2');
+        });
+
+        // 6. Línea fantasma desde el último punto hasta el cursor
         if (_previewCursorPos && currentPoints.length > 0) {
             var lastPt = currentPoints[currentPoints.length - 1];
             var lastSc = getScreenCoords(lastPt.yaw, lastPt.pitch);
@@ -590,18 +678,33 @@ $(document).ready(function() {
 
             var prevSrc = sourcePoints && sourcePoints[lastValidIdx];
             if (prevSrc && prevSrc.smooth) {
-                // Catmull-Rom → Cubic Bezier
-                var prevPrevIdx = lastValidIdx > 0 ? lastValidIdx - 1 : (closed ? n - 1 : lastValidIdx);
-                var nextIdx     = i < n - 1 ? i + 1 : (closed ? 0 : i);
-                var P0 = screenPoints[prevPrevIdx] || screenPoints[lastValidIdx];
-                var P1 = screenPoints[lastValidIdx];
-                var P2 = sc;
-                var P3 = screenPoints[nextIdx] || sc;
+                var cp1x, cp1y, cp2x, cp2y;
 
-                var cp1x = P1.x + (P2.x - P0.x) / 6;
-                var cp1y = P1.y + (P2.y - P0.y) / 6;
-                var cp2x = P2.x - (P3.x - P1.x) / 6;
-                var cp2y = P2.y - (P3.y - P1.y) / 6;
+                if (prevSrc.cp && prevSrc.cp2) {
+                    // Control points manuales — proyectar desde yaw/pitch a pantalla
+                    var cp1Sc = getScreenCoords(prevSrc.cp.yaw,  prevSrc.cp.pitch);
+                    var cp2Sc = getScreenCoords(prevSrc.cp2.yaw, prevSrc.cp2.pitch);
+                    if (cp1Sc && cp2Sc) {
+                        cp1x = cp1Sc.x; cp1y = cp1Sc.y;
+                        cp2x = cp2Sc.x; cp2y = cp2Sc.y;
+                    } else {
+                        // Fallback si alguno está fuera de pantalla
+                        var P1f = screenPoints[lastValidIdx];
+                        cp1x = P1f.x; cp1y = P1f.y;
+                        cp2x = sc.x;  cp2y = sc.y;
+                    }
+                } else {
+                    // Catmull-Rom auto-compute
+                    var prevPrevIdx = lastValidIdx > 0 ? lastValidIdx - 1 : (closed ? n - 1 : lastValidIdx);
+                    var nextIdx     = i < n - 1 ? i + 1 : (closed ? 0 : i);
+                    var P0 = screenPoints[prevPrevIdx] || screenPoints[lastValidIdx];
+                    var P1 = screenPoints[lastValidIdx];
+                    var P3 = screenPoints[nextIdx] || sc;
+                    cp1x = P1.x + (sc.x - P0.x) / 6;
+                    cp1y = P1.y + (sc.y - P0.y) / 6;
+                    cp2x = sc.x  - (P3.x - P1.x) / 6;
+                    cp2y = sc.y  - (P3.y - P1.y) / 6;
+                }
 
                 pathData += ' C ' + cp1x.toFixed(1) + ',' + cp1y.toFixed(1) +
                             ' ' + cp2x.toFixed(1) + ',' + cp2y.toFixed(1) +
