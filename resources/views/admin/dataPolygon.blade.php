@@ -144,7 +144,9 @@ $(document).ready(function() {
     var savedPolygons = [];
     var editingPolygonId = null;
     var svgOverlay = null;
-    var polygonUpdateTimer = null;
+    var polygonUpdateTimer = null; // kept for clearInterval on scene change
+    var _previewCursorPos = null;
+    var _polyRafRunning = false;
 
     // URL base para AJAX de polígonos
     var polygonBaseUrl = "{{ url('/') }}";
@@ -201,11 +203,10 @@ $(document).ready(function() {
         clearPoints();
 
         // Destruir visor anterior
+        _polyRafRunning = false; // detiene el rAF loop de la escena anterior
+        _previewCursorPos = null;
         if (polygonViewer) {
             try { polygonViewer.destroy(); } catch(e) {}
-        }
-        if (polygonUpdateTimer) {
-            clearInterval(polygonUpdateTimer);
         }
 
         // Crear nuevo visor
@@ -221,13 +222,36 @@ $(document).ready(function() {
         // Esperar a que cargue para crear el SVG overlay
         polygonViewer.on('load', function() {
             ensureSvgOverlay();
+            _previewCursorPos = null;
 
-            // Iniciar actualización periódica de polígonos
-            polygonUpdateTimer = setInterval(function() {
-                if (currentPoints.length > 0 || savedPolygons.length > 0) {
+            // rAF loop: sólo re-renderiza cuando la vista cambia
+            _polyRafRunning = false;
+            var _lastRafState = '';
+            _polyRafRunning = true;
+            (function _rafLoop() {
+                if (!polygonViewer || !_polyRafRunning) return;
+                var st = polygonViewer.getYaw().toFixed(2) + ',' +
+                         polygonViewer.getPitch().toFixed(2) + ',' +
+                         polygonViewer.getHfov().toFixed(2);
+                if (st !== _lastRafState) {
+                    _lastRafState = st;
+                    if (currentPoints.length > 0 || savedPolygons.length > 0) renderAllPolygons();
+                }
+                requestAnimationFrame(_rafLoop);
+            })();
+
+            // Línea de previsualización: desde el último punto hasta el cursor
+            var _panoEl = document.getElementById('polygon-panorama');
+            _panoEl.addEventListener('mousemove', function(ev) {
+                if (currentPoints.length > 0) {
+                    var rect = _panoEl.getBoundingClientRect();
+                    _previewCursorPos = { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
                     renderAllPolygons();
                 }
-            }, 50);
+            });
+            _panoEl.addEventListener('mouseleave', function() {
+                if (_previewCursorPos) { _previewCursorPos = null; renderAllPolygons(); }
+            });
         });
 
         // Detectar clic vs arrastre
@@ -282,8 +306,10 @@ $(document).ready(function() {
         });
         if (currentPoints.length === 0) {
             html = '<em class="text-muted">Haga clic en el visor para agregar puntos</em>';
-        } else if (currentPoints.length < 3) {
-            html += '<div class="text-warning mt-1"><small>Mínimo 3 puntos para formar un polígono</small></div>';
+        } else if (currentPoints.length < 2) {
+            html += '<div class="text-warning mt-1"><small>Agrega un punto más para formar una línea</small></div>';
+        } else if (currentPoints.length === 2) {
+            html += '<div class="text-info mt-1"><small>Línea de 2 puntos (agrega más para un polígono)</small></div>';
         } else {
             html += '<div class="text-success mt-1"><small>Polígono válido (' + currentPoints.length + ' puntos)</small></div>';
         }
@@ -293,30 +319,44 @@ $(document).ready(function() {
 
     // ====== Generar inputs de medidas por lado ======
     function updateEdgeLabelsUI() {
-        if (currentPoints.length < 3) {
+        if (currentPoints.length < 2) {
             $('#edge-labels-container').hide();
             $('#interior-text-container').hide();
             return;
         }
 
         $('#edge-labels-container').show();
-        $('#interior-text-container').show();
+        // Texto interior sólo tiene sentido con ≥3 puntos (polígono)
+        if (currentPoints.length >= 3) {
+            $('#interior-text-container').show();
+        } else {
+            $('#interior-text-container').hide();
+        }
 
-        var numEdges = currentPoints.length;
+        // Para una línea (2 pts) hay 1 lado; para polígono los lados se cierran
+        var closed = currentPoints.length >= 3;
+        var numEdges = closed ? currentPoints.length : currentPoints.length - 1;
+
         var container = $('#edge-labels-list');
         var existingValues = [];
-        // Preservar valores existentes
-        container.find('input').each(function() {
+        container.find('.edge-label-input').each(function() {
             existingValues.push($(this).val());
         });
 
         var html = '';
         for (var i = 0; i < numEdges; i++) {
-            var nextIdx = (i + 1) % numEdges;
+            var nextIdx = closed ? (i + 1) % currentPoints.length : i + 1;
             var prevVal = (i < existingValues.length) ? existingValues[i] : '';
+            var isSmooth = !!(currentPoints[i] && currentPoints[i].smooth);
+            var smoothClass = isSmooth ? 'btn-primary' : 'btn-outline-secondary';
+            var smoothTitle = isSmooth ? 'Curva activa — clic para recta' : 'Línea recta — clic para curva';
+
             html += '<div class="input-group input-group-sm mb-1">';
             html += '<div class="input-group-prepend"><span class="input-group-text" style="min-width:70px;">Lado ' + (i + 1) + '-' + (nextIdx + 1) + '</span></div>';
             html += '<input type="text" class="form-control edge-label-input" data-edge="' + i + '" placeholder="Ej: 23 mts" value="' + prevVal + '">';
+            html += '<div class="input-group-append">';
+            html += '<button type="button" class="btn ' + smoothClass + ' btn-curve-toggle" data-edge="' + i + '" title="' + smoothTitle + '">〜</button>';
+            html += '</div>';
             html += '</div>';
         }
         container.html(html);
@@ -337,6 +377,16 @@ $(document).ready(function() {
     // ====== Re-renderizar al cambiar medidas o texto interior ======
     $(document).on('input', '.edge-label-input, #polygon-interior-text', function() {
         renderAllPolygons();
+    });
+
+    // ====== Toggle curva/recta por segmento ======
+    $(document).on('click', '.btn-curve-toggle', function() {
+        var edgeIdx = parseInt($(this).data('edge'));
+        if (edgeIdx >= 0 && edgeIdx < currentPoints.length) {
+            currentPoints[edgeIdx].smooth = !currentPoints[edgeIdx].smooth;
+            updateEdgeLabelsUI();
+            renderAllPolygons();
+        }
     });
 
     // ====== Deshacer / Limpiar ======
@@ -458,20 +508,14 @@ $(document).ready(function() {
             drawPolygonSVG(currentPoints, fillColor, fillOpacity, strokeColor, strokeWidth, currentEdgeLabels, currentInteriorText);
         }
 
-        // 3. Dibujar líneas entre puntos actuales (vista previa aunque no sean 3)
-        if (currentPoints.length >= 2) {
-            var lineData = '';
-            var validLinePoints = 0;
-            currentPoints.forEach(function(p) {
-                var sc = getScreenCoords(p.yaw, p.pitch);
-                if (sc) {
-                    lineData += (validLinePoints === 0 ? 'M ' : 'L ') + sc.x + ' ' + sc.y + ' ';
-                    validLinePoints++;
-                }
-            });
-            if (validLinePoints >= 2) {
+        // 3. Dibujar líneas entre puntos actuales (vista previa cuando < 3 puntos)
+        if (currentPoints.length === 2) {
+            var prevScreenPts = [];
+            currentPoints.forEach(function(p) { prevScreenPts.push(getScreenCoords(p.yaw, p.pitch)); });
+            var prevLineData = buildPolyPathData(prevScreenPts, currentPoints, false);
+            if (prevLineData) {
                 var line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                line.setAttribute('d', lineData);
+                line.setAttribute('d', prevLineData);
                 line.setAttribute('fill', 'none');
                 line.setAttribute('stroke', $('#polygon-stroke-color').val());
                 line.setAttribute('stroke-width', 2);
@@ -506,30 +550,94 @@ $(document).ready(function() {
                 svgOverlay.appendChild(text);
             }
         });
+
+        // 5. Línea fantasma desde el último punto hasta el cursor
+        if (_previewCursorPos && currentPoints.length > 0) {
+            var lastPt = currentPoints[currentPoints.length - 1];
+            var lastSc = getScreenCoords(lastPt.yaw, lastPt.pitch);
+            if (lastSc) {
+                var ghostLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                ghostLine.setAttribute('x1', lastSc.x);
+                ghostLine.setAttribute('y1', lastSc.y);
+                ghostLine.setAttribute('x2', _previewCursorPos.x);
+                ghostLine.setAttribute('y2', _previewCursorPos.y);
+                ghostLine.setAttribute('stroke', '#FF9900');
+                ghostLine.setAttribute('stroke-width', '2');
+                ghostLine.setAttribute('stroke-dasharray', '6,3');
+                ghostLine.setAttribute('opacity', '0.85');
+                svgOverlay.appendChild(ghostLine);
+            }
+        }
+    }
+
+    // ====== Construir path SVG con curvas Catmull-Rom opcionales por segmento ======
+    function buildPolyPathData(screenPoints, sourcePoints, closed) {
+        var n = screenPoints.length;
+        var pathData = '';
+        var started = false;
+        var lastValidIdx = -1;
+
+        for (var i = 0; i < n; i++) {
+            var sc = screenPoints[i];
+            if (!sc) continue;
+
+            if (!started) {
+                pathData = 'M ' + sc.x.toFixed(1) + ' ' + sc.y.toFixed(1);
+                started = true;
+                lastValidIdx = i;
+                continue;
+            }
+
+            var prevSrc = sourcePoints && sourcePoints[lastValidIdx];
+            if (prevSrc && prevSrc.smooth) {
+                // Catmull-Rom → Cubic Bezier
+                var prevPrevIdx = lastValidIdx > 0 ? lastValidIdx - 1 : (closed ? n - 1 : lastValidIdx);
+                var nextIdx     = i < n - 1 ? i + 1 : (closed ? 0 : i);
+                var P0 = screenPoints[prevPrevIdx] || screenPoints[lastValidIdx];
+                var P1 = screenPoints[lastValidIdx];
+                var P2 = sc;
+                var P3 = screenPoints[nextIdx] || sc;
+
+                var cp1x = P1.x + (P2.x - P0.x) / 6;
+                var cp1y = P1.y + (P2.y - P0.y) / 6;
+                var cp2x = P2.x - (P3.x - P1.x) / 6;
+                var cp2y = P2.y - (P3.y - P1.y) / 6;
+
+                pathData += ' C ' + cp1x.toFixed(1) + ',' + cp1y.toFixed(1) +
+                            ' ' + cp2x.toFixed(1) + ',' + cp2y.toFixed(1) +
+                            ' ' + sc.x.toFixed(1) + ',' + sc.y.toFixed(1);
+            } else {
+                pathData += ' L ' + sc.x.toFixed(1) + ' ' + sc.y.toFixed(1);
+            }
+            lastValidIdx = i;
+        }
+
+        if (!started) return null;
+        if (closed) pathData += ' Z';
+        return pathData;
     }
 
     // ====== Dibujar un polígono en SVG con etiquetas ======
     function drawPolygonSVG(points, fillColor, fillOpacity, strokeColor, strokeWidth, edgeLabels, interiorText) {
         var screenPoints = [];
-        var pathData = '';
         var validPoints = 0;
 
         points.forEach(function(p) {
             var sc = getScreenCoords(p.yaw, p.pitch);
-            screenPoints.push(sc); // puede ser null
-            if (sc) {
-                pathData += (validPoints === 0 ? 'M ' : 'L ') + sc.x + ' ' + sc.y + ' ';
-                validPoints++;
-            }
+            screenPoints.push(sc);
+            if (sc) validPoints++;
         });
 
-        if (validPoints < 3) return;
+        if (validPoints < 2) return;
 
-        pathData += 'Z';
+        var closed = points.length >= 3;
+        var pathData = buildPolyPathData(screenPoints, points, closed);
+        if (!pathData) return;
+
         var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         path.setAttribute('d', pathData);
-        path.setAttribute('fill', fillColor);
-        path.setAttribute('fill-opacity', fillOpacity);
+        path.setAttribute('fill', closed ? fillColor : 'none');
+        path.setAttribute('fill-opacity', closed ? fillOpacity : 0);
         path.setAttribute('stroke', strokeColor);
         path.setAttribute('stroke-width', strokeWidth);
         svgOverlay.appendChild(path);
@@ -685,8 +793,8 @@ $(document).ready(function() {
             return;
         }
 
-        if (currentPoints.length < 3) {
-            alert('Necesita al menos 3 puntos para crear un polígono');
+        if (currentPoints.length < 2) {
+            alert('Necesita al menos 2 puntos para crear una línea o polígono');
             return;
         }
 

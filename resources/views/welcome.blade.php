@@ -1853,6 +1853,52 @@
                 return null;
             }
 
+            // Construir path SVG con curvas Catmull-Rom opcionales por segmento
+            function buildPolyPathData(screenPoints, sourcePoints, closed) {
+                var n = screenPoints.length;
+                var pathData = '';
+                var started = false;
+                var lastValidIdx = -1;
+
+                for (var i = 0; i < n; i++) {
+                    var sc = screenPoints[i];
+                    if (!sc) continue;
+
+                    if (!started) {
+                        pathData = 'M ' + sc.x.toFixed(1) + ' ' + sc.y.toFixed(1);
+                        started = true;
+                        lastValidIdx = i;
+                        continue;
+                    }
+
+                    var prevSrc = sourcePoints && sourcePoints[lastValidIdx];
+                    if (prevSrc && prevSrc.smooth) {
+                        var prevPrevIdx = lastValidIdx > 0 ? lastValidIdx - 1 : (closed ? n - 1 : lastValidIdx);
+                        var nextIdx     = i < n - 1 ? i + 1 : (closed ? 0 : i);
+                        var P0 = screenPoints[prevPrevIdx] || screenPoints[lastValidIdx];
+                        var P1 = screenPoints[lastValidIdx];
+                        var P2 = sc;
+                        var P3 = screenPoints[nextIdx] || sc;
+
+                        var cp1x = P1.x + (P2.x - P0.x) / 6;
+                        var cp1y = P1.y + (P2.y - P0.y) / 6;
+                        var cp2x = P2.x - (P3.x - P1.x) / 6;
+                        var cp2y = P2.y - (P3.y - P1.y) / 6;
+
+                        pathData += ' C ' + cp1x.toFixed(1) + ',' + cp1y.toFixed(1) +
+                                    ' ' + cp2x.toFixed(1) + ',' + cp2y.toFixed(1) +
+                                    ' ' + sc.x.toFixed(1) + ',' + sc.y.toFixed(1);
+                    } else {
+                        pathData += ' L ' + sc.x.toFixed(1) + ' ' + sc.y.toFixed(1);
+                    }
+                    lastValidIdx = i;
+                }
+
+                if (!started) return null;
+                if (closed) pathData += ' Z';
+                return pathData;
+            }
+
             // Función para renderizar polígonos de la escena actual
             function renderScenePolygons() {
                 // Auto-crear SVG si no existe o fue removido del DOM
@@ -1881,36 +1927,29 @@
                             return;
                         }
                     }
-                    if (!Array.isArray(points) || points.length < 3) return;
+                    if (!Array.isArray(points) || points.length < 2) return;
 
                     var screenPoints = [];
-                    var pathData = '';
                     var validPoints = 0;
 
-                    points.forEach(function(p, i) {
+                    points.forEach(function(p) {
                         var screenCoords = getPolygonScreenCoords(p.yaw, p.pitch);
                         screenPoints.push(screenCoords);
-                        if (screenCoords) {
-                            if (validPoints === 0) {
-                                pathData += 'M ' + screenCoords.x + ' ' + screenCoords.y + ' ';
-                            } else {
-                                pathData += 'L ' + screenCoords.x + ' ' + screenCoords.y + ' ';
-                            }
-                            validPoints++;
-                        }
+                        if (screenCoords) validPoints++;
                     });
 
-                    if (validPoints >= 3) {
-                        pathData += 'Z';
+                    var closed = points.length >= 3;
+                    var pathData = buildPolyPathData(screenPoints, points, closed);
+
+                    if (validPoints >= 2 && pathData) {
 
                         var isHovered = (hoveredPolygonId === poly.id);
 
                         var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
                         path.setAttribute('d', pathData);
-                        path.setAttribute('fill', poly.fillColor);
+                        path.setAttribute('fill', closed ? poly.fillColor : 'none');
                         // Aplicar estado hover si corresponde
-                        path.setAttribute('fill-opacity', isHovered ? Math.min(1, poly.fillOpacity + 0.3) : poly
-                            .fillOpacity);
+                        path.setAttribute('fill-opacity', closed ? (isHovered ? Math.min(1, poly.fillOpacity + 0.3) : poly.fillOpacity) : 0);
                         path.setAttribute('stroke', poly.strokeColor);
                         path.setAttribute('stroke-width', isHovered ? poly.strokeWidth + 2 : poly.strokeWidth);
                         path.setAttribute('data-polygon-id', poly.id);
@@ -2068,20 +2107,20 @@
                 svg.appendChild(textEl);
             }
 
-            // Actualizar polígonos periódicamente mientras se navega
-            var polygonUpdateInterval = null;
-
-            function startPolygonUpdates() {
-                if (polygonUpdateInterval) return;
-                polygonUpdateInterval = setInterval(function() {
-                    if (!isTransitioning) {
+            // rAF loop: re-renderiza polígonos sólo cuando la vista cambia
+            var _polyRafLastState = '';
+            (function _polyRafLoop() {
+                if (viewer && !isTransitioning) {
+                    var st = viewer.getYaw().toFixed(2) + ',' +
+                             viewer.getPitch().toFixed(2) + ',' +
+                             viewer.getHfov().toFixed(2);
+                    if (st !== _polyRafLastState) {
+                        _polyRafLastState = st;
                         renderScenePolygons();
                     }
-                }, 50);
-            }
-
-            // Iniciar actualizaciones de polígonos
-            startPolygonUpdates();
+                }
+                requestAnimationFrame(_polyRafLoop);
+            })();
 
             // ===== VIDEO DRON ORBITAL - Canvas Frame Cache (rendimiento instantáneo) =====
             var videoOverlay = document.getElementById('video-viewer-overlay');
