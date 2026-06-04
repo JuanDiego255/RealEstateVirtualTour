@@ -135,6 +135,42 @@
     </div>
 </div>
 
+{{-- Modal: copiar polígono a otras escenas --}}
+<div class="modal fade" id="modal-copy-polygon" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fa fa-copy"></i> Copiar polígono a otras escenas</h5>
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">
+                    El polígono se copiará con las mismas coordenadas como punto de partida.
+                    Ábrelo en cada escena destino para ajustar los vértices a los límites exactos.
+                </p>
+                <p><strong id="copy-polygon-name"></strong></p>
+                <div id="copy-scene-list">
+                    @foreach ($scene as $item)
+                        <div class="custom-control custom-checkbox mb-1">
+                            <input type="checkbox" class="custom-control-input copy-scene-check"
+                                   id="copy-scene-{{ $item->id }}" value="{{ $item->id }}">
+                            <label class="custom-control-label" for="copy-scene-{{ $item->id }}">
+                                {{ $item->title }}
+                            </label>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btn-confirm-copy-polygon">
+                    <i class="fa fa-copy"></i> Copiar a escenas seleccionadas
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {{-- JavaScript para dibujo de polígonos --}}
 <script>
 $(document).ready(function() {
@@ -881,6 +917,7 @@ $(document).ready(function() {
 
             var btnGroup = $('<div class="btn-group btn-group-sm"></div>');
             btnGroup.append('<button class="btn btn-outline-primary btn-edit-polygon" data-id="' + poly.id + '" title="Editar"><i class="ti-pencil"></i></button>');
+            btnGroup.append('<button class="btn btn-outline-info btn-copy-polygon" data-id="' + poly.id + '" data-name="' + poly.name + '" title="Copiar a otras escenas"><i class="fa fa-copy"></i></button>');
             btnGroup.append('<button class="btn btn-outline-danger btn-delete-polygon" data-id="' + poly.id + '" title="Eliminar"><i class="ti-trash"></i></button>');
             item.append(btnGroup);
 
@@ -998,6 +1035,88 @@ $(document).ready(function() {
                 alert('Error al eliminar');
             }
         });
+    });
+
+    // ====== Copiar polígono a otras escenas ======
+    var _copySourcePolygonId = null;
+
+    $(document).on('click', '.btn-copy-polygon', function() {
+        _copySourcePolygonId = $(this).data('id');
+        var name = $(this).data('name');
+
+        // Mostrar nombre del polígono en el modal
+        $('#copy-polygon-name').text(name);
+
+        // Desmarcar todos y deshabilitar la escena actual
+        $('.copy-scene-check').prop('checked', false).prop('disabled', false)
+            .closest('.custom-control').show();
+
+        // Deshabilitar la escena de origen (ya tiene el polígono)
+        $('#copy-scene-' + currentSceneId).prop('disabled', true).prop('checked', false);
+
+        $('#modal-copy-polygon').modal('show');
+    });
+
+    $('#btn-confirm-copy-polygon').on('click', function() {
+        var selectedScenes = $('.copy-scene-check:checked').map(function() {
+            return $(this).val();
+        }).get();
+
+        if (selectedScenes.length === 0) {
+            alert('Seleccione al menos una escena destino');
+            return;
+        }
+
+        var sourcePoly = savedPolygons.find(function(p) { return p.id == _copySourcePolygonId; });
+        if (!sourcePoly) return;
+
+        var pts = sourcePoly.points;
+        if (typeof pts === 'string') { try { pts = JSON.parse(pts); } catch(e) { pts = []; } }
+
+        var edgeLabels = sourcePoly.edge_labels;
+        if (typeof edgeLabels === 'object' && edgeLabels !== null) {
+            edgeLabels = JSON.stringify(edgeLabels);
+        }
+
+        var $btn = $(this).prop('disabled', true).text('Copiando...');
+        var total = selectedScenes.length;
+        var done = 0;
+        var errors = 0;
+
+        selectedScenes.forEach(function(sceneId) {
+            $.ajax({
+                url: polygonBaseUrl + '/polygon',
+                method: 'POST',
+                data: {
+                    scene_id: sceneId,
+                    name: sourcePoly.name + ' (copia)',
+                    fill_color: sourcePoly.fill_color,
+                    fill_opacity: sourcePoly.fill_opacity,
+                    stroke_color: sourcePoly.stroke_color,
+                    stroke_width: sourcePoly.stroke_width,
+                    points: JSON.stringify(pts),
+                    edge_labels: edgeLabels || '',
+                    interior_text: sourcePoly.interior_text || '',
+                    _token: '{{ csrf_token() }}'
+                },
+                success: function() { done++; checkDone(); },
+                error: function() { errors++; done++; checkDone(); }
+            });
+        });
+
+        function checkDone() {
+            if (done < total) return;
+            $btn.prop('disabled', false).html('<i class="fa fa-copy"></i> Copiar a escenas seleccionadas');
+            $('#modal-copy-polygon').modal('hide');
+            if (errors > 0) {
+                alert('Copiado con ' + errors + ' error(s). Revise las escenas destino.');
+            } else {
+                var names = $('.copy-scene-check:checked').map(function() {
+                    return $(this).closest('.custom-control').find('label').text().trim();
+                }).get().join(', ');
+                alert('Polígono copiado a: ' + names + '\n\nAbre cada escena para ajustar los vértices a los límites exactos.');
+            }
+        }
     });
 });
 </script>
