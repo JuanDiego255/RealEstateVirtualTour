@@ -433,60 +433,215 @@
             }
         }
 
-        /* ====== MATTERPORT STYLE UI ====== */
-
-        /* Ocultar menú lateral antiguo por defecto - ahora como modal de búsqueda */
-        #menu-nav-wrap {
-            display: none;
+        /* ====== SIDEBAR MODERNO ====== */
+        .vt-sidebar {
             position: fixed;
-            top: 70px;
-            left: 16px;
-            right: auto;
-            margin: 0;
-            width: 280px;
-            max-height: 70vh;
-            background: rgba(0, 0, 0, 0.9);
+            top: 0; left: 0;
+            width: 220px;
+            height: 100vh;
+            background: rgba(8, 8, 12, 0.88);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.35s cubic-bezier(.4,0,.2,1);
+            border-right: 1px solid rgba(255,255,255,0.07);
+        }
+        .vt-sidebar.collapsed {
+            transform: translateX(-220px);
+        }
+        .vt-sidebar-toggle {
+            position: absolute;
+            top: 50%;
+            right: -34px;
+            transform: translateY(-50%);
+            width: 34px;
+            height: 52px;
+            background: rgba(8, 8, 12, 0.82);
             backdrop-filter: blur(10px);
-            border-radius: 12px;
-            z-index: 1100;
-            visibility: visible;
-            transform: none;
-            padding: 16px;
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-left: none;
+            border-radius: 0 8px 8px 0;
+            color: rgba(255,255,255,0.55);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            transition: color 0.2s, background 0.2s;
+        }
+        .vt-sidebar-toggle:hover { color: #fff; background: rgba(8,8,12,0.95); }
+        .vt-sidebar-brand {
+            padding: 28px 20px 22px;
+            border-bottom: 1px solid rgba(255,255,255,0.07);
+            flex-shrink: 0;
+        }
+        .vt-sidebar-label {
+            font-size: 9px;
+            letter-spacing: 2.5px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.3);
+            margin-bottom: 6px;
+        }
+        .vt-sidebar-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #fff;
+            line-height: 1.35;
+        }
+        .vt-sidebar-nav {
+            flex: 1;
             overflow-y: auto;
+            padding: 12px 0;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.1) transparent;
         }
-
-        #menu-nav-wrap.matterport-menu-open {
-            display: block;
-        }
-
-        #menu-nav-wrap h3 {
-            font-size: 16px;
-            margin-bottom: 12px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid rgba(255,255,255,0.2);
-        }
-
-        #menu-nav-wrap .nav-list {
-            margin: 0;
-            padding: 0;
-        }
-
-        #menu-nav-wrap .nav-list li {
-            line-height: 1.4;
-            margin-bottom: 10px;
-        }
-
-        #menu-nav-wrap .nav-list li a {
+        .vt-sidebar-nav::-webkit-scrollbar { width: 3px; }
+        .vt-sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
+        .vt-sidebar-scene {
             display: flex;
             align-items: center;
             gap: 10px;
-            padding: 8px;
-            border-radius: 8px;
+            padding: 11px 20px;
+            color: rgba(255,255,255,0.45);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 400;
+            transition: color 0.2s, background 0.2s;
+            position: relative;
+            cursor: pointer;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .vt-sidebar-scene:hover { color: rgba(255,255,255,0.85); background: rgba(255,255,255,0.04); text-decoration: none; }
+        .vt-sidebar-scene.active { color: #fff; font-weight: 500; }
+        .vt-sidebar-scene.active::before {
+            content: '';
+            position: absolute;
+            left: 0; top: 20%; bottom: 20%;
+            width: 2px;
+            background: rgba(255,255,255,0.7);
+            border-radius: 0 2px 2px 0;
+        }
+        .vt-scene-dot {
+            width: 5px; height: 5px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            flex-shrink: 0;
             transition: background 0.2s;
         }
+        .vt-sidebar-scene:hover .vt-scene-dot,
+        .vt-sidebar-scene.active .vt-scene-dot { background: rgba(255,255,255,0.75); }
+        .vt-sidebar-footer {
+            padding: 16px 20px;
+            border-top: 1px solid rgba(255,255,255,0.07);
+            flex-shrink: 0;
+        }
+        .vt-back-link {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: rgba(255,255,255,0.35);
+            text-decoration: none;
+            font-size: 12px;
+            transition: color 0.2s;
+        }
+        .vt-back-link:hover { color: rgba(255,255,255,0.7); text-decoration: none; }
 
-        #menu-nav-wrap .nav-list li a:hover {
-            background: rgba(255,255,255,0.1);
+        /* Acciones flotantes top-right */
+        .vt-actions {
+            position: fixed;
+            top: 16px; right: 16px;
+            z-index: 1000;
+            display: flex;
+            gap: 8px;
+        }
+        .vt-action-btn {
+            width: 40px; height: 40px;
+            border-radius: 8px;
+            background: rgba(8,8,12,0.72);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.08);
+            color: rgba(255,255,255,0.7);
+            font-size: 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        .vt-action-btn:hover { color: #fff; background: rgba(8,8,12,0.9); }
+
+        /* Toolbar inferior simplificado */
+        .vt-toolbar {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(8,8,12,0.78);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px;
+            padding: 5px 8px;
+        }
+        .vt-toolbar-btn {
+            width: 38px; height: 38px;
+            border-radius: 7px;
+            background: transparent;
+            border: none;
+            color: rgba(255,255,255,0.6);
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        .vt-toolbar-btn:hover { color: #fff; background: rgba(255,255,255,0.08); }
+        .vt-toolbar-btn.active { color: #fff; }
+        .vt-toolbar-sep {
+            width: 1px; height: 22px;
+            background: rgba(255,255,255,0.12);
+            margin: 0 2px;
+        }
+
+        /* Tooltip */
+        [data-tip] { position: relative; }
+        [data-tip]:hover::after {
+            content: attr(data-tip);
+            position: absolute;
+            bottom: calc(100% + 6px);
+            left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.82);
+            color: #fff;
+            font-size: 10px;
+            white-space: nowrap;
+            padding: 3px 8px;
+            border-radius: 4px;
+            pointer-events: none;
+        }
+
+        /* Ocultar controles por defecto de Pannellum */
+        .pnlm-controls-container,
+        .pnlm-fullscreen-toggle-button,
+        .pnlm-orientation-button { display: none !important; }
+
+        /* ====== MATTERPORT STYLE UI ====== */
+
+        /* Ocultar menú antiguo (ya reemplazado por sidebar) */
+        #menu-nav-wrap { display: none !important; }
+        .matterport-header,
+        .matterport-toolbar,
+        .matterport-actions { display: none !important; }
         }
 
         #menu-nav-wrap .nav-list li a .circular {
@@ -1057,99 +1212,72 @@
 </head>
 
 <body id="top">
-    {{-- Antiguo menú lateral (oculto por CSS pero mantenido para compatibilidad) --}}
-    <header>
-        <nav id="menu-nav-wrap">
-            <h3>Virtual Tour</h3>
-            <ul class="nav-list">
-                @foreach ($scenes as $scene)
-                    @php
-                        $sidebarHasImg = !empty($scene->image_ref);
-                        if (!$sidebarHasImg) {
-                            $sw = preg_split('/\s+/', trim($scene->title));
-                            $si = mb_strtoupper(mb_substr($sw[0], 0, 1, 'UTF-8'));
-                            if (count($sw) > 1) $si .= mb_strtoupper(mb_substr($sw[1], 0, 1, 'UTF-8'));
-                        }
-                    @endphp
-                    <li>
-                        <a class="smoothscroll js-load-scene" href="#" data-scene-id="{{ $scene->id }}">
-                            {{ $scene->title }}
-                            <center>
-                                @if($sidebarHasImg)
-                                    <img class="circular text-center"
-                                        src="{{ route('file', $scene->image_ref) }}"
-                                        alt="{{ $scene->title }}">
-                                @else
-                                    <div class="circular scene-no-image-sm">
-                                        <span class="scene-initials-sm">{{ $si }}</span>
-                                    </div>
-                                @endif
-                            </center>
-                        </a>
-                    </li>
-                @endforeach
-            </ul>
-        </nav>
-    </header>
+    @php
+        $backUrl = request()->get('back_url', '');
+        if ($backUrl && !preg_match('#^https?://#i', $backUrl) && !str_starts_with($backUrl, '/')) {
+            $backUrl = '';
+        }
+    @endphp
 
-    {{-- ====== NUEVA UI ESTILO MATTERPORT ====== --}}
-
-    {{-- Header con info de la propiedad --}}
-    <div class="matterport-header">
-        @php
-            $backUrl = request()->get('back_url', '');
-            // Bloquear solo protocolos activos peligrosos; el parámetro lo generan
-            // nuestras propias vistas (kiosk/index, subcategory), no entrada del usuario.
-            if ($backUrl && !preg_match('#^https?://#i', $backUrl) && !str_starts_with($backUrl, '/')) {
-                $backUrl = '';
-            }
-        @endphp
-        @if($backUrl)
-        <a href="{{ $backUrl }}" class="matterport-back-btn" title="Volver">
-            <i class="fa fa-arrow-left"></i>
-        </a>
-        @endif
-        <button class="matterport-search-btn" id="matterport-menu-toggle" title="Buscar escenas">
-            <i class="fa fa-search"></i>
+    {{-- ====== SIDEBAR MODERNO ====== --}}
+    <aside id="vt-sidebar" class="vt-sidebar">
+        <button id="vt-sidebar-toggle" class="vt-sidebar-toggle" title="Menú">
+            <i class="fa fa-chevron-left" id="vt-sidebar-chevron"></i>
         </button>
-        <div class="matterport-info">
-            <div class="matterport-info-provider">Virtual Tour 360</div>
-            <div class="matterport-info-title">
-                <i class="fa fa-map-marker"></i>
-                <span>{{ $fscene ? ($fscene->property_name ?? 'Propiedad') : 'Propiedad' }}</span>
-            </div>
+
+        <div class="vt-sidebar-brand">
+            <div class="vt-sidebar-label">Virtual Tour 360</div>
+            <div class="vt-sidebar-title">{{ $fscene ? ($fscene->property_name ?? 'Propiedad') : 'Propiedad' }}</div>
         </div>
-    </div>
 
-    {{-- Barra de herramientas inferior izquierda --}}
-    <div class="matterport-toolbar">
-        <button class="matterport-toolbar-btn" id="matterport-toggle-carousel" data-tooltip="Escenas">
-            <i class="fa fa-chevron-down"></i>
-        </button>
-        <button class="matterport-toolbar-btn" id="matterport-autorotate" data-tooltip="Auto-rotar">
-            <i class="fa fa-play"></i>
-        </button>
-        <div class="matterport-toolbar-divider"></div>
-        <button class="matterport-toolbar-btn" id="matterport-prev-scene" data-tooltip="Escena anterior">
-            <i class="fa fa-chevron-left"></i>
-        </button>
-        <button class="matterport-toolbar-btn active" id="matterport-walk-mode" data-tooltip="Modo caminar">
-            <i class="fa fa-male"></i>
-        </button>
-        <button class="matterport-toolbar-btn" id="matterport-next-scene" data-tooltip="Siguiente escena">
-            <i class="fa fa-chevron-right"></i>
-        </button>
-    </div>
+        <nav class="vt-sidebar-nav">
+            @foreach ($scenes as $scene)
+            <a href="#" class="vt-sidebar-scene js-load-scene" data-scene-id="{{ $scene->id }}">
+                <span class="vt-scene-dot"></span>
+                {{ $scene->title }}
+            </a>
+            @endforeach
+        </nav>
 
-    {{-- Botones de acciones a la derecha --}}
-    <div class="matterport-actions">
-        <button class="matterport-action-btn" id="matterport-share" title="Compartir">
+        @if($backUrl)
+        <div class="vt-sidebar-footer">
+            <a href="{{ $backUrl }}" class="vt-back-link">
+                <i class="fa fa-arrow-left"></i> Volver
+            </a>
+        </div>
+        @endif
+    </aside>
+
+    {{-- Acciones flotantes top-right --}}
+    <div class="vt-actions">
+        <button class="vt-action-btn" id="matterport-share" data-tip="Compartir">
             <i class="fa fa-share-alt"></i>
         </button>
-        <button class="matterport-action-btn" id="matterport-fullscreen" title="Pantalla completa">
+        <button class="vt-action-btn" id="matterport-fullscreen" data-tip="Pantalla completa">
             <i class="fa fa-expand"></i>
         </button>
     </div>
+
+    {{-- Toolbar inferior centrado (minimalista) --}}
+    <div class="vt-toolbar" id="vt-toolbar">
+        <button class="vt-toolbar-btn" id="matterport-prev-scene" data-tip="Anterior">
+            <i class="fa fa-chevron-left"></i>
+        </button>
+        <button class="vt-toolbar-btn" id="matterport-autorotate" data-tip="Auto-rotar">
+            <i class="fa fa-play"></i>
+        </button>
+        <button class="vt-toolbar-btn" id="matterport-next-scene" data-tip="Siguiente">
+            <i class="fa fa-chevron-right"></i>
+        </button>
+        <div class="vt-toolbar-sep"></div>
+        <button class="vt-toolbar-btn" id="matterport-toggle-carousel" data-tip="Escenas">
+            <i class="fa fa-th-large"></i>
+        </button>
+    </div>
+
+    {{-- Mantener compatibilidad con IDs que usa el JS existente --}}
+    <div id="matterport-walk-mode" style="display:none;"></div>
+    <div id="menu-nav-wrap" style="display:none;"></div>
 
     {{-- Carrusel de escenas --}}
     <div class="matterport-scenes-carousel" id="matterport-scenes-carousel">
@@ -1316,10 +1444,10 @@
             'autoRotate' => 0, // ✅ arranca estático
             'autoRotateInactivityDelay' => 0, // (lo controlaremos nosotros)
             'compass' => false,
-            'showControls' => true,
+            'showControls' => false,
             'mouseZoom' => true,
             'draggable' => true,
-            'showFullscreenCtrl' => true,
+            'showFullscreenCtrl' => false,
             'showZoomCtrl' => false,
             'keyboardZoom' => true,
         ];
@@ -3423,13 +3551,15 @@
                 }
             });
 
-            // Ocultar/mostrar UI durante el intro
+            // Ocultar/mostrar nueva UI durante el intro
             function hideMatterportUI() {
-                $('.matterport-header, .matterport-toolbar, .matterport-actions, .matterport-scenes-carousel, .matterport-carousel-toggle').css('opacity', '0').css('pointer-events', 'none');
+                $('#vt-sidebar, .vt-actions, .vt-toolbar, .matterport-scenes-carousel, .matterport-carousel-toggle')
+                    .css({ opacity: '0', 'pointer-events': 'none' });
             }
 
             function showMatterportUI() {
-                $('.matterport-header, .matterport-toolbar, .matterport-actions, .matterport-scenes-carousel, .matterport-carousel-toggle').css('opacity', '1').css('pointer-events', 'auto');
+                $('#vt-sidebar, .vt-actions, .vt-toolbar, .matterport-scenes-carousel, .matterport-carousel-toggle')
+                    .css({ opacity: '1', 'pointer-events': 'auto' });
             }
 
             // Inicialmente ocultar UI (se muestra cuando inicia el tour)
@@ -3445,40 +3575,29 @@
                 showMatterportUI();
             }
 
-            // Menú de búsqueda/escenas (reutiliza el menú antiguo)
-            $('#matterport-menu-toggle').on('click', function(e) {
-                e.stopPropagation();
-                var $menu = $('#menu-nav-wrap');
-                $menu.toggleClass('matterport-menu-open');
-
-                // Cambiar icono
-                var $icon = $(this).find('i');
-                if ($menu.hasClass('matterport-menu-open')) {
-                    $icon.removeClass('fa-search').addClass('fa-times');
-                } else {
-                    $icon.removeClass('fa-times').addClass('fa-search');
-                }
+            // ====== Sidebar toggle ======
+            $('#vt-sidebar-toggle').on('click', function() {
+                var $sb = $('#vt-sidebar');
+                $sb.toggleClass('collapsed');
+                var collapsed = $sb.hasClass('collapsed');
+                $('#vt-sidebar-chevron')
+                    .toggleClass('fa-chevron-left', !collapsed)
+                    .toggleClass('fa-chevron-right', collapsed);
             });
 
-            // Cerrar menú al hacer clic fuera
-            $(document).on('click', function(e) {
-                var $menu = $('#menu-nav-wrap');
-                var $toggle = $('#matterport-menu-toggle');
+            // Marcar escena activa en el sidebar
+            function updateSidebarActive(sceneId) {
+                $('.vt-sidebar-scene').removeClass('active');
+                $('.vt-sidebar-scene[data-scene-id="' + sceneId + '"]').addClass('active');
+            }
 
-                if ($menu.hasClass('matterport-menu-open') &&
-                    !$menu.is(e.target) &&
-                    $menu.has(e.target).length === 0 &&
-                    !$toggle.is(e.target) &&
-                    $toggle.has(e.target).length === 0) {
-                    $menu.removeClass('matterport-menu-open');
-                    $toggle.find('i').removeClass('fa-times').addClass('fa-search');
-                }
-            });
+            // Escena activa inicial
+            updateSidebarActive('{{ $fscene ? $fscene->id : "" }}');
 
-            // Cerrar menú al seleccionar una escena
-            $('#menu-nav-wrap .js-load-scene').on('click', function() {
-                $('#menu-nav-wrap').removeClass('matterport-menu-open');
-                $('#matterport-menu-toggle i').removeClass('fa-times').addClass('fa-search');
+            // Actualizar al cargar escenas desde sidebar o carrusel
+            $(document).on('click', '.js-load-scene', function() {
+                var sid = $(this).data('scene-id');
+                if (sid) updateSidebarActive(sid);
             });
 
         })();
