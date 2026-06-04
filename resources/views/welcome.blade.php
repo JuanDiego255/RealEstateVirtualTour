@@ -439,14 +439,14 @@
             top: 0; left: 0;
             width: 220px;
             height: 100vh;
-            background: rgba(8, 8, 12, 0.52);
-            backdrop-filter: blur(24px);
-            -webkit-backdrop-filter: blur(24px);
+            background: rgba(14, 11, 8, 0.72);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             z-index: 1000;
             display: flex;
             flex-direction: column;
             transition: transform 0.35s cubic-bezier(.4,0,.2,1);
-            border-right: 1px solid rgba(255,255,255,0.06);
+            border-right: 1px solid rgba(255,255,255,0.05);
         }
         .vt-sidebar.collapsed {
             transform: translateX(-220px);
@@ -458,7 +458,7 @@
             transform: translateY(-50%);
             width: 34px;
             height: 52px;
-            background: rgba(8, 8, 12, 0.52);
+            background: rgba(14, 11, 8, 0.72);
             backdrop-filter: blur(14px);
             -webkit-backdrop-filter: blur(14px);
             border: 1px solid rgba(255,255,255,0.07);
@@ -474,8 +474,7 @@
         }
         .vt-sidebar-toggle:hover { color: #fff; background: rgba(8,8,12,0.75); }
         .vt-sidebar-brand {
-            padding: 28px 20px 22px;
-            border-bottom: 1px solid rgba(255,255,255,0.06);
+            padding: 32px 24px 24px;
             flex-shrink: 0;
         }
         .vt-sidebar-label {
@@ -497,51 +496,43 @@
         .vt-sidebar-nav {
             flex: 1;
             overflow-y: auto;
-            padding: 8px 0;
+            padding: 0;
             scrollbar-width: thin;
             scrollbar-color: rgba(255,255,255,0.08) transparent;
         }
         .vt-sidebar-nav::-webkit-scrollbar { width: 2px; }
         .vt-sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
         .vt-sidebar-scene {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 12px 20px;
-            color: rgba(255,255,255,0.38);
+            display: block;
+            padding: 16px 24px;
+            color: rgba(255,255,255,0.65);
             text-decoration: none;
             font-family: 'Fahkwang', sans-serif;
-            font-size: 12px;
+            font-size: 13px;
             font-weight: 400;
-            letter-spacing: 0.4px;
+            letter-spacing: 2.5px;
+            text-transform: uppercase;
             transition: color 0.2s, background 0.2s;
             position: relative;
             cursor: pointer;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            border-bottom: 1px solid rgba(255,255,255,0.04);
+            border-bottom: 1px solid rgba(255,255,255,0.13);
         }
-        .vt-sidebar-scene:last-child { border-bottom: none; }
-        .vt-sidebar-scene:hover { color: rgba(255,255,255,0.8); background: rgba(255,255,255,0.03); text-decoration: none; }
-        .vt-sidebar-scene.active { color: rgba(255,255,255,0.95); font-weight: 500; }
+        .vt-sidebar-scene:first-child { border-top: 1px solid rgba(255,255,255,0.13); }
+        .vt-sidebar-scene:hover { color: #fff; background: rgba(255,255,255,0.04); text-decoration: none; }
+        .vt-sidebar-scene.active { color: #fff; }
         .vt-sidebar-scene.active::before {
             content: '';
             position: absolute;
-            left: 0; top: 22%; bottom: 22%;
-            width: 2px;
-            background: rgba(255,255,255,0.6);
+            left: 0; top: 50%;
+            transform: translateY(-50%);
+            width: 3px; height: 16px;
+            background: rgba(255,255,255,0.7);
             border-radius: 0 2px 2px 0;
         }
-        .vt-scene-dot {
-            width: 4px; height: 4px;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.18);
-            flex-shrink: 0;
-            transition: background 0.2s;
-        }
-        .vt-sidebar-scene:hover .vt-scene-dot,
-        .vt-sidebar-scene.active .vt-scene-dot { background: rgba(255,255,255,0.65); }
+        .vt-scene-dot { display: none; }
         .vt-sidebar-footer {
             padding: 16px 20px;
             border-top: 1px solid rgba(255,255,255,0.07);
