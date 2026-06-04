@@ -2054,6 +2054,29 @@
                             }
                         });
 
+                        // Dejar pasar clicks a hotspots de Pannellum que estén debajo del polígono
+                        path.addEventListener('click', function(ev) {
+                            // Deshabilitar temporalmente todos los elementos del SVG
+                            var svgEls = svg.querySelectorAll('path, rect, text, line, circle');
+                            svgEls.forEach(function(el) {
+                                el._prevPE = el.style.pointerEvents;
+                                el.style.pointerEvents = 'none';
+                            });
+                            var under = document.elementFromPoint(ev.clientX, ev.clientY);
+                            // Restaurar
+                            svgEls.forEach(function(el) {
+                                el.style.pointerEvents = el._prevPE || '';
+                            });
+                            // Si hay algo de Pannellum debajo, re-dispatch del click
+                            if (under && under !== path && !under.closest('svg')) {
+                                under.dispatchEvent(new MouseEvent('click', {
+                                    bubbles: true, cancelable: true, view: window,
+                                    clientX: ev.clientX, clientY: ev.clientY,
+                                    screenX: ev.screenX, screenY: ev.screenY
+                                }));
+                            }
+                        });
+
                         svg.appendChild(path);
                         createdPaths.push({
                             path: path,
