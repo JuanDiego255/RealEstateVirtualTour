@@ -285,6 +285,22 @@
                         <small class="form-text text-muted">Puede seleccionar múltiples imágenes (opcional)</small>
                     </div>
 
+                    {{-- Integración API externa --}}
+                    <h6 class="text-muted mb-3 mt-3"><i class="fa fa-plug"></i> Integración externa</h6>
+                    <div class="form-group">
+                        <input type="hidden" name="api_consumable" value="0">
+                        <div class="custom-control custom-switch">
+                            <input type="checkbox" class="custom-control-input" id="api_consumable"
+                                name="api_consumable" value="1" {{ old('api_consumable') ? 'checked' : '' }}>
+                            <label class="custom-control-label" for="api_consumable">
+                                Disponible para API externa (Real Estate)
+                            </label>
+                        </div>
+                        <small class="form-text text-muted">
+                            Si se activa, este tour aparecerá en el portal Real Estate que consume el API.
+                        </small>
+                    </div>
+
                     <div class="modal-footer">
                         <button type="button" class="btn btn-danger" data-dismiss="modal">Cancelar</button>
                         <button type="submit" class="btn btn-primary">Guardar</button>

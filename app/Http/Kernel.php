@@ -69,5 +69,6 @@ class Kernel extends HttpKernel
         'subscription'   => \App\Http\Middleware\CheckSubscription::class,
         'company'        => \App\Http\Middleware\CheckCompanyAccess::class,
         'api.permission' => \App\Http\Middleware\CheckApiPermission::class,
+        'tour.api'       => \App\Http\Middleware\VerifyTourApiToken::class,
     ];
 }

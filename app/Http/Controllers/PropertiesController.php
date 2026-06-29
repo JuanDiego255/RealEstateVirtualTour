@@ -172,6 +172,7 @@ class PropertiesController extends Controller
             $property->commission_percentage = $request->commission_percentage;
             $property->commission_notes = $request->commission_notes;
             $property->is_exclusive = $request->is_exclusive ?? false;
+            $property->api_consumable = $request->boolean('api_consumable');
 
             $property->save();
 
@@ -288,6 +289,7 @@ class PropertiesController extends Controller
             $property->commission_percentage = $request->commission_percentage;
             $property->commission_notes = $request->commission_notes;
             $property->is_exclusive = $request->is_exclusive ?? false;
+            $property->api_consumable = $request->boolean('api_consumable');
 
             $property->update();
 

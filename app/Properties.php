@@ -38,6 +38,7 @@ class Properties extends Model
         'commission_percentage',
         'commission_notes',
         'has_virtual_tour',
+        'api_consumable',
         'spin_active',
         'spin_auto_rotate',
         'is_featured',
@@ -75,6 +76,7 @@ class Properties extends Model
         'is_exclusive' => 'boolean',
         'commission_percentage' => 'decimal:2',
         'has_virtual_tour' => 'boolean',
+        'api_consumable' => 'boolean',
         'spin_active' => 'boolean',
         'spin_auto_rotate' => 'boolean',
         'is_featured' => 'boolean',
@@ -356,6 +358,14 @@ class Properties extends Model
     public function scopeFeatured($query)
     {
         return $query->where('is_featured', true);
+    }
+
+    /**
+     * Scope para propiedades habilitadas para consumo por API externa
+     */
+    public function scopeApiConsumable($query)
+    {
+        return $query->where('api_consumable', true);
     }
 
     /**

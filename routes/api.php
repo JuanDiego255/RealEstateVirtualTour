@@ -21,6 +21,18 @@ Route::middleware('auth:api')->get('/user', function (Request $request) {
     return $request->user();
 });
 
+/*
+|--------------------------------------------------------------------------
+| API de Tours Virtuales (consumo externo - Real Estate)
+|--------------------------------------------------------------------------
+| Protegido por token de la tabla api_clients (middleware tour.api).
+| Solo expone tours de PROPIEDADES marcadas como api_consumable.
+*/
+Route::prefix('v1')->middleware('tour.api')->group(function () {
+    Route::get('/tours', [\App\Http\Controllers\Api\TourApiController::class, 'index']);
+    Route::get('/tours/{id}', [\App\Http\Controllers\Api\TourApiController::class, 'show']);
+});
+
 Route::post('/vehicle-inquiries', function (\Illuminate\Http\Request $request) {
     $data = $request->validate([
         'name'                => 'required|string|max:150',
