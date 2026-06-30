@@ -126,6 +126,19 @@ curl -H "Authorization: Bearer $TOUR_API_TOKEN" \
 | `404`  | Tour inexistente o no marcado como `api_consumable`     |
 | `429`  | Límite de tasa (60 req/min)                             |
 
+### Criterios para que un tour aparezca en el listado
+
+Una propiedad aparece en `GET /api/v1/tours` solo si cumple **todo**:
+
+1. No es vehículo (`property_type != 'vehicle'`).
+2. Tiene activado el switch **"Disponible para API externa"** (`api_consumable = true`).
+3. Tiene al menos **una escena activa** (estado `1`).
+
+> Nota: el listado **no** requiere que la propiedad esté "publicada" — el switch
+> `api_consumable` es el único interruptor de exposición. Si recibes `200` con
+> `data: []`, verifica que las propiedades tengan el switch activado y al menos
+> una escena activa.
+
 ---
 
 ## 3. Campos a crear en el Real Estate (mantenimientos)

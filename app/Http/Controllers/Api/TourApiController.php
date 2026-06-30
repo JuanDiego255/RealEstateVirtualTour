@@ -24,13 +24,17 @@ class TourApiController extends Controller
 
         $query = Properties::query()
             ->realEstate()
-            ->withTour()
             ->apiConsumable()
-            ->published()
+            // debe tener al menos una escena activa para ser un tour visible
+            ->whereHas('scenes', function ($s) {
+                $s->where('status', '1');
+            })
             ->with('category:id,name,slug')
-            ->withCount('scenes')
+            ->withCount(['scenes' => function ($s) {
+                $s->where('status', '1');
+            }])
             ->orderByDesc('is_featured')
-            ->orderByDesc('published_at');
+            ->orderByDesc('id');
 
         // Búsqueda por texto
         if ($q = trim((string) $request->input('q', ''))) {
@@ -75,11 +79,11 @@ class TourApiController extends Controller
     {
         $property = Properties::query()
             ->realEstate()
-            ->withTour()
             ->apiConsumable()
-            ->published()
             ->with(['category:id,name,slug', 'scenes'])
-            ->withCount('scenes')
+            ->withCount(['scenes' => function ($s) {
+                $s->where('status', '1');
+            }])
             ->find($id);
 
         if (!$property) {
