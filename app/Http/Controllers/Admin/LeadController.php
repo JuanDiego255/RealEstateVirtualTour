@@ -102,7 +102,7 @@ class LeadController extends Controller
 
         // Respuesta parcial para filtros AJAX en tiempo real
         if ($request->ajax() || $request->boolean('ajax')) {
-            $tableHtml      = view('admin.crm.leads._table', compact('leads'))->render();
+            $tableHtml      = view('admin.crm.leads._table', compact('leads', 'agents'))->render();
             $paginationHtml = $leads->links()->toHtml();
             return response()->json([
                 'html'       => $tableHtml,
@@ -171,6 +171,50 @@ class LeadController extends Controller
             'status_label' => $lead->status_label,
             'status_color' => $lead->status_color,
             'message'      => 'Estado actualizado correctamente.',
+        ]);
+    }
+
+    /**
+     * Quick agent reassignment via AJAX from lead list.
+     */
+    public function quickAgent(Request $request, Lead $lead)
+    {
+        $this->authorizeCompanyAccess($lead);
+
+        // Solo administradores pueden reasignar el agente de un lead
+        abort_unless(auth()->user()->isAdmin(), 403, 'Sin permiso para reasignar agentes.');
+
+        $request->validate([
+            'user_id' => 'nullable|exists:users,id',
+        ]);
+
+        // El agente destino debe pertenecer a la misma empresa
+        if ($request->filled('user_id')) {
+            $agent = User::where('id', $request->user_id)
+                ->where('company_id', auth()->user()->company_id)
+                ->first();
+
+            if (!$agent) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'El agente seleccionado no pertenece a la empresa.',
+                ], 422);
+            }
+        }
+
+        $lead->update(['user_id' => $request->user_id ?: null]);
+        $lead->refresh();
+
+        $lead->logActivity('note', [
+            'subject'     => 'Agente reasignado',
+            'description' => 'Lead asignado a: ' . ($lead->user->name ?? 'Sin asignar'),
+            'activity_at' => now(),
+        ]);
+
+        return response()->json([
+            'success'    => true,
+            'agent_name' => $lead->user->name ?? 'Sin asignar',
+            'message'    => 'Agente actualizado correctamente.',
         ]);
     }
 

@@ -324,6 +324,7 @@ Route::group(['middleware' => 'auth'], function () {
         Route::patch('/{lead}/status-api', [LeadController::class, 'updateStatusApi'])->name('admin.crm.leads.update-status-api');
         // AJAX - Acciones rápidas desde lista
         Route::post('/{lead}/quick-status', [LeadController::class, 'quickStatus'])->name('admin.crm.leads.quick-status');
+        Route::post('/{lead}/quick-agent', [LeadController::class, 'quickAgent'])->name('admin.crm.leads.quick-agent');
         Route::post('/{lead}/quick-activity', [LeadController::class, 'quickActivity'])->name('admin.crm.leads.quick-activity');
         Route::post('/{lead}/quick-reminder', [LeadController::class, 'quickReminder'])->name('admin.crm.leads.quick-reminder');
         Route::post('/{lead}/quick-followup', [LeadController::class, 'quickFollowup'])->name('admin.crm.leads.quick-followup');

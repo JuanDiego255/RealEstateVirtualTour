@@ -852,6 +852,26 @@
         document.querySelectorAll('.btn-quick-reminder').forEach(btn => btn.addEventListener('click', () => openQuickReminder(btn.closest('tr'))));
         document.querySelectorAll('.btn-quick-followup').forEach(btn => btn.addEventListener('click', () => openQuickFollowup(btn.closest('tr'))));
         document.querySelectorAll('.btn-quick-view').forEach(btn => btn.addEventListener('click', () => openQuickView(btn.closest('tr'))));
+        document.querySelectorAll('.js-quick-agent').forEach(sel => sel.addEventListener('change', () => quickChangeAgent(sel)));
+    }
+
+    /* ── Cambio rápido de agente (inline) ── */
+    function quickChangeAgent(sel) {
+        const url  = sel.dataset.url;
+        const prev = sel.dataset.prev ?? '';
+        sel.disabled = true;
+        postJson(url, { user_id: sel.value || null }).then(data => {
+            if (data.success) {
+                sel.dataset.prev = sel.value;
+                showToast(data.message);
+            } else {
+                sel.value = prev; // revertir
+                showToast(data.message ?? 'Error al reasignar', 'danger');
+            }
+        }).catch(() => {
+            sel.value = prev;
+            showToast('Error de conexión', 'danger');
+        }).finally(() => { sel.disabled = false; });
     }
 
     /* ── Modal Estado ── */

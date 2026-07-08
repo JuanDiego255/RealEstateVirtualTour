@@ -69,7 +69,24 @@
         <td><span class="crm-badge {{ $lead->priority }}">{{ $lead->priority_label }}</span></td>
 
         {{-- Agente --}}
-        <td><span style="font-size:12.5px; color:#555;">{{ $lead->user->name ?? '-' }}</span></td>
+        <td>
+            @if(auth()->user()->isAdmin())
+                <select class="js-quick-agent"
+                        data-lead-id="{{ $lead->id }}"
+                        data-prev="{{ $lead->user_id }}"
+                        data-url="{{ route('admin.crm.leads.quick-agent', $lead) }}"
+                        style="font-size:12px; border:1px solid #e5e7eb; border-radius:8px; padding:4px 6px; max-width:140px; background:#fff; color:#555; cursor:pointer;">
+                    <option value="">Sin asignar</option>
+                    @foreach(($agents ?? collect()) as $agent)
+                        <option value="{{ $agent->id }}" {{ $lead->user_id == $agent->id ? 'selected' : '' }}>
+                            {{ $agent->name }}
+                        </option>
+                    @endforeach
+                </select>
+            @else
+                <span style="font-size:12.5px; color:#555;">{{ $lead->user->name ?? '-' }}</span>
+            @endif
+        </td>
 
         {{-- Seguimiento --}}
         <td>
