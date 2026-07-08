@@ -735,6 +735,13 @@ class KioskController extends Controller
             ->limit(15)
             ->get();
 
+        // Marcar cuáles ya están en el CRM para deshabilitar el botón "Agregar al CRM"
+        $leadsInCrm = \App\Lead::whereIn('event_lead_id', $recentLeads->pluck('id'))
+            ->pluck('event_lead_id')->flip();
+        $quotesInCrm = \App\Lead::where('source', 'quote')
+            ->whereIn('phone', $recentQuotes->pluck('customer_phone')->filter()->values())
+            ->pluck('phone')->flip();
+
         return view('kiosk.dashboard', compact(
             'topViewed',
             'topQrScans',
@@ -743,6 +750,8 @@ class KioskController extends Controller
             'viewsByHour',
             'recentLeads',
             'recentQuotes',
+            'leadsInCrm',
+            'quotesInCrm',
             'eventName'
         ) + ['isOtherKiosk' => $user->company?->other_kiosk ?? false]);
     }

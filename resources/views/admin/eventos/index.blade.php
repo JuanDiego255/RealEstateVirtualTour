@@ -121,7 +121,8 @@
                             cell.innerHTML = '<span class="crm-badge won"><i class="fa fa-check"></i> En CRM</span>';
                             showToast(data.message || 'Agregado al CRM');
                         } else {
-                            cell.innerHTML = '<span class="crm-badge lost" title="' + (data.message || '') + '">Ya existía</span>';
+                            // Ya existía: igualmente reflejar que está en el CRM
+                            cell.innerHTML = '<span class="crm-badge won"><i class="fa fa-check"></i> En CRM</span>';
                             showToast(data.message || 'Ya existe en el CRM', 'warning');
                         }
                     })

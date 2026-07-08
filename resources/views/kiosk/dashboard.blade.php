@@ -537,9 +537,15 @@
                                             <i class="fa fa-phone"></i>
                                         </a>
                                         @endif
-                                        <button onclick="addToCRM({{ $lead->id }})" class="action-btn crm" title="Agregar al CRM">
+                                        @if(isset($leadsInCrm[$lead->id]))
+                                        <span class="action-btn crm-done" title="Ya está en el CRM" style="background:#d1fae5;color:#065f46;cursor:default;">
+                                            <i class="fa fa-check-circle"></i>
+                                        </span>
+                                        @else
+                                        <button onclick="addToCRM({{ $lead->id }}, this)" class="action-btn crm" title="Agregar al CRM">
                                             <i class="fa fa-user-plus"></i>
                                         </button>
+                                        @endif
                                         @if(!$lead->contacted)
                                         <button onclick="markContacted({{ $lead->id }})" class="action-btn contacted" title="Marcar contactado">
                                             <i class="fa fa-check"></i>
@@ -670,9 +676,15 @@
                                         <a href="{{ route('kiosk.quote.pdf', $quote->id) }}" target="_blank" class="action-btn call" title="Descargar PDF">
                                             <i class="fa fa-file-pdf-o"></i>
                                         </a>
-                                        <button onclick="addQuoteToCRM({{ $quote->id }})" class="action-btn crm" title="Crear Lead desde cotización">
+                                        @if($quote->customer_phone && isset($quotesInCrm[$quote->customer_phone]))
+                                        <span class="action-btn crm-done" title="Ya está en el CRM" style="background:#d1fae5;color:#065f46;cursor:default;">
+                                            <i class="fa fa-check-circle"></i>
+                                        </span>
+                                        @else
+                                        <button onclick="addQuoteToCRM({{ $quote->id }}, this)" class="action-btn crm" title="Crear Lead desde cotización">
                                             <i class="fa fa-user-plus"></i>
                                         </button>
+                                        @endif
                                     </div>
                                 </td>
                             </tr>
@@ -854,8 +866,21 @@
         }
     }
 
+    // Reemplaza el botón por un indicador "ya en CRM"
+    function markBtnAsInCrm(btn) {
+        if (!btn) return;
+        var span = document.createElement('span');
+        span.className = 'action-btn crm-done';
+        span.title = 'Ya está en el CRM';
+        span.style.background = '#d1fae5';
+        span.style.color = '#065f46';
+        span.style.cursor = 'default';
+        span.innerHTML = '<i class="fa fa-check-circle"></i>';
+        btn.replaceWith(span);
+    }
+
     // Add lead to CRM
-    async function addToCRM(eventLeadId) {
+    async function addToCRM(eventLeadId, btn) {
         if (!confirm('¿Agregar este lead al CRM para seguimiento completo?')) return;
 
         try {
@@ -870,12 +895,15 @@
             const data = await response.json();
 
             if (data.success) {
+                markBtnAsInCrm(btn);
                 alert('Lead agregado al CRM exitosamente');
                 if (data.lead_id) {
                     window.open(`/admin/crm/leads/${data.lead_id}`, '_blank');
                 }
             } else {
-                alert(data.message || 'Error al agregar al CRM');
+                // Ya existía en el CRM: también reflejarlo en la UI
+                markBtnAsInCrm(btn);
+                alert(data.message || 'Este lead ya está en el CRM');
             }
         } catch (error) {
             console.error('Error:', error);
@@ -884,7 +912,7 @@
     }
 
     // Add quote to CRM
-    async function addQuoteToCRM(quoteId) {
+    async function addQuoteToCRM(quoteId, btn) {
         if (!confirm('¿Crear un lead en el CRM desde esta cotización?')) return;
 
         try {
@@ -899,12 +927,14 @@
             const data = await response.json();
 
             if (data.success) {
+                markBtnAsInCrm(btn);
                 alert('Lead creado en el CRM exitosamente');
                 if (data.lead_id) {
                     window.open(`/admin/crm/leads/${data.lead_id}`, '_blank');
                 }
             } else {
-                alert(data.message || 'Error al crear lead');
+                markBtnAsInCrm(btn);
+                alert(data.message || 'Este cliente ya está en el CRM');
             }
         } catch (error) {
             console.error('Error:', error);
