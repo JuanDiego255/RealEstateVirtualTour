@@ -561,6 +561,11 @@ Route::middleware('auth:api')->group(function () {
                 'captured_by_user_id' => $user->id,
             ]);
 
+            // Auto-integración al CRM si la empresa lo tiene activado
+            if (optional($user->company)->kiosk_auto_crm) {
+                app(\App\Services\LeadCrmService::class)->migrateEventLead($lead, $user->id, $user->company_id);
+            }
+
             return response()->json(['success' => true, 'lead_id' => $lead->id], 201);
         })->name('api.kiosk.leads.store');
     });
@@ -639,6 +644,11 @@ Route::middleware('auth:api')->group(function () {
                 'payment_frequency'    => $paymentFrequency,
                 'captured_by_user_id'  => $user->id,
             ]);
+
+            // Auto-integración al CRM si la empresa lo tiene activado
+            if (optional($user->company)->kiosk_auto_crm) {
+                app(\App\Services\LeadCrmService::class)->migrateQuote($quote, $user->id, $user->company_id);
+            }
 
             return response()->json(['success' => true, 'quote_id' => $quote->id], 201);
         })->name('api.kiosk.quotes.store');

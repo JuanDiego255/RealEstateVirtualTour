@@ -88,12 +88,23 @@
                             </li>
                         @endif
 
-                        {{-- Dashboard de Eventos:
+                        {{-- Eventos (colapsable):
                              super_admin y company_admin: siempre visible
                              agent: visible si tiene permiso y suscripción activa --}}
                         @if ($u->canAccessModule('event_dashboard') && $hasAccess)
-                            <li class="{{ Request::routeIs('kiosk.dashboard') ? 'active' : '' }}">
-                                <a href="{{ route('kiosk.dashboard') }}"><i class="fa fa-desktop"></i><span>Dashboard Eventos</span></a>
+                            @php $eventosActive = Request::routeIs('kiosk.dashboard') || Request::routeIs('admin.eventos.*'); @endphp
+                            <li class="{{ $eventosActive ? 'active' : '' }}">
+                                <a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
+                                    <i class="fa fa-calendar-check-o"></i><span>Eventos</span>
+                                </a>
+                                <ul>
+                                    <li class="{{ Request::routeIs('kiosk.dashboard') ? 'active' : '' }}">
+                                        <a href="{{ route('kiosk.dashboard') }}"><i class="fa fa-desktop"></i> Dashboard</a>
+                                    </li>
+                                    <li class="{{ Request::routeIs('admin.eventos.*') ? 'active' : '' }}">
+                                        <a href="{{ route('admin.eventos.index') }}"><i class="fa fa-table"></i> Registros</a>
+                                    </li>
+                                </ul>
                             </li>
                         @endif
 

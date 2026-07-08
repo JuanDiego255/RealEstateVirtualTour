@@ -765,6 +765,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/admin/event-leads/{id}/add-to-crm', [KioskController::class, 'addEventLeadToCRM'])->name('event-leads.add-to-crm');
     Route::post('/admin/quotes/{id}/add-to-crm', [KioskController::class, 'addQuoteToCRM'])->name('quotes.add-to-crm');
 
+    // Sección Eventos: registros completos (Me interesa / Cotizaciones)
+    Route::get('/admin/eventos', [\App\Http\Controllers\Admin\EventLeadsController::class, 'index'])->name('admin.eventos.index');
+    Route::post('/admin/eventos/bulk-to-crm', [\App\Http\Controllers\Admin\EventLeadsController::class, 'bulkToCrm'])->name('admin.eventos.bulk-to-crm');
+
     // Gestión de roles de agentes (solo company_admin)
     Route::get('/admin/roles', [\App\Http\Controllers\Admin\RolePermissionsController::class, 'index'])
         ->middleware('role:company_admin')

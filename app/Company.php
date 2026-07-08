@@ -22,11 +22,13 @@ class Company extends Model
         'status',
         'settings',
         'other_kiosk',
+        'kiosk_auto_crm',
     ];
 
     protected $casts = [
         'settings' => 'array',
         'other_kiosk' => 'boolean',
+        'kiosk_auto_crm' => 'boolean',
     ];
 
     /**

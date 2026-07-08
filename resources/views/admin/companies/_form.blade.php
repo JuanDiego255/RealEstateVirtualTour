@@ -93,6 +93,20 @@
                value="{{ old('agent_kiosk_pin', ($company->settings['agent_kiosk_pin'] ?? '')) }}">
         <small class="form-text text-muted">PIN numérico que el asesor ingresa en el kiosko para activar el modo compacto (sin pantalla idle, formulario directo). Dejar vacío para desactivar.</small>
     </div>
+
+    <div class="form-group">
+        <label>Integración CRM</label>
+        <input type="hidden" name="kiosk_auto_crm" value="0">
+        <div class="custom-control custom-switch">
+            <input type="checkbox" class="custom-control-input" id="kioskAutoCrmSwitch"
+                   name="kiosk_auto_crm" value="1"
+                   {{ old('kiosk_auto_crm', $company->kiosk_auto_crm ?? false) ? 'checked' : '' }}>
+            <label class="custom-control-label" for="kioskAutoCrmSwitch">
+                Guardar capturas del kiosko directamente en el CRM
+            </label>
+        </div>
+        <small class="form-text text-muted">Si se activa, cada "Me interesa" y cada cotización capturada en el kiosko se agrega automáticamente al CRM robusto, evitando el paso manual desde Eventos o el Dashboard.</small>
+    </div>
 @endif
 
 <script>

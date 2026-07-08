@@ -118,6 +118,7 @@ class CompanyController extends Controller
             'name', 'legal_name', 'tax_id', 'email', 'phone', 'address', 'owner_id', 'status'
         ]);
         $data['other_kiosk'] = $request->boolean('other_kiosk');
+        $data['kiosk_auto_crm'] = $request->boolean('kiosk_auto_crm');
 
         // Guardar categorías y PIN del kiosko other dentro del JSON settings
         $currentSettings = $company->settings ?? [];
