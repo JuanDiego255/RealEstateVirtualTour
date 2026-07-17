@@ -31,6 +31,11 @@ Route::middleware('auth:api')->get('/user', function (Request $request) {
 Route::prefix('v1')->middleware('tour.api')->group(function () {
     Route::get('/tours', [\App\Http\Controllers\Api\TourApiController::class, 'index']);
     Route::get('/tours/{id}', [\App\Http\Controllers\Api\TourApiController::class, 'show']);
+
+    // Vehículos (con o sin tour virtual) + opciones de filtrado
+    Route::get('/vehicles/filters', [\App\Http\Controllers\Api\VehicleApiController::class, 'filters']);
+    Route::get('/vehicles', [\App\Http\Controllers\Api\VehicleApiController::class, 'index']);
+    Route::get('/vehicles/{id}', [\App\Http\Controllers\Api\VehicleApiController::class, 'show']);
 });
 
 Route::post('/vehicle-inquiries', function (\Illuminate\Http\Request $request) {
