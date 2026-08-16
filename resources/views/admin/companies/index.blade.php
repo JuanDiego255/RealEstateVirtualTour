@@ -77,6 +77,10 @@
                                             title="Ver"><i class="fa fa-eye"></i></a>
                                         <a href="{{ route('admin.companies.edit', $c) }}" class="btn btn-outline-primary"
                                             title="Editar"><i class="fa fa-edit"></i></a>
+                                        <a href="{{ route('admin.companies.whatsapp.edit', $c) }}" class="btn btn-outline-success"
+                                            title="Bot de WhatsApp"><i class="fa fa-whatsapp"></i></a>
+                                        <a href="{{ route('admin.companies.ai.edit', $c) }}" class="btn btn-outline-secondary"
+                                            title="IA"><i class="fa fa-magic"></i></a>
                                         <form action="{{ route('admin.companies.toggle-status', $c) }}" method="POST"
                                             class="d-inline">
                                             @csrf

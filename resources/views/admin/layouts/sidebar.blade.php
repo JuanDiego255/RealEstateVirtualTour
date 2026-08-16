@@ -108,6 +108,13 @@
                             </li>
                         @endif
 
+                        {{-- Bot de WhatsApp: panel de conversaciones --}}
+                        @if ($u->canAccessModule('whatsapp') && $hasAccess)
+                            <li class="{{ Request::routeIs('admin.whatsapp.*') ? 'active' : '' }}">
+                                <a href="{{ route('admin.whatsapp.index') }}"><i class="fa fa-whatsapp"></i><span>WhatsApp</span></a>
+                            </li>
+                        @endif
+
                         {{-- Kiosko:
                              super_admin y company_admin: siempre visible
                              agent: visible si tiene permiso y suscripción activa --}}

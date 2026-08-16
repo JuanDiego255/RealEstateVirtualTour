@@ -288,6 +288,12 @@ Route::group(['middleware' => 'auth'], function () {
         Route::get('/{company}', [CompanyController::class, 'show'])->name('admin.companies.show');
         Route::get('/{company}/edit', [CompanyController::class, 'edit'])->name('admin.companies.edit');
         Route::put('/{company}', [CompanyController::class, 'update'])->name('admin.companies.update');
+
+        // Configuración del bot de WhatsApp + IA (por empresa)
+        Route::get('/{company}/whatsapp', [\App\Http\Controllers\Admin\CompanyBotConfigController::class, 'whatsappEdit'])->name('admin.companies.whatsapp.edit');
+        Route::put('/{company}/whatsapp', [\App\Http\Controllers\Admin\CompanyBotConfigController::class, 'whatsappUpdate'])->name('admin.companies.whatsapp.update');
+        Route::get('/{company}/ai', [\App\Http\Controllers\Admin\CompanyBotConfigController::class, 'aiEdit'])->name('admin.companies.ai.edit');
+        Route::put('/{company}/ai', [\App\Http\Controllers\Admin\CompanyBotConfigController::class, 'aiUpdate'])->name('admin.companies.ai.update');
         Route::post('/{company}/toggle-status', [CompanyController::class, 'toggleStatus'])->name('admin.companies.toggle-status');
         Route::delete('/{company}', [CompanyController::class, 'destroy'])->name('admin.companies.destroy');
     });
@@ -682,6 +688,12 @@ Route::get('/file/{filename}', function ($filename) {
 })->where('filename', '.*')->name('file');
 
 // =====================================================
+// WEBHOOK DE WHATSAPP (público — validado por firma HMAC)
+// =====================================================
+Route::get('/webhook/whatsapp', [\App\Http\Controllers\WhatsAppWebhookController::class, 'verify']);
+Route::post('/webhook/whatsapp', [\App\Http\Controllers\WhatsAppWebhookController::class, 'handle'])->name('whatsapp.webhook');
+
+// =====================================================
 // MODO KIOSKO / EVENTO (Requiere autenticación)
 // =====================================================
 Route::middleware('auth')->prefix('kiosk')->group(function () {
@@ -769,6 +781,14 @@ Route::middleware('auth')->group(function () {
     // Sección Eventos: registros completos (Me interesa / Cotizaciones)
     Route::get('/admin/eventos', [\App\Http\Controllers\Admin\EventLeadsController::class, 'index'])->name('admin.eventos.index');
     Route::post('/admin/eventos/bulk-to-crm', [\App\Http\Controllers\Admin\EventLeadsController::class, 'bulkToCrm'])->name('admin.eventos.bulk-to-crm');
+
+    // Bot de WhatsApp: panel de conversaciones (operación del negocio)
+    Route::get('/admin/whatsapp', [\App\Http\Controllers\Admin\WhatsappChatController::class, 'index'])->name('admin.whatsapp.index');
+    Route::get('/admin/whatsapp/{chat}', [\App\Http\Controllers\Admin\WhatsappChatController::class, 'show'])->name('admin.whatsapp.show');
+    Route::get('/admin/whatsapp/{chat}/messages', [\App\Http\Controllers\Admin\WhatsappChatController::class, 'messages'])->name('admin.whatsapp.messages');
+    Route::post('/admin/whatsapp/{chat}/reply', [\App\Http\Controllers\Admin\WhatsappChatController::class, 'reply'])->name('admin.whatsapp.reply');
+    Route::post('/admin/whatsapp/{chat}/pause', [\App\Http\Controllers\Admin\WhatsappChatController::class, 'pause'])->name('admin.whatsapp.pause');
+    Route::post('/admin/whatsapp/{chat}/resume', [\App\Http\Controllers\Admin\WhatsappChatController::class, 'resume'])->name('admin.whatsapp.resume');
 
     // Gestión de roles de agentes (solo company_admin)
     Route::get('/admin/roles', [\App\Http\Controllers\Admin\RolePermissionsController::class, 'index'])
