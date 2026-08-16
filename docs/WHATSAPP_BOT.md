@@ -91,8 +91,22 @@ en `/admin/whatsapp-config`, submenú "WhatsApp → Configuración".
 - **Promociones** — `WhatsappBotPromotion` (activa + rango de fechas); el bot solo
   cita las **vigentes**, inyectadas en el prompt.
 
+### ✅ Entrega 4 (Etapa 7)
+Prueba de manejo agendable desde el bot, reutilizando la agenda existente.
+
+- **`schedule_test_drive`** — nueva herramienta del bot. Pide día/hora/nombre y
+  crea una cita **tentativa** en la agenda del negocio (`App\Appointment`,
+  `type = vehicle_visit`, `status = scheduled`). La confirma un asesor.
+- **`TestDriveScheduler`** — valida vehículo disponible, fecha a futuro y dentro
+  del horario de atención, evita **choques de horario** (mismo vehículo o asesor),
+  asigna un asesor por defecto (company_admin) y enlaza el lead por teléfono si
+  existe. Sin asesor asignable → relevo.
+- **Contexto temporal** en el prompt (fecha/hora de hoy) para resolver "mañana",
+  "el sábado", etc. a ISO 8601.
+- **Red de seguridad afinada** — la promesa de cita solo se tolera si de verdad
+  se ejecutó `schedule_test_drive`; apartar/crédito siguen forzando relevo.
+
 ### ⏳ Próximas entregas
-- **Etapa 7** — Prueba de manejo (`schedule_test_drive`) + módulo de citas.
 - **Etapa 9 (UI)** — Paneles de facturación/consumo por empresa y periodo.
 - **Automatización del CRM** (lo que sigue tras el bot).
 

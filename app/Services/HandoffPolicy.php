@@ -46,19 +46,34 @@ class HandoffPolicy
 
     /**
      * Red de seguridad: ¿el bot prometió algo que requiere acción humana sin
-     * haber llamado la herramienta correspondiente?
+     * haber llamado la herramienta correspondiente? Las promesas de cita solo
+     * se toleran si efectivamente se ejecutó schedule_test_drive.
+     *
+     * @param  string[]  $usedTools  Nombres de herramientas ejecutadas en el turno.
      */
-    public static function botPromiseWithoutTool(string $text): bool
+    public static function botPromiseWithoutTool(string $text, array $usedTools = []): bool
     {
-        return (bool) preg_match(
-            '/(te (lo )?(aparto|reservo|separo)'
+        // Apartar/reservar y aprobación de crédito nunca son acciones del bot.
+        $always = '/(te (lo )?(aparto|reservo|separo)'
             . '|qued[oó] (apartado|reservado|separado)'
             . '|te confirmo (el|tu) cr[eé]dito'
-            . '|cr[eé]dito (aprobado|confirmado)'
-            . '|te (confirmo|confirmamos) la cita'
-            . '|revis[oa] la agenda)/iu',
-            $text
-        );
+            . '|cr[eé]dito (aprobado|confirmado))/iu';
+        if (preg_match($always, $text)) {
+            return true;
+        }
+
+        // Promesa de cita: solo es válida si se usó la herramienta de agenda.
+        if (!in_array('schedule_test_drive', $usedTools, true)) {
+            $appointment = '/(te (confirmo|confirmamos) la cita'
+                . '|qued[oó] agendad[ao]'
+                . '|revis[oa] la agenda'
+                . '|agend[eé] tu (cita|prueba))/iu';
+            if (preg_match($appointment, $text)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static function normalize(string $s): string

@@ -10,6 +10,7 @@ use App\Models\WhatsappConversation;
 use App\Models\WhatsappBotUsage;
 use App\Models\WhatsappBotPromotion;
 use App\Models\VehicleQuote;
+use App\Services\TestDriveScheduler;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -53,6 +54,7 @@ class WhatsAppBotService
 
         $handoffReason = null;
         $imagesToSend  = [];
+        $usedTools     = [];
         $finalText     = '';
 
         for ($loop = 0; $loop < self::MAX_TOOL_LOOPS; $loop++) {
@@ -82,6 +84,7 @@ class WhatsAppBotService
 
             $toolResults = [];
             foreach ($toolUses as $tu) {
+                $usedTools[] = $tu['name'] ?? '';
                 $result = $this->executeTool($tu['name'] ?? '', $tu['input'] ?? [], $search, $bot, $chat, $handoffReason, $imagesToSend);
                 $toolResults[] = [
                     'type'        => 'tool_result',
@@ -99,7 +102,7 @@ class WhatsAppBotService
         }
 
         // Red de seguridad: promesa sin herramienta → forzar relevo.
-        if ($finalText !== '' && HandoffPolicy::botPromiseWithoutTool($finalText) && !$handoffReason) {
+        if ($finalText !== '' && HandoffPolicy::botPromiseWithoutTool($finalText, $usedTools) && !$handoffReason) {
             $handoffReason = 'El bot prometió una acción (apartar/crédito/cita) sin ejecutar la herramienta.';
         }
 
@@ -140,6 +143,8 @@ class WhatsAppBotService
             '- Si un vehículo está apartado o vendido, decilo y ofrecé las alternativas que devuelva la herramienta.',
             '- Respondé breve y claro, en el tono del negocio.',
         ];
+        $hard[] = '- Para agendar una prueba de manejo pedí día, hora y nombre; luego llamá schedule_test_drive.'
+            . ' Nunca confirmes una cita sin ejecutar esa herramienta; la cita queda tentativa hasta que un asesor la confirme.';
         if (!$bot->allow_financing_quote) {
             $hard[] = '- Nunca cotices cuotas, plazos ni tasas. Si preguntan por financiamiento, tomá los datos y llamá handoff_to_human.';
         } else {
@@ -160,6 +165,10 @@ class WhatsAppBotService
         if ($settings->order_instructions) {
             $blocks[] = "CÓMO SE CIERRA UNA COMPRA:\n" . $settings->order_instructions;
         }
+
+        $now = now();
+        $blocks[] = 'CONTEXTO: hoy es ' . $now->translatedFormat('l d/m/Y') . ' y son las ' . $now->format('H:i') . '.'
+            . ' Al agendar, convertí expresiones como "mañana" o "el sábado" a una fecha y hora concretas (formato ISO 8601).';
 
         return implode("\n\n", $blocks);
     }
@@ -224,6 +233,23 @@ class WhatsAppBotService
             ],
         ];
 
+        $tools[] = [
+            'name'        => 'schedule_test_drive',
+            'description' => 'Agenda una prueba de manejo (tentativa) para un vehículo. La confirma un asesor.',
+            'input_schema' => [
+                'type' => 'object',
+                'properties' => [
+                    'vehicle_id'         => ['type' => 'integer'],
+                    'preferred_datetime' => ['type' => 'string', 'description' => 'Fecha y hora en ISO 8601, ej: 2026-08-20T15:00:00'],
+                    'client_name'        => ['type' => 'string'],
+                    'client_email'       => ['type' => 'string'],
+                    'duration_minutes'   => ['type' => 'integer', 'description' => 'Opcional, por defecto 45'],
+                    'notes'              => ['type' => 'string'],
+                ],
+                'required' => ['vehicle_id', 'preferred_datetime'],
+            ],
+        ];
+
         if ($bot->allow_financing_quote) {
             $tools[] = [
                 'name'        => 'quote_financing',
@@ -267,6 +293,15 @@ class WhatsAppBotService
             case 'handoff_to_human':
                 $handoffReason = trim((string) ($input['reason'] ?? 'El cliente necesita atención humana.'));
                 return ['ok' => true, 'message' => 'Un momento, te paso con una persona del equipo.'];
+
+            case 'schedule_test_drive':
+                $res = (new TestDriveScheduler($bot))->schedule($input, $chat->phone, $chat->contact_name);
+                if (!$res['ok'] && $res['needs_human']) {
+                    $handoffReason = $res['error'];
+                }
+                return $res['ok']
+                    ? ['ok' => true, 'when' => $res['when'], 'message' => 'Prueba agendada de forma tentativa; un asesor la confirma.']
+                    : ['ok' => false, 'error' => $res['error']];
 
             case 'quote_financing':
                 return $this->quoteFinancing($search, $input);
