@@ -106,8 +106,20 @@ Prueba de manejo agendable desde el bot, reutilizando la agenda existente.
 - **Red de seguridad afinada** — la promesa de cita solo se tolera si de verdad
   se ejecutó `schedule_test_drive`; apartar/crédito siguen forzando relevo.
 
+### ✅ Entrega 5 (Etapa 9 — UI)
+Paneles de facturación/consumo sobre el tracking que ya existía.
+
+- **Superadmin** — `WhatsappBillingController` en `/admin/whatsapp-billing`
+  (submenú WhatsApp → Facturación): resumen por periodo con conversaciones,
+  facturado, costo real y **margen** por empresa; totales arriba; drill-down por
+  empresa con el detalle de conversaciones (tokens y costo IA). Selector de mes
+  (últimos 12).
+- **Negocio** — tarjeta "Consumo del mes" en su pantalla de configuración: barra
+  de progreso del cupo, extras y aviso si el bot quedó pausado por cupo/tope.
+
+Unidad de cobro: la **conversación** (ventana de 24 h), no el mensaje.
+
 ### ⏳ Próximas entregas
-- **Etapa 9 (UI)** — Paneles de facturación/consumo por empresa y periodo.
 - **Automatización del CRM** (lo que sigue tras el bot).
 
 ## Reglas de oro (se mantienen del origen)

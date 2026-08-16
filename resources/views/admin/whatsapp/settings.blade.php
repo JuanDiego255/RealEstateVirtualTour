@@ -114,8 +114,37 @@
             </form>
         </div>
 
-        {{-- ── Columna lateral: entrenamiento por capturas + promociones ── --}}
+        {{-- ── Columna lateral: consumo + entrenamiento por capturas + promociones ── --}}
         <div class="col-lg-4">
+            @if($billing)
+                <div class="card mb-4">
+                    <div class="card-header"><strong>Consumo del mes</strong></div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <span>Conversaciones</span>
+                            <strong>{{ number_format($billing['used']) }}@if($billing['included'] > 0) / {{ number_format($billing['included']) }}@endif</strong>
+                        </div>
+                        @if($billing['included'] > 0)
+                            @php $pct = min(100, round($billing['used'] / max(1, $billing['included']) * 100)); @endphp
+                            <div class="progress my-2" style="height:8px;">
+                                <div class="progress-bar {{ $pct >= 100 ? 'bg-danger' : ($pct >= 80 ? 'bg-warning' : 'bg-success') }}" style="width: {{ $pct }}%"></div>
+                            </div>
+                        @endif
+                        @if($billing['extras'] > 0)
+                            <div class="d-flex justify-content-between small text-muted">
+                                <span>Extras</span><span>{{ number_format($billing['extras']) }} (${{ number_format($billing['extrasCost'], 2) }})</span>
+                            </div>
+                        @endif
+                        @if($billing['exceeded'])
+                            <div class="alert alert-warning py-2 px-2 mt-2 mb-0 small">
+                                <i class="fa fa-exclamation-triangle"></i>
+                                El bot está pausado este mes por {{ $billing['capReached'] ? 'alcanzar el tope de gasto' : 'agotar el cupo del plan' }}.
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            @endif
+
             <div class="card mb-4">
                 <div class="card-header"><strong>Entrenar por capturas</strong>
                     <small class="text-muted d-block">Subí capturas de chats reales; la IA aprende el tono. Las imágenes se borran tras analizarlas.</small>

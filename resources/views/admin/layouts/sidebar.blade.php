@@ -121,6 +121,11 @@
                                     <li class="{{ Request::routeIs('admin.whatsapp.settings.*') || Request::routeIs('admin.whatsapp.promotions.*') ? 'active' : '' }}">
                                         <a href="{{ route('admin.whatsapp.settings.edit') }}"><i class="fa fa-cog"></i> Configuración</a>
                                     </li>
+                                    @if ($u->isSuperAdmin())
+                                        <li class="{{ Request::routeIs('admin.whatsapp.billing.*') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.whatsapp.billing.index') }}"><i class="fa fa-dollar"></i> Facturación</a>
+                                        </li>
+                                    @endif
                                 </ul>
                             </li>
                         @endif

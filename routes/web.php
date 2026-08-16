@@ -298,6 +298,12 @@ Route::group(['middleware' => 'auth'], function () {
         Route::delete('/{company}', [CompanyController::class, 'destroy'])->name('admin.companies.destroy');
     });
 
+    // --- FACTURACIÓN DEL BOT DE WHATSAPP (Solo super_admin) ---
+    Route::group(['prefix' => 'admin/whatsapp-billing', 'middleware' => 'role:super_admin'], function () {
+        Route::get('/', [\App\Http\Controllers\Admin\WhatsappBillingController::class, 'index'])->name('admin.whatsapp.billing.index');
+        Route::get('/{company}', [\App\Http\Controllers\Admin\WhatsappBillingController::class, 'show'])->name('admin.whatsapp.billing.show');
+    });
+
     // =====================================================
     // CRM + AGENDA
     // =====================================================

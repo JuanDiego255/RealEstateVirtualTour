@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\CompanyWhatsappBot;
 use App\Models\WhatsappBotSetting;
 use App\Models\WhatsappBotPromotion;
+use App\Models\WhatsappBotUsage;
 use App\Services\BotTrainingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -34,7 +36,11 @@ class WhatsappBotSettingController extends Controller
             ? WhatsappBotPromotion::forCompany($companyId)->latest()->get()
             : collect();
 
-        return view('admin.whatsapp.settings', compact('settings', 'handoff', 'promotions'));
+        // Consumo del mes (lo que el negocio ve de su propio plan).
+        $bot = CompanyWhatsappBot::where('company_id', $companyId)->first();
+        $billing = $bot ? WhatsappBotUsage::billing($bot) : null;
+
+        return view('admin.whatsapp.settings', compact('settings', 'handoff', 'promotions', 'billing'));
     }
 
     public function update(Request $request)
