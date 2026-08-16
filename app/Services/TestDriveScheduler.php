@@ -55,7 +55,10 @@ class TestDriveScheduler
         $duration = max(15, min(180, (int) ($input['duration_minutes'] ?? self::DEFAULT_DURATION_MIN)));
         $endsAt = (clone $when)->addMinutes($duration);
 
-        $agent = $this->defaultAgent();
+        // Asegura el lead (ya suele existir por la captura de entrada) y usa su
+        // asesor dueño para que cita y lead queden con el mismo responsable.
+        $lead  = WhatsAppLeadService::captureInbound($this->bot->company_id, $phone, $contactName);
+        $agent = ($lead ? User::find($lead->user_id) : null) ?: WhatsAppLeadService::defaultAgent($this->bot->company_id);
         if (!$agent) {
             return ['ok' => false, 'appointment_id' => null, 'when' => null, 'needs_human' => true,
                 'error' => 'No hay un asesor asignable; paso el chat a una persona.'];
@@ -65,8 +68,7 @@ class TestDriveScheduler
             return $this->fail('Ya hay una prueba agendada en ese horario; proponé otro.');
         }
 
-        $lead = $this->matchLead($phone);
-        $clientName = $lead->name ?? ($input['client_name'] ?? $contactName) ?: 'Cliente WhatsApp';
+        $clientName = ($lead->name ?? null) ?: ($input['client_name'] ?? $contactName) ?: 'Cliente WhatsApp';
 
         try {
             $appointment = Appointment::create([
@@ -89,6 +91,18 @@ class TestDriveScheduler
         } catch (\Throwable $e) {
             Log::channel('whatsapp')->error('Error al agendar prueba', ['message' => $e->getMessage()]);
             return $this->fail('No pude registrar la cita en la agenda; paso el chat a una persona.', true);
+        }
+
+        // Registra la actividad en el CRM y avanza la etapa (intención fuerte).
+        if ($lead) {
+            $lead->logActivity('meeting', [
+                'subject'     => 'Prueba de manejo agendada',
+                'description' => 'Vía WhatsApp para el ' . $when->format('d/m/Y H:i') . '.',
+                'vehicle_id'  => $vehicle->id,
+            ]);
+            if (in_array($lead->status, [Lead::STATUS_NEW, Lead::STATUS_CONTACTED], true)) {
+                $lead->changeStatus(Lead::STATUS_QUALIFIED, 'Agendó prueba de manejo desde WhatsApp.');
+            }
         }
 
         Log::channel('whatsapp')->info('Prueba de manejo agendada', [
@@ -139,26 +153,6 @@ class TestDriveScheduler
             ->where('starts_at', '<', $end)
             ->where('ends_at', '>', $start)
             ->exists();
-    }
-
-    private function defaultAgent(): ?User
-    {
-        return User::where('company_id', $this->bot->company_id)
-            ->orderByRaw("FIELD(role, 'company_admin') DESC")
-            ->orderBy('id')
-            ->first();
-    }
-
-    private function matchLead(string $phone): ?Lead
-    {
-        $digits = preg_replace('/\D/', '', $phone);
-        if ($digits === '') {
-            return null;
-        }
-        $tail = substr($digits, -8); // tolera prefijos de país distintos
-        return Lead::byCompany($this->bot->company_id)
-            ->where(fn($q) => $q->where('phone', 'like', "%{$tail}")->orWhere('whatsapp', 'like', "%{$tail}"))
-            ->first();
     }
 
     private function fail(string $error, bool $needsHuman = false): array

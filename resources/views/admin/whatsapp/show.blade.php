@@ -26,6 +26,11 @@
             @endif
         </div>
         <div>
+            @if($chat->lead)
+                <a href="{{ route('admin.crm.leads.show', $chat->lead) }}" class="btn btn-sm btn-outline-info mr-1">
+                    <i class="fa fa-user"></i> Ver lead
+                </a>
+            @endif
             @if($chat->bot_paused)
                 <form method="POST" action="{{ route('admin.whatsapp.resume', $chat) }}" class="d-inline">@csrf
                     <button class="btn btn-sm btn-outline-success"><i class="fa fa-robot"></i> Devolver al bot</button>

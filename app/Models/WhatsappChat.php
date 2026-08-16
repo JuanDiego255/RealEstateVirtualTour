@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Schema;
 class WhatsappChat extends Model
 {
     protected $fillable = [
-        'company_id', 'phone', 'contact_name',
+        'company_id', 'phone', 'contact_name', 'lead_id',
         'bot_paused', 'paused_at',
         'needs_human_at', 'needs_human_reason',
         'last_message_at', 'last_seen_at',
@@ -27,6 +27,14 @@ class WhatsappChat extends Model
         'last_message_at' => 'datetime',
         'last_seen_at'    => 'datetime',
     ];
+
+    /**
+     * Lead del CRM asociado a este chat (si ya se capturó).
+     */
+    public function lead()
+    {
+        return $this->belongsTo(\App\Lead::class, 'lead_id');
+    }
 
     /**
      * ¿Existe la tabla? (guarda de existencia para ambientes sin migrar).

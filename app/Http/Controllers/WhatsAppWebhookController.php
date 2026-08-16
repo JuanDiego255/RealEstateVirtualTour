@@ -160,6 +160,17 @@ class WhatsAppWebhookController extends Controller
             'type'       => $type,
         ]);
 
+        // Puente con el CRM: cada conversación entrante genera/actualiza un lead,
+        // esté el bot encendido, apagado o pausado.
+        try {
+            $lead = \App\Services\WhatsAppLeadService::captureInbound($bot->company_id, $from, $contactName);
+            if ($lead && $chat->lead_id !== $lead->id) {
+                $chat->update(['lead_id' => $lead->id]);
+            }
+        } catch (\Throwable $e) {
+            Log::channel('whatsapp')->error('No se pudo capturar el lead', ['message' => $e->getMessage()]);
+        }
+
         $this->maybeRespond($bot, $chat, $type, $text);
     }
 

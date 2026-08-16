@@ -343,8 +343,10 @@ class Lead extends Model
     {
         $oldStatus = $this->status;
 
+        // Sin usuario autenticado (p. ej. el bot de WhatsApp), la actividad
+        // queda a nombre del asesor dueño del lead (user_id es obligatorio).
         $activity = $this->activities()->create(array_merge([
-            'user_id' => auth()->id(),
+            'user_id' => auth()->id() ?? $this->user_id,
             'type' => $type,
             'activity_at' => now(),
         ], $data));

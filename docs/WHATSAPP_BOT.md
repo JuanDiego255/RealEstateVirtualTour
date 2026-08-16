@@ -119,8 +119,29 @@ Paneles de facturación/consumo sobre el tracking que ya existía.
 
 Unidad de cobro: la **conversación** (ventana de 24 h), no el mensaje.
 
-### ⏳ Próximas entregas
-- **Automatización del CRM** (lo que sigue tras el bot).
+### ✅ Automatización CRM — Etapa 1: Bot → Lead
+El puente que faltaba entre WhatsApp y el CRM.
+
+- **`WhatsAppLeadService::captureInbound`** — cada mensaje entrante crea o
+  actualiza un lead (`source = whatsapp`), deduplicando por teléfono (cola de 8
+  dígitos, tolera prefijos país). Se ejecuta en el webhook **antes** de la lógica
+  del bot: captura el lead esté el bot encendido, apagado o pausado. Asigna el
+  asesor por defecto (company_admin) porque `leads.user_id` es obligatorio, y
+  registra una actividad de primer contacto.
+- **`whatsapp_chats.lead_id`** — el chat queda enlazado al lead; el panel de
+  conversación muestra un botón "Ver lead".
+- **Prueba de manejo → CRM** — `TestDriveScheduler` ahora asegura el lead, asigna
+  la cita a su asesor dueño, registra la actividad "Prueba de manejo agendada" y
+  **avanza la etapa a Calificado** (que dispara las tareas de `ActivityTemplate` y
+  recalcula el score).
+- **`Lead::logActivity`** cae al dueño del lead cuando no hay usuario autenticado
+  (contexto del bot), evitando violar el FK.
+
+### ⏳ Próximas entregas (automatización CRM)
+- **Etapa 2** — Recordatorios/avisos de cita que de verdad se envían (cron) +
+  arreglar el bug de `PipelineRule` (Reminder con `status` inexistente).
+- **Etapa 3** — Notificaciones a asesores (lead asignado, tarea/recordatorio).
+- **Etapa 4** — Asignación automática (round-robin / reglas).
 
 ## Reglas de oro (se mantienen del origen)
 - El bot **nunca inventa** precios, existencias ni datos: solo lo que devuelven

@@ -61,6 +61,8 @@ class WhatsappChatController extends Controller
         $user = $this->guard();
         $this->authorizeChat($user, $chat);
 
+        $chat->loadMissing('lead');
+
         $messages = WhatsappConversation::forCompany($chat->company_id)
             ->forPhone($chat->phone)
             ->orderBy('created_at')
