@@ -27,6 +27,11 @@ class Kernel extends ConsoleKernel
         // Verificar suscripciones por vencer (diariamente a las 8am)
         $schedule->command('subscriptions:check-expiring --days=7')->dailyAt('08:00');
         $schedule->command('crm:run-pipeline-rules')->dailyAt('07:00');
+
+        // Despacho de recordatorios y avisos de cita. Corre seguido si el cron
+        // ejecuta schedule:run cada minuto; si solo corre una vez al día, igual
+        // alcanza a todos los vencidos porque el filtro es "<= ahora".
+        $schedule->command('crm:dispatch-reminders')->everyFifteenMinutes()->withoutOverlapping();
     }
 
     /**

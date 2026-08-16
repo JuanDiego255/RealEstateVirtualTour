@@ -137,10 +137,25 @@ El puente que faltaba entre WhatsApp y el CRM.
 - **`Lead::logActivity`** cae al dueño del lead cuando no hay usuario autenticado
   (contexto del bot), evitando violar el FK.
 
+### ✅ Automatización CRM — Etapa 2: recordatorios que se envían
+Los modelos ya sabían "quién necesita aviso" (`needsNotification` / `needsReminder`),
+pero nada los despachaba. Ahora sí:
+
+- **`crm:dispatch-reminders`** — comando que envía los recordatorios vencidos y
+  los avisos de citas próximas (email + campana), y marca cada uno como enviado
+  para no repetirlo. Programado `everyFifteenMinutes`; si el cron solo corre una
+  vez al día, igual alcanza a todos los vencidos (filtro "≤ ahora").
+- **`ReminderDueNotification`** y **`AppointmentReminderNotification`** — canales
+  `database` (siempre) + `mail` (si hay correo y el recordatorio lo pide).
+- **Fix de `RunPipelineRules`** — creaba actividades con `user_id = null` (violaba
+  el NOT NULL) y filtraba/creaba `Reminder` con una columna `status` inexistente.
+  Ahora usa el dueño del lead y el scope `pending()`, con `company_id` y
+  `email_notification`. Las reglas de pipeline por fin corren sin romperse.
+
+> Requiere que el cron ejecute `php artisan schedule:run` (idealmente cada minuto).
+
 ### ⏳ Próximas entregas (automatización CRM)
-- **Etapa 2** — Recordatorios/avisos de cita que de verdad se envían (cron) +
-  arreglar el bug de `PipelineRule` (Reminder con `status` inexistente).
-- **Etapa 3** — Notificaciones a asesores (lead asignado, tarea/recordatorio).
+- **Etapa 3** — Notificaciones a asesores (lead asignado, tarea vence).
 - **Etapa 4** — Asignación automática (round-robin / reglas).
 
 ## Reglas de oro (se mantienen del origen)

@@ -53,7 +53,7 @@ class RunPipelineRules extends Command
                 switch ($rule->action) {
                     case 'alert':
                         $lead->activities()->create([
-                            'user_id'     => null,
+                            'user_id'     => $lead->user_id,
                             'type'        => 'note',
                             'description' => '⚠️ Alerta automática: ' . ($rule->action_message ?: $rule->name) . $marker,
                             'activity_at' => now(),
@@ -65,21 +65,22 @@ class RunPipelineRules extends Command
                         $exists = \App\Reminder::where('remindable_type', Lead::class)
                             ->where('remindable_id', $lead->id)
                             ->where('title', 'LIKE', '%' . $rule->name . '%')
-                            ->where('status', 'pending')
+                            ->pending()
                             ->exists();
 
                         if (!$exists) {
                             \App\Reminder::create([
-                                'remindable_type' => Lead::class,
-                                'remindable_id'   => $lead->id,
-                                'user_id'         => $lead->user_id,
-                                'title'           => $rule->action_message ?: 'Seguimiento: ' . $rule->name,
-                                'remind_at'       => now()->addDay(),
-                                'status'          => 'pending',
-                                'priority'        => 'high',
+                                'remindable_type'    => Lead::class,
+                                'remindable_id'      => $lead->id,
+                                'company_id'         => $lead->company_id,
+                                'user_id'            => $lead->user_id,
+                                'title'              => $rule->action_message ?: 'Seguimiento: ' . $rule->name,
+                                'remind_at'          => now()->addDay(),
+                                'priority'           => 'high',
+                                'email_notification' => true,
                             ]);
                             $lead->activities()->create([
-                                'user_id'     => null,
+                                'user_id'     => $lead->user_id,
                                 'type'        => 'note',
                                 'description' => '🔔 Recordatorio automático creado: ' . $rule->name . $marker,
                                 'activity_at' => now(),
@@ -89,7 +90,7 @@ class RunPipelineRules extends Command
 
                     case 'notify_admin':
                         $lead->activities()->create([
-                            'user_id'     => null,
+                            'user_id'     => $lead->user_id,
                             'type'        => 'note',
                             'description' => '📢 Notificación admin: ' . ($rule->action_message ?: $rule->name) . $marker,
                             'activity_at' => now(),
