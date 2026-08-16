@@ -64,6 +64,40 @@ class WhatsAppCloudService
     }
 
     /**
+     * Enviar una imagen por URL (con caption opcional).
+     *
+     * @return array{ok: bool, wam_id: ?string, error: ?string}
+     */
+    public function sendImage(CompanyWhatsappBot $bot, string $to, string $imageUrl, ?string $caption = null): array
+    {
+        if (!$bot->phone_number_id || !$bot->access_token) {
+            return ['ok' => false, 'wam_id' => null, 'error' => 'Bot sin phone_number_id o access_token.'];
+        }
+
+        $url = sprintf('https://graph.facebook.com/%s/%s/messages', $bot->graphVersion(), $bot->phone_number_id);
+        $image = ['link' => $imageUrl];
+        if ($caption) {
+            $image['caption'] = $caption;
+        }
+
+        try {
+            $response = Http::withToken($bot->access_token)->timeout(20)->post($url, [
+                'messaging_product' => 'whatsapp',
+                'to'                => $this->normalizePhone($to),
+                'type'              => 'image',
+                'image'             => $image,
+            ]);
+
+            if ($response->successful()) {
+                return ['ok' => true, 'wam_id' => data_get($response->json(), 'messages.0.id'), 'error' => null];
+            }
+            return ['ok' => false, 'wam_id' => null, 'error' => data_get($response->json(), 'error.message', 'Error Cloud API')];
+        } catch (\Throwable $e) {
+            return ['ok' => false, 'wam_id' => null, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
      * Normaliza el teléfono a solo dígitos (formato E.164 sin '+').
      */
     private function normalizePhone(string $phone): string

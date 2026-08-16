@@ -52,18 +52,37 @@ firma, idempotencia, guarda) y panel de conversaciones con respuesta manual.
 3. Superadmin carga credenciales de Meta por empresa (ver la guía in-app en la
    pantalla de WhatsApp de la empresa) y suscribe el webhook al campo `messages`.
 
+### ✅ Entrega 2 (Etapas 3–4 + 5 parcial + 9 base)
+El cerebro del bot y las herramientas del catálogo.
+
+- **`WhatsAppBotService`** — arma el prompt (tono + reglas duras + política de
+  relevo + reglas del negocio + cierre), corre el bucle de tool-use contra
+  Anthropic (Haiku 4.5, `max_tokens` 700, `MAX_TOOL_LOOPS` 3, historial 10),
+  con **caché de prompt** en el bloque de sistema. Envía texto + fotos.
+- **Respuesta inmediata** vía `app()->terminating()` → `ProcessWhatsAppMessageJob::dispatchSync`
+  (hosting compartido, sin worker). El job re-verifica el estado antes de responder.
+- **`VehicleSearchService`** (BD local, scopeado por empresa vía categoría):
+  `search_vehicles`, `get_vehicle_detail`, `check_vehicle_status`
+  (disponible/apartado/vendido + alternativas). Mapea estados de `properties`.
+- **`quote_financing`** — solo si la empresa activa el toggle
+  `allow_financing_quote`; si no, el prompt obliga a `handoff_to_human`.
+- **`HandoffPolicy`** — sección del prompt, disparadores por palabra clave en el
+  mensaje entrante, nota de voz → relevo, y **red de seguridad por regex** sobre
+  la salida ("te lo aparto", "te confirmo el crédito").
+- **Consumo y fusible** — `WhatsappBotUsage` cuenta por conversación (ventana de
+  24 h), acumula costo/tokens y `billing()` calcula plan/incluidas/extras/margen.
+  Si se agota la cuota o el tope, el bot deja de responder (`isBlocked`).
+
+Regla de oro reforzada en el prompt: el bot solo afirma lo que devuelven las
+herramientas.
+
 ### ⏳ Próximas entregas
-- **Etapa 3** — Bot sin herramientas: `WhatsAppBotService` + Anthropic (Haiku),
-  caché de prompt, `terminating()`, tope de vueltas y de historial.
-- **Etapa 4** — Herramientas de catálogo: `VehicleSearchService`,
-  `search_vehicles`, `get_vehicle_detail`, `check_vehicle_status` (BD local).
-- **Etapa 5** — Relevo humano: `HandoffPolicy` + red de seguridad por regex
-  ("te lo aparto", "te confirmo el crédito").
-- **Etapa 6** — Entrenamiento por capturas (Sonnet visión → perfil de tono),
-  reglas y cierre; promociones.
-- **Etapa 7** — Prueba de manejo (`schedule_test_drive`).
-- **Etapa 9** — Cuotas/costos: ventana de 24 h, consumo por conversación, tope
-  de gasto (fusible que apaga el bot).
+- **Etapa 6** — UI de negocio: entrenamiento por capturas (Sonnet visión →
+  perfil de tono), reglas, cierre y promociones; pantalla de "cuándo entra una
+  persona" (editar `handoff`).
+- **Etapa 7** — Prueba de manejo (`schedule_test_drive`) + módulo de citas.
+- **Etapa 9 (UI)** — Paneles de facturación/consumo por empresa y periodo.
+- **Automatización del CRM** (lo que sigue tras el bot).
 
 ## Reglas de oro (se mantienen del origen)
 - El bot **nunca inventa** precios, existencias ni datos: solo lo que devuelven

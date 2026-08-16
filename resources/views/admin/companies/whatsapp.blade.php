@@ -171,6 +171,15 @@
                         <input type="number" name="max_vehicles_per_reply" class="form-control" value="{{ old('max_vehicles_per_reply', $bot->max_vehicles_per_reply) }}">
                     </div>
                 </div>
+                <hr>
+                <div class="form-group mb-0">
+                    <input type="hidden" name="allow_financing_quote" value="0">
+                    <div class="custom-control custom-switch">
+                        <input type="checkbox" class="custom-control-input" id="allow_financing_quote" name="allow_financing_quote" value="1" {{ old('allow_financing_quote', $bot->allow_financing_quote) ? 'checked' : '' }}>
+                        <label class="custom-control-label" for="allow_financing_quote">Permitir que el bot cotice financiamiento (cuota estimada)</label>
+                    </div>
+                    <small class="form-text text-muted">Si está apagado, cuando pregunten por financiamiento el bot toma los datos y pasa el chat a una persona (recomendado).</small>
+                </div>
             </div>
         </div>
 

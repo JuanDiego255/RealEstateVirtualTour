@@ -83,6 +83,7 @@ class CompanyBotConfigController extends Controller
         $bot->allow_overage                = $request->boolean('allow_overage');
         $bot->overage_cap_usd              = $request->filled('overage_cap_usd') ? (float) $request->overage_cap_usd : null;
         $bot->max_vehicles_per_reply       = $request->filled('max_vehicles_per_reply') ? max(1, (int) $request->max_vehicles_per_reply) : 3;
+        $bot->allow_financing_quote        = $request->boolean('allow_financing_quote');
 
         // Cuándo responde
         $bot->activation_mode        = $request->input('activation_mode', 'immediate');

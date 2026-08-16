@@ -17,7 +17,7 @@ class CompanyWhatsappBot extends Model
         'phone_number_id', 'waba_id', 'display_phone',
         'access_token', 'app_secret', 'verify_token', 'graph_version', 'business_type',
         'plan', 'included_conversations', 'plan_price_usd', 'extra_conversation_price_usd',
-        'allow_overage', 'overage_cap_usd', 'max_vehicles_per_reply',
+        'allow_overage', 'overage_cap_usd', 'max_vehicles_per_reply', 'allow_financing_quote',
         'activation_mode', 'delay_minutes', 'business_hours_start', 'business_hours_end',
         'instant_outside_hours', 'notes',
     ];
@@ -25,6 +25,7 @@ class CompanyWhatsappBot extends Model
     protected $casts = [
         'enabled'                      => 'boolean',
         'allow_overage'                => 'boolean',
+        'allow_financing_quote'        => 'boolean',
         'instant_outside_hours'        => 'boolean',
         'included_conversations'       => 'integer',
         'max_vehicles_per_reply'       => 'integer',

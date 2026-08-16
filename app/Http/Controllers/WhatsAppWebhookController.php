@@ -2,9 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\ProcessWhatsAppMessageJob;
 use App\Models\CompanyWhatsappBot;
+use App\Models\WhatsappBotSetting;
+use App\Models\WhatsappBotUsage;
 use App\Models\WhatsappChat;
 use App\Models\WhatsappConversation;
+use App\Services\HandoffPolicy;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -141,7 +145,7 @@ class WhatsAppWebhookController extends Controller
             'metadata'          => ['raw' => $message],
         ]);
 
-        WhatsappChat::updateOrCreate(
+        $chat = WhatsappChat::updateOrCreate(
             ['company_id' => $bot->company_id, 'phone' => $from],
             [
                 'contact_name'    => $contactName,
@@ -156,7 +160,50 @@ class WhatsAppWebhookController extends Controller
             'type'       => $type,
         ]);
 
-        // Etapa 3: aquí se despachará la respuesta del bot con app()->terminating().
+        $this->maybeRespond($bot, $chat, $type, $text);
+    }
+
+    /**
+     * Decide si el bot debe responder y, de ser así, lo despacha DESPUÉS de la
+     * respuesta HTTP (app()->terminating() → dispatchSync). Hosting compartido:
+     * la respuesta es inmediata, sin cron.
+     */
+    private function maybeRespond(CompanyWhatsappBot $bot, WhatsappChat $chat, string $type, ?string $text): void
+    {
+        if (!$bot->enabled || !$bot->isUsable()) {
+            return;
+        }
+        if ($bot->activation_mode === CompanyWhatsappBot::MODE_MANUAL) {
+            return; // nunca se activa solo
+        }
+        if ($chat->bot_paused) {
+            return; // una persona está atendiendo
+        }
+
+        $cfg = WhatsappBotSetting::firstOrNew(['company_id' => $bot->company_id])->handoffConfig();
+
+        // Nota de voz: el bot no la escucha → relevo.
+        if ($type === 'audio' && !empty($cfg['sends_voice_note'])) {
+            $chat->pauseBot('Nota de voz (el bot no la escucha)');
+            return;
+        }
+
+        // Palabra clave de relevo en el mensaje entrante.
+        if ($text && HandoffPolicy::inboundTriggersHandoff($text, $cfg)) {
+            $chat->pauseBot('Palabra clave de relevo');
+            return;
+        }
+
+        // Fusible: cuota/tope agotado.
+        if (WhatsappBotUsage::isBlocked($bot)) {
+            return;
+        }
+
+        $companyId = $bot->company_id;
+        $phone     = $chat->phone;
+        app()->terminating(function () use ($companyId, $phone) {
+            ProcessWhatsAppMessageJob::dispatchSync($companyId, $phone);
+        });
     }
 
     /**
