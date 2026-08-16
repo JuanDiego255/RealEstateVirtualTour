@@ -76,10 +76,22 @@ El cerebro del bot y las herramientas del catálogo.
 Regla de oro reforzada en el prompt: el bot solo afirma lo que devuelven las
 herramientas.
 
+### ✅ Entrega 3 (Etapa 6)
+La UI que administra el **negocio** (no el superadmin): `WhatsappBotSettingController`
+en `/admin/whatsapp-config`, submenú "WhatsApp → Configuración".
+
+- **Tono, reglas y cierre** — edición de `training_profile`, `custom_rules` y
+  `order_instructions`.
+- **Entrenar por capturas** — `BotTrainingService` sube imágenes de chats reales,
+  las manda al modelo de **visión** (el configurado, Sonnet por defecto) y destila
+  un perfil de tono editable. Las capturas se **borran** tras el análisis y se
+  informa el costo aproximado.
+- **Cuándo entra una persona** — editor de la política de relevo (`handoff`):
+  switches, palabras clave, horas para reanudar y mensaje de relevo.
+- **Promociones** — `WhatsappBotPromotion` (activa + rango de fechas); el bot solo
+  cita las **vigentes**, inyectadas en el prompt.
+
 ### ⏳ Próximas entregas
-- **Etapa 6** — UI de negocio: entrenamiento por capturas (Sonnet visión →
-  perfil de tono), reglas, cierre y promociones; pantalla de "cuándo entra una
-  persona" (editar `handoff`).
 - **Etapa 7** — Prueba de manejo (`schedule_test_drive`) + módulo de citas.
 - **Etapa 9 (UI)** — Paneles de facturación/consumo por empresa y periodo.
 - **Automatización del CRM** (lo que sigue tras el bot).

@@ -108,10 +108,20 @@
                             </li>
                         @endif
 
-                        {{-- Bot de WhatsApp: panel de conversaciones --}}
+                        {{-- Bot de WhatsApp: conversaciones + configuración --}}
                         @if ($u->canAccessModule('whatsapp') && $hasAccess)
                             <li class="{{ Request::routeIs('admin.whatsapp.*') ? 'active' : '' }}">
-                                <a href="{{ route('admin.whatsapp.index') }}"><i class="fa fa-whatsapp"></i><span>WhatsApp</span></a>
+                                <a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
+                                    <i class="fa fa-whatsapp"></i><span>WhatsApp</span>
+                                </a>
+                                <ul>
+                                    <li class="{{ Request::routeIs('admin.whatsapp.index') || Request::routeIs('admin.whatsapp.show') ? 'active' : '' }}">
+                                        <a href="{{ route('admin.whatsapp.index') }}"><i class="fa fa-comments"></i> Conversaciones</a>
+                                    </li>
+                                    <li class="{{ Request::routeIs('admin.whatsapp.settings.*') || Request::routeIs('admin.whatsapp.promotions.*') ? 'active' : '' }}">
+                                        <a href="{{ route('admin.whatsapp.settings.edit') }}"><i class="fa fa-cog"></i> Configuración</a>
+                                    </li>
+                                </ul>
                             </li>
                         @endif
 

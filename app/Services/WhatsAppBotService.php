@@ -8,6 +8,7 @@ use App\Models\WhatsappBotSetting;
 use App\Models\WhatsappChat;
 use App\Models\WhatsappConversation;
 use App\Models\WhatsappBotUsage;
+use App\Models\WhatsappBotPromotion;
 use App\Models\VehicleQuote;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -146,6 +147,11 @@ class WhatsAppBotService
         }
         $blocks[] = implode("\n", $hard);
 
+        $promos = $this->currentPromotions($bot->company_id);
+        if ($promos !== '') {
+            $blocks[] = "PROMOCIONES VIGENTES (mencionalas cuando venga al caso, no las inventes ni las cambies):\n" . $promos;
+        }
+
         $blocks[] = HandoffPolicy::promptSection($cfg);
 
         if ($settings->custom_rules) {
@@ -156,6 +162,15 @@ class WhatsAppBotService
         }
 
         return implode("\n\n", $blocks);
+    }
+
+    private function currentPromotions(int $companyId): string
+    {
+        if (!WhatsappBotPromotion::available()) {
+            return '';
+        }
+        $promos = WhatsappBotPromotion::forCompany($companyId)->current()->latest()->limit(5)->get();
+        return $promos->map(fn($p) => '- ' . $p->title . ': ' . $p->description)->implode("\n");
     }
 
     private function buildTools(CompanyWhatsappBot $bot): array

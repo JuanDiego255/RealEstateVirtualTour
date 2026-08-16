@@ -790,6 +790,14 @@ Route::middleware('auth')->group(function () {
     Route::post('/admin/whatsapp/{chat}/pause', [\App\Http\Controllers\Admin\WhatsappChatController::class, 'pause'])->name('admin.whatsapp.pause');
     Route::post('/admin/whatsapp/{chat}/resume', [\App\Http\Controllers\Admin\WhatsappChatController::class, 'resume'])->name('admin.whatsapp.resume');
 
+    // Bot de WhatsApp: configuración del negocio (tono, reglas, cierre, relevo, promos)
+    Route::get('/admin/whatsapp-config', [\App\Http\Controllers\Admin\WhatsappBotSettingController::class, 'edit'])->name('admin.whatsapp.settings.edit');
+    Route::put('/admin/whatsapp-config', [\App\Http\Controllers\Admin\WhatsappBotSettingController::class, 'update'])->name('admin.whatsapp.settings.update');
+    Route::post('/admin/whatsapp-config/train', [\App\Http\Controllers\Admin\WhatsappBotSettingController::class, 'train'])->name('admin.whatsapp.settings.train');
+    Route::post('/admin/whatsapp-config/promotions', [\App\Http\Controllers\Admin\WhatsappBotSettingController::class, 'storePromotion'])->name('admin.whatsapp.promotions.store');
+    Route::post('/admin/whatsapp-config/promotions/{promotion}/toggle', [\App\Http\Controllers\Admin\WhatsappBotSettingController::class, 'togglePromotion'])->name('admin.whatsapp.promotions.toggle');
+    Route::delete('/admin/whatsapp-config/promotions/{promotion}', [\App\Http\Controllers\Admin\WhatsappBotSettingController::class, 'destroyPromotion'])->name('admin.whatsapp.promotions.destroy');
+
     // Gestión de roles de agentes (solo company_admin)
     Route::get('/admin/roles', [\App\Http\Controllers\Admin\RolePermissionsController::class, 'index'])
         ->middleware('role:company_admin')
