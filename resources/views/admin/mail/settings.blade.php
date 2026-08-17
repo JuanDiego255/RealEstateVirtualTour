@@ -1,58 +1,58 @@
 @extends('admin.main')
 @section('title', 'Configuración de correo (SMTP)')
 @section('content')
-<div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h4><i class="fa fa-envelope"></i> Configuración de correo (SMTP)</h4>
+@include('admin.crm._ui')
+
+<div class="crm-page">
+    <div class="crm-page-header">
+        <div>
+            <h2><i class="fa fa-envelope"></i> Configuración de correo (SMTP)</h2>
+            <p class="sub">La cuenta con la que salen los correos de tu empresa</p>
+        </div>
     </div>
 
-    @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
-    @if(session('error'))<div class="alert alert-danger">{{ session('error') }}</div>@endif
-    @if($errors->any())
-        <div class="alert alert-danger"><ul class="mb-0">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul></div>
-    @endif
+    @if(session('success'))<div class="crm-alert success">{{ session('success') }}</div>@endif
+    @if(session('error'))<div class="crm-alert danger">{{ session('error') }}</div>@endif
+    @if($errors->any())<div class="crm-alert danger"><ul style="margin:0; padding-left:18px;">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul></div>@endif
 
-    <div class="row">
-        <div class="col-lg-8">
+    <div class="crm-two-col">
+        <div>
             <form method="POST" action="{{ route('admin.mail.settings.update') }}">
                 @csrf @method('PUT')
-
-                <div class="card mb-4">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <strong>Cuenta que envía los correos</strong>
-                        <div class="custom-control custom-switch">
+                <div class="crm-section">
+                    <div class="crm-section-header">
+                        <h5><i class="fa fa-paper-plane-o"></i> Cuenta que envía</h5>
+                        <label class="crm-toggle">
                             <input type="hidden" name="enabled" value="0">
-                            <input type="checkbox" class="custom-control-input" id="enabled" name="enabled" value="1" {{ old('enabled', $setting->enabled) ? 'checked' : '' }}>
-                            <label class="custom-control-label" for="enabled">Habilitado</label>
-                        </div>
+                            <input type="checkbox" name="enabled" value="1" {{ old('enabled', $setting->enabled) ? 'checked' : '' }}>
+                            <span class="track"></span> Habilitado
+                        </label>
                     </div>
-                    <div class="card-body">
-                        <div class="form-row">
-                            <div class="form-group col-md-6">
-                                <label>Nombre del remitente</label>
-                                <input type="text" name="from_name" class="form-control" value="{{ old('from_name', $setting->from_name) }}" placeholder="Ej: Autos del Valle">
+                    <div class="crm-section-pad">
+                        <div class="crm-form-row">
+                            <div class="crm-form-group">
+                                <label class="crm-label">Nombre del remitente</label>
+                                <input type="text" name="from_name" class="crm-input" value="{{ old('from_name', $setting->from_name) }}" placeholder="Ej: Autos del Valle">
                             </div>
-                            <div class="form-group col-md-6">
-                                <label>Correo del remitente</label>
-                                <input type="email" name="from_address" class="form-control" value="{{ old('from_address', $setting->from_address) }}" placeholder="ventas@tudominio.com">
+                            <div class="crm-form-group">
+                                <label class="crm-label">Correo del remitente</label>
+                                <input type="email" name="from_address" class="crm-input" value="{{ old('from_address', $setting->from_address) }}" placeholder="ventas@tudominio.com">
                             </div>
                         </div>
 
-                        <hr>
-
-                        <div class="form-row">
-                            <div class="form-group col-md-6">
-                                <label>Servidor SMTP (host)</label>
-                                <input type="text" name="host" id="smtp_host" class="form-control" value="{{ old('host', $setting->host) }}" placeholder="smtp.gmail.com">
+                        <div class="crm-form-row">
+                            <div class="crm-form-group">
+                                <label class="crm-label">Servidor SMTP (host)</label>
+                                <input type="text" name="host" id="smtp_host" class="crm-input" value="{{ old('host', $setting->host) }}" placeholder="smtp.gmail.com">
                             </div>
-                            <div class="form-group col-md-3">
-                                <label>Puerto</label>
-                                <input type="number" name="port" id="smtp_port" class="form-control" value="{{ old('port', $setting->port) }}" placeholder="587">
+                            <div class="crm-form-group" style="max-width:120px;">
+                                <label class="crm-label">Puerto</label>
+                                <input type="number" name="port" id="smtp_port" class="crm-input" value="{{ old('port', $setting->port) }}" placeholder="587">
                             </div>
-                            <div class="form-group col-md-3">
-                                <label>Seguridad</label>
-                                <select name="encryption" id="smtp_enc" class="form-control">
-                                    @php $enc = old('encryption', $setting->encryption); @endphp
+                            <div class="crm-form-group" style="max-width:140px;">
+                                <label class="crm-label">Seguridad</label>
+                                @php $enc = old('encryption', $setting->encryption); @endphp
+                                <select name="encryption" id="smtp_enc" class="crm-select">
                                     <option value="tls" {{ $enc === 'tls' ? 'selected' : '' }}>TLS</option>
                                     <option value="ssl" {{ $enc === 'ssl' ? 'selected' : '' }}>SSL</option>
                                     <option value="none" {{ $enc === null || $enc === 'none' ? 'selected' : '' }}>Ninguna</option>
@@ -60,65 +60,61 @@
                             </div>
                         </div>
 
-                        <div class="form-row">
-                            <div class="form-group col-md-6">
-                                <label>Usuario</label>
-                                <input type="text" name="username" class="form-control" value="{{ old('username', $setting->username) }}" placeholder="tucuenta@gmail.com" autocomplete="off">
+                        <div class="crm-form-row">
+                            <div class="crm-form-group">
+                                <label class="crm-label">Usuario</label>
+                                <input type="text" name="username" class="crm-input" value="{{ old('username', $setting->username) }}" placeholder="tucuenta@gmail.com" autocomplete="off">
                             </div>
-                            <div class="form-group col-md-6">
-                                <label>Clave de aplicación</label>
-                                <input type="password" name="password" class="form-control" value="" placeholder="{{ $setting->password ? '•••••••• (sin cambios)' : 'clave de aplicaciones de terceros' }}" autocomplete="new-password">
-                                <small class="form-text text-muted">Dejala vacía para conservar la actual.</small>
+                            <div class="crm-form-group">
+                                <label class="crm-label">Clave de aplicación</label>
+                                <input type="password" name="password" class="crm-input" value="" placeholder="{{ $setting->password ? '•••••••• (sin cambios)' : 'clave de aplicaciones de terceros' }}" autocomplete="new-password">
+                                <div class="crm-help">Dejala vacía para conservar la actual.</div>
                             </div>
                         </div>
 
-                        <button class="btn btn-primary"><i class="fa fa-save"></i> Guardar</button>
+                        <button class="action-btn primary"><i class="fa fa-save"></i> Guardar</button>
                     </div>
                 </div>
             </form>
         </div>
 
-        <div class="col-lg-4">
-            <div class="card mb-4">
-                <div class="card-header"><strong>Ayuda rápida</strong></div>
-                <div class="card-body">
-                    <p class="small mb-2">Usá una <strong>clave de aplicaciones</strong> (app password), no la contraseña normal de tu cuenta.</p>
-                    <div class="mb-2">
-                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="fillPreset('gmail')">Preset Gmail</button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="fillPreset('outlook')">Preset Outlook</button>
+        <div>
+            <div class="crm-section">
+                <div class="crm-section-header"><h5><i class="fa fa-question-circle-o"></i> Ayuda rápida</h5></div>
+                <div class="crm-section-pad">
+                    <p style="font-size:13px; margin-bottom:12px;">Usá una <strong>clave de aplicaciones</strong> (app password), no la contraseña normal.</p>
+                    <div style="display:flex; gap:8px; margin-bottom:12px;">
+                        <button type="button" class="action-btn secondary xs" onclick="fillPreset('gmail')">Preset Gmail</button>
+                        <button type="button" class="action-btn secondary xs" onclick="fillPreset('outlook')">Preset Outlook</button>
                     </div>
-                    <ul class="small text-muted pl-3 mb-0">
-                        <li>Gmail: <code>smtp.gmail.com</code> · 587 · TLS. Requiere verificación en 2 pasos + clave de aplicación.</li>
+                    <ul style="font-size:12px; color:#64748b; padding-left:18px; margin:0;">
+                        <li>Gmail: <code>smtp.gmail.com</code> · 587 · TLS (requiere verificación en 2 pasos + clave de aplicación).</li>
                         <li>Outlook: <code>smtp.office365.com</code> · 587 · TLS.</li>
                     </ul>
                 </div>
             </div>
 
-            <div class="card mb-4">
-                <div class="card-header"><strong>Probar envío</strong></div>
-                <div class="card-body">
+            <div class="crm-section">
+                <div class="crm-section-header"><h5><i class="fa fa-flask"></i> Probar envío</h5></div>
+                <div class="crm-section-pad">
                     @if($setting->last_test_at)
-                        <p class="small mb-2">
+                        <p style="font-size:12px; margin-bottom:10px;">
                             Última prueba: {{ $setting->last_test_at->format('d/m/Y H:i') }}
-                            @if($setting->last_test_ok)
-                                <span class="badge badge-success">OK</span>
-                            @else
-                                <span class="badge badge-danger">Falló</span>
-                            @endif
+                            @if($setting->last_test_ok)<span class="crm-badge green">OK</span>@else<span class="crm-badge red">Falló</span>@endif
                         </p>
                         @if(!$setting->last_test_ok && $setting->last_test_error)
-                            <p class="small text-danger">{{ \Illuminate\Support\Str::limit($setting->last_test_error, 160) }}</p>
+                            <p style="font-size:11px; color:#dc2626;">{{ \Illuminate\Support\Str::limit($setting->last_test_error, 160) }}</p>
                         @endif
                     @endif
                     <form method="POST" action="{{ route('admin.mail.settings.test') }}">
                         @csrf
-                        <div class="form-group">
-                            <label class="small mb-1">Enviar prueba a</label>
-                            <input type="email" name="test_to" class="form-control form-control-sm" placeholder="{{ $setting->from_address ?: 'tu@correo.com' }}">
+                        <div class="crm-form-group">
+                            <label class="crm-label">Enviar prueba a</label>
+                            <input type="email" name="test_to" class="crm-input" placeholder="{{ $setting->from_address ?: 'tu@correo.com' }}">
                         </div>
-                        <button class="btn btn-sm btn-success btn-block"><i class="fa fa-paper-plane"></i> Enviar correo de prueba</button>
+                        <button class="action-btn success" style="width:100%; justify-content:center;"><i class="fa fa-paper-plane"></i> Enviar correo de prueba</button>
+                        <div class="crm-help" style="margin-top:8px;">Guardá los cambios antes de probar.</div>
                     </form>
-                    <small class="text-muted">Guardá los cambios antes de probar.</small>
                 </div>
             </div>
         </div>
@@ -127,11 +123,9 @@
 
 <script>
 function fillPreset(kind) {
-    var host = document.getElementById('smtp_host');
-    var port = document.getElementById('smtp_port');
-    var enc  = document.getElementById('smtp_enc');
-    if (kind === 'gmail')   { host.value = 'smtp.gmail.com';       port.value = 587; enc.value = 'tls'; }
-    if (kind === 'outlook') { host.value = 'smtp.office365.com';   port.value = 587; enc.value = 'tls'; }
+    var host = document.getElementById('smtp_host'), port = document.getElementById('smtp_port'), enc = document.getElementById('smtp_enc');
+    if (kind === 'gmail')   { host.value = 'smtp.gmail.com';     port.value = 587; enc.value = 'tls'; }
+    if (kind === 'outlook') { host.value = 'smtp.office365.com'; port.value = 587; enc.value = 'tls'; }
 }
 </script>
 @endsection

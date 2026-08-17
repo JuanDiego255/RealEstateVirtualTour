@@ -1,77 +1,67 @@
 @extends('admin.main')
 @section('title', 'WhatsApp — Configuración del bot')
 @section('content')
-<div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h4><i class="fa fa-whatsapp" style="color:#25d366"></i> Configuración del bot</h4>
-        <a href="{{ route('admin.whatsapp.index') }}" class="btn btn-sm btn-outline-secondary">
-            <i class="fa fa-comments"></i> Ver conversaciones
-        </a>
+@include('admin.crm._ui')
+
+<div class="crm-page">
+    <div class="crm-page-header">
+        <div>
+            <h2><i class="fa fa-whatsapp" style="color:#25d366;"></i> Configuración del bot</h2>
+            <p class="sub">Tono, reglas, cierre, relevo y promociones</p>
+        </div>
+        <a href="{{ route('admin.whatsapp.index') }}" class="action-btn secondary"><i class="fa fa-comments"></i> Ver conversaciones</a>
     </div>
 
-    @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
-    @if(session('error'))<div class="alert alert-danger">{{ session('error') }}</div>@endif
-    @if($errors->any())
-        <div class="alert alert-danger">
-            <ul class="mb-0">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
-        </div>
-    @endif
+    @if(session('success'))<div class="crm-alert success">{{ session('success') }}</div>@endif
+    @if(session('error'))<div class="crm-alert danger">{{ session('error') }}</div>@endif
+    @if($errors->any())<div class="crm-alert danger"><ul style="margin:0; padding-left:18px;">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul></div>@endif
 
-    <div class="row">
-        {{-- ── Columna principal: tono, reglas, cierre, relevo ── --}}
-        <div class="col-lg-8">
+    <div class="crm-two-col">
+        {{-- ── Columna principal ── --}}
+        <div>
             <form method="POST" action="{{ route('admin.whatsapp.settings.update') }}">
-                @csrf
-                @method('PUT')
+                @csrf @method('PUT')
 
-                <div class="card mb-4">
-                    <div class="card-header"><strong>Datos del negocio</strong></div>
-                    <div class="card-body">
-                        <div class="form-row">
-                            <div class="form-group col-md-6">
-                                <label>Nombre de la tienda</label>
-                                <input type="text" name="store_name" class="form-control" value="{{ old('store_name', $settings->store_name) }}" placeholder="Ej: Autos del Valle">
+                <div class="crm-section">
+                    <div class="crm-section-header"><h5><i class="fa fa-building-o"></i> Datos del negocio</h5></div>
+                    <div class="crm-section-pad">
+                        <div class="crm-form-row">
+                            <div class="crm-form-group">
+                                <label class="crm-label">Nombre de la tienda</label>
+                                <input type="text" name="store_name" class="crm-input" value="{{ old('store_name', $settings->store_name) }}" placeholder="Ej: Autos del Valle">
                             </div>
-                            <div class="form-group col-md-6">
-                                <label>Correo para avisos de relevo</label>
-                                <input type="email" name="notify_email" class="form-control" value="{{ old('notify_email', $settings->notify_email) }}" placeholder="ventas@tunegocio.com">
+                            <div class="crm-form-group">
+                                <label class="crm-label">Correo para avisos de relevo</label>
+                                <input type="email" name="notify_email" class="crm-input" value="{{ old('notify_email', $settings->notify_email) }}" placeholder="ventas@tunegocio.com">
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="card mb-4">
-                    <div class="card-header"><strong>Tono del bot</strong>
-                        <small class="text-muted d-block">Cómo habla tu negocio. Podés escribirlo a mano o generarlo con capturas (panel de la derecha).</small>
-                    </div>
-                    <div class="card-body">
-                        <textarea name="training_profile" rows="8" class="form-control" placeholder="Ej: Tuteamos, saludamos con '¡Hola! 👋', somos cercanos pero profesionales...">{{ old('training_profile', $settings->training_profile) }}</textarea>
+                <div class="crm-section">
+                    <div class="crm-section-header"><h5><i class="fa fa-comment-o"></i> Tono del bot</h5><span class="hint">cómo habla tu negocio</span></div>
+                    <div class="crm-section-pad">
+                        <textarea name="training_profile" rows="8" class="crm-textarea" placeholder="Ej: Tuteamos, saludamos con '¡Hola! 👋', somos cercanos pero profesionales...">{{ old('training_profile', $settings->training_profile) }}</textarea>
                     </div>
                 </div>
 
-                <div class="card mb-4">
-                    <div class="card-header"><strong>Reglas del negocio</strong>
-                        <small class="text-muted d-block">Lo que el bot siempre debe (o nunca debe) hacer.</small>
-                    </div>
-                    <div class="card-body">
-                        <textarea name="custom_rules" rows="5" class="form-control" placeholder="Ej: No damos descuentos por WhatsApp. Los precios no incluyen traspaso...">{{ old('custom_rules', $settings->custom_rules) }}</textarea>
+                <div class="crm-section">
+                    <div class="crm-section-header"><h5><i class="fa fa-list-ul"></i> Reglas del negocio</h5></div>
+                    <div class="crm-section-pad">
+                        <textarea name="custom_rules" rows="5" class="crm-textarea" placeholder="Ej: No damos descuentos por WhatsApp. Los precios no incluyen traspaso...">{{ old('custom_rules', $settings->custom_rules) }}</textarea>
                     </div>
                 </div>
 
-                <div class="card mb-4">
-                    <div class="card-header"><strong>Cómo se cierra una compra</strong>
-                        <small class="text-muted d-block">Los pasos para concretar. El bot los sigue y, si toca acción humana, hace relevo.</small>
-                    </div>
-                    <div class="card-body">
-                        <textarea name="order_instructions" rows="5" class="form-control" placeholder="Ej: 1) Confirmar interés y datos. 2) Coordinar visita al local. 3) Un asesor cierra el trato...">{{ old('order_instructions', $settings->order_instructions) }}</textarea>
+                <div class="crm-section">
+                    <div class="crm-section-header"><h5><i class="fa fa-handshake-o"></i> Cómo se cierra una compra</h5></div>
+                    <div class="crm-section-pad">
+                        <textarea name="order_instructions" rows="5" class="crm-textarea" placeholder="Ej: 1) Confirmar interés y datos. 2) Coordinar visita al local. 3) Un asesor cierra el trato...">{{ old('order_instructions', $settings->order_instructions) }}</textarea>
                     </div>
                 </div>
 
-                <div class="card mb-4">
-                    <div class="card-header"><strong>Cuándo entra una persona</strong>
-                        <small class="text-muted d-block">El bot pasa el chat a un humano en estos casos.</small>
-                    </div>
-                    <div class="card-body">
+                <div class="crm-section">
+                    <div class="crm-section-header"><h5><i class="fa fa-user-o"></i> Cuándo entra una persona</h5></div>
+                    <div class="crm-section-pad">
                         @php
                             $switches = [
                                 'asks_for_human'   => 'Si piden hablar con una persona',
@@ -82,61 +72,57 @@
                                 'not_found'        => 'Si no encuentra lo que piden',
                             ];
                         @endphp
-                        <div class="form-row">
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px;">
                             @foreach($switches as $key => $label)
-                                <div class="form-group col-md-6">
-                                    <div class="custom-control custom-switch">
-                                        <input type="hidden" name="handoff[{{ $key }}]" value="0">
-                                        <input type="checkbox" class="custom-control-input" id="ho_{{ $key }}" name="handoff[{{ $key }}]" value="1" {{ !empty($handoff[$key]) ? 'checked' : '' }}>
-                                        <label class="custom-control-label" for="ho_{{ $key }}">{{ $label }}</label>
-                                    </div>
-                                </div>
+                                <label class="crm-toggle">
+                                    <input type="hidden" name="handoff[{{ $key }}]" value="0">
+                                    <input type="checkbox" name="handoff[{{ $key }}]" value="1" {{ !empty($handoff[$key]) ? 'checked' : '' }}>
+                                    <span class="track"></span> {{ $label }}
+                                </label>
                             @endforeach
                         </div>
-                        <div class="form-group">
-                            <label>Palabras clave que fuerzan el relevo (separadas por coma)</label>
-                            <input type="text" name="handoff[keywords]" class="form-control" value="{{ $handoff['keywords'] ?? '' }}" placeholder="reclamo, factura, devolución">
+                        <div class="crm-form-group">
+                            <label class="crm-label">Palabras clave que fuerzan el relevo (separadas por coma)</label>
+                            <input type="text" name="handoff[keywords]" class="crm-input" value="{{ $handoff['keywords'] ?? '' }}" placeholder="reclamo, factura, devolución">
                         </div>
-                        <div class="form-row">
-                            <div class="form-group col-md-6">
-                                <label>Reanudar el bot tras (horas sin respuesta humana)</label>
-                                <input type="number" min="0" name="handoff[resume_after_h]" class="form-control" value="{{ $handoff['resume_after_h'] ?? 2 }}">
+                        <div class="crm-form-row">
+                            <div class="crm-form-group" style="max-width:280px;">
+                                <label class="crm-label">Reanudar el bot tras (horas sin respuesta humana)</label>
+                                <input type="number" min="0" name="handoff[resume_after_h]" class="crm-input" value="{{ $handoff['resume_after_h'] ?? 2 }}">
                             </div>
                         </div>
-                        <div class="form-group mb-0">
-                            <label>Mensaje al pasar a una persona</label>
-                            <textarea name="handoff[handoff_message]" rows="2" class="form-control">{{ $handoff['handoff_message'] ?? '' }}</textarea>
+                        <div class="crm-form-group" style="margin-bottom:0;">
+                            <label class="crm-label">Mensaje al pasar a una persona</label>
+                            <textarea name="handoff[handoff_message]" rows="2" class="crm-textarea">{{ $handoff['handoff_message'] ?? '' }}</textarea>
                         </div>
                     </div>
                 </div>
 
-                <button class="btn btn-primary"><i class="fa fa-save"></i> Guardar configuración</button>
+                <button class="action-btn primary"><i class="fa fa-save"></i> Guardar configuración</button>
             </form>
         </div>
 
-        {{-- ── Columna lateral: consumo + entrenamiento por capturas + promociones ── --}}
-        <div class="col-lg-4">
+        {{-- ── Columna lateral ── --}}
+        <div>
             @if($billing)
-                <div class="card mb-4">
-                    <div class="card-header"><strong>Consumo del mes</strong></div>
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between">
-                            <span>Conversaciones</span>
+                <div class="crm-section">
+                    <div class="crm-section-header"><h5><i class="fa fa-bar-chart"></i> Consumo del mes</h5></div>
+                    <div class="crm-section-pad">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                            <span style="font-size:13px; color:#475569;">Conversaciones</span>
                             <strong>{{ number_format($billing['used']) }}@if($billing['included'] > 0) / {{ number_format($billing['included']) }}@endif</strong>
                         </div>
                         @if($billing['included'] > 0)
                             @php $pct = min(100, round($billing['used'] / max(1, $billing['included']) * 100)); @endphp
-                            <div class="progress my-2" style="height:8px;">
-                                <div class="progress-bar {{ $pct >= 100 ? 'bg-danger' : ($pct >= 80 ? 'bg-warning' : 'bg-success') }}" style="width: {{ $pct }}%"></div>
-                            </div>
+                            <div class="crm-progress"><span class="{{ $pct >= 100 ? 'pg-red' : ($pct >= 80 ? 'pg-amber' : 'pg-green') }}" style="width: {{ $pct }}%"></span></div>
                         @endif
                         @if($billing['extras'] > 0)
-                            <div class="d-flex justify-content-between small text-muted">
+                            <div style="display:flex; justify-content:space-between; font-size:12px; color:#94a3b8; margin-top:8px;">
                                 <span>Extras</span><span>{{ number_format($billing['extras']) }} (${{ number_format($billing['extrasCost'], 2) }})</span>
                             </div>
                         @endif
                         @if($billing['exceeded'])
-                            <div class="alert alert-warning py-2 px-2 mt-2 mb-0 small">
+                            <div class="crm-alert warning" style="margin:12px 0 0; font-size:12px;">
                                 <i class="fa fa-exclamation-triangle"></i>
                                 El bot está pausado este mes por {{ $billing['capReached'] ? 'alcanzar el tope de gasto' : 'agotar el cupo del plan' }}.
                             </div>
@@ -145,83 +131,73 @@
                 </div>
             @endif
 
-            <div class="card mb-4">
-                <div class="card-header"><strong>Entrenar por capturas</strong>
-                    <small class="text-muted d-block">Subí capturas de chats reales; la IA aprende el tono. Las imágenes se borran tras analizarlas.</small>
-                </div>
-                <div class="card-body">
+            <div class="crm-section">
+                <div class="crm-section-header"><h5><i class="fa fa-magic"></i> Entrenar por capturas</h5></div>
+                <div class="crm-section-pad">
+                    <p class="crm-help" style="margin-bottom:12px;">Subí capturas de chats reales; la IA aprende el tono. Las imágenes se borran tras analizarlas.</p>
                     <form method="POST" action="{{ route('admin.whatsapp.settings.train') }}" enctype="multipart/form-data">
                         @csrf
-                        <div class="form-group">
-                            <input type="file" name="screenshots[]" class="form-control-file" accept="image/*" multiple required>
-                            <small class="text-muted">Hasta 8 imágenes, máx 5 MB c/u.</small>
+                        <div class="crm-form-group">
+                            <input type="file" name="screenshots[]" accept="image/*" multiple required>
+                            <div class="crm-help">Hasta 8 imágenes, máx 5 MB c/u.</div>
                         </div>
-                        <div class="form-group">
-                            <label>Indicaciones (opcional)</label>
-                            <textarea name="notes" rows="2" class="form-control" placeholder="Ej: enfocate en cómo cerramos ventas"></textarea>
+                        <div class="crm-form-group">
+                            <label class="crm-label">Indicaciones (opcional)</label>
+                            <textarea name="notes" rows="2" class="crm-textarea" placeholder="Ej: enfocate en cómo cerramos ventas"></textarea>
                         </div>
-                        <div class="form-group">
-                            <div class="custom-control custom-checkbox">
-                                <input type="checkbox" class="custom-control-input" id="replace" name="replace" value="1">
-                                <label class="custom-control-label" for="replace">Reemplazar el perfil actual (en vez de mejorarlo)</label>
-                            </div>
-                        </div>
-                        <button class="btn btn-success btn-block"><i class="fa fa-magic"></i> Generar perfil de tono</button>
+                        <label class="crm-toggle" style="margin-bottom:12px;">
+                            <input type="checkbox" name="replace" value="1"><span class="track"></span> Reemplazar el perfil actual
+                        </label>
+                        <button class="action-btn success" style="width:100%; justify-content:center;"><i class="fa fa-magic"></i> Generar perfil de tono</button>
                     </form>
                 </div>
             </div>
 
-            <div class="card mb-4">
-                <div class="card-header"><strong>Promociones</strong>
-                    <small class="text-muted d-block">El bot solo menciona las vigentes.</small>
-                </div>
-                <div class="card-body">
-                    <form method="POST" action="{{ route('admin.whatsapp.promotions.store') }}" class="mb-3">
+            <div class="crm-section">
+                <div class="crm-section-header"><h5><i class="fa fa-tag"></i> Promociones</h5><span class="hint">solo las vigentes</span></div>
+                <div class="crm-section-pad">
+                    <form method="POST" action="{{ route('admin.whatsapp.promotions.store') }}" style="margin-bottom:16px;">
                         @csrf
-                        <div class="form-group">
-                            <input type="text" name="title" class="form-control form-control-sm" placeholder="Título (ej: Bono de traspaso)" required>
+                        <div class="crm-form-group">
+                            <input type="text" name="title" class="crm-input" placeholder="Título (ej: Bono de traspaso)" required>
                         </div>
-                        <div class="form-group">
-                            <textarea name="description" rows="2" class="form-control form-control-sm" placeholder="Detalle de la promo" required></textarea>
+                        <div class="crm-form-group">
+                            <textarea name="description" rows="2" class="crm-textarea" placeholder="Detalle de la promo" required></textarea>
                         </div>
-                        <div class="form-row">
-                            <div class="form-group col-6">
-                                <label class="small mb-0">Desde</label>
-                                <input type="date" name="starts_at" class="form-control form-control-sm">
+                        <div class="crm-form-row">
+                            <div class="crm-form-group">
+                                <label class="crm-label">Desde</label>
+                                <input type="date" name="starts_at" class="crm-input">
                             </div>
-                            <div class="form-group col-6">
-                                <label class="small mb-0">Hasta</label>
-                                <input type="date" name="ends_at" class="form-control form-control-sm">
+                            <div class="crm-form-group">
+                                <label class="crm-label">Hasta</label>
+                                <input type="date" name="ends_at" class="crm-input">
                             </div>
                         </div>
-                        <button class="btn btn-sm btn-outline-primary btn-block"><i class="fa fa-plus"></i> Agregar promoción</button>
+                        <button class="action-btn secondary" style="width:100%; justify-content:center;"><i class="fa fa-plus"></i> Agregar promoción</button>
                     </form>
 
                     @forelse($promotions as $promo)
-                        <div class="border rounded p-2 mb-2 {{ $promo->active ? '' : 'bg-light text-muted' }}">
-                            <div class="d-flex justify-content-between">
-                                <strong>{{ $promo->title }}</strong>
-                                <span class="badge badge-{{ $promo->active ? 'success' : 'secondary' }}">{{ $promo->active ? 'Activa' : 'Inactiva' }}</span>
+                        <div style="border:1px solid #eef0f3; border-radius:12px; padding:12px; margin-bottom:10px; {{ $promo->active ? '' : 'opacity:.6;' }}">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <strong style="font-size:13px;">{{ $promo->title }}</strong>
+                                <span class="crm-badge {{ $promo->active ? 'green' : 'slate' }}">{{ $promo->active ? 'Activa' : 'Inactiva' }}</span>
                             </div>
-                            <div class="small">{{ $promo->description }}</div>
+                            <div style="font-size:12px; color:#475569; margin-top:4px;">{{ $promo->description }}</div>
                             @if($promo->starts_at || $promo->ends_at)
-                                <div class="small text-muted">
-                                    {{ optional($promo->starts_at)->format('d/m/Y') ?: '—' }} → {{ optional($promo->ends_at)->format('d/m/Y') ?: '—' }}
-                                </div>
+                                <div class="crm-help">{{ optional($promo->starts_at)->format('d/m/Y') ?: '—' }} → {{ optional($promo->ends_at)->format('d/m/Y') ?: '—' }}</div>
                             @endif
-                            <div class="mt-1">
-                                <form method="POST" action="{{ route('admin.whatsapp.promotions.toggle', $promo) }}" class="d-inline">
-                                    @csrf
-                                    <button class="btn btn-xs btn-link p-0 mr-2">{{ $promo->active ? 'Desactivar' : 'Activar' }}</button>
+                            <div style="margin-top:8px; display:flex; gap:6px;">
+                                <form method="POST" action="{{ route('admin.whatsapp.promotions.toggle', $promo) }}">@csrf
+                                    <button class="action-btn secondary xs">{{ $promo->active ? 'Desactivar' : 'Activar' }}</button>
                                 </form>
-                                <form method="POST" action="{{ route('admin.whatsapp.promotions.destroy', $promo) }}" class="d-inline" onsubmit="return confirm('¿Eliminar esta promoción?')">
-                                    @csrf @method('DELETE')
-                                    <button class="btn btn-xs btn-link text-danger p-0">Eliminar</button>
+                                <form method="POST" action="{{ route('admin.whatsapp.promotions.destroy', $promo) }}" onsubmit="return confirm('¿Eliminar esta promoción?')">@csrf @method('DELETE')
+                                    <button class="action-btn danger xs">Eliminar</button>
                                 </form>
                             </div>
                         </div>
                     @empty
-                        <p class="text-muted small mb-0">Todavía no hay promociones.</p>
+                        <p class="crm-help">Todavía no hay promociones.</p>
                     @endforelse
                 </div>
             </div>

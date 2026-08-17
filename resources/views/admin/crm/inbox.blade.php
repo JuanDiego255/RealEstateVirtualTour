@@ -1,118 +1,120 @@
 @extends('admin.main')
 @section('title', 'Bandeja — Sin atender')
 @section('content')
-<div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h4><i class="fa fa-inbox"></i> Bandeja de trabajo @if($isAdmin)<small class="text-muted">(toda la empresa)</small>@endif</h4>
-        <a href="{{ route('admin.crm.leads.index') }}" class="btn btn-sm btn-outline-secondary">Ver todos los leads</a>
+@include('admin.crm._ui')
+
+<div class="crm-page">
+    <div class="crm-page-header">
+        <div>
+            <h2><i class="fa fa-inbox"></i> Bandeja de trabajo</h2>
+            <p class="sub">{{ $isAdmin ? 'Toda la empresa' : 'Tus pendientes' }} · {{ now()->locale('es')->isoFormat('dddd, D [de] MMMM') }}</p>
+        </div>
+        <a href="{{ route('admin.crm.leads.index') }}" class="action-btn secondary"><i class="fa fa-users"></i> Todos los leads</a>
     </div>
 
-    @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
+    @if(session('success'))<div class="crm-alert success">{{ session('success') }}</div>@endif
 
-    <div class="row mb-4">
-        <div class="col-md-4"><div class="card text-center"><div class="card-body">
-            <div class="text-muted small">Sin contactar</div>
-            <h3 class="mb-0 {{ $counts['uncontacted'] ? 'text-primary' : 'text-muted' }}">{{ $counts['uncontacted'] }}</h3>
-        </div></div></div>
-        <div class="col-md-4"><div class="card text-center"><div class="card-body">
-            <div class="text-muted small">Tareas vencidas</div>
-            <h3 class="mb-0 {{ $counts['tasks'] ? 'text-danger' : 'text-muted' }}">{{ $counts['tasks'] }}</h3>
-        </div></div></div>
-        <div class="col-md-4"><div class="card text-center"><div class="card-body">
-            <div class="text-muted small">Recordatorios vencidos</div>
-            <h3 class="mb-0 {{ $counts['reminders'] ? 'text-warning' : 'text-muted' }}">{{ $counts['reminders'] }}</h3>
-        </div></div></div>
-    </div>
-
-    {{-- Leads sin contactar --}}
-    <div class="card mb-4">
-        <div class="card-header"><strong>Leads sin contactar</strong> <span class="text-muted small">— ordenados por score</span></div>
-        <div class="card-body p-0">
-            <table class="table table-hover mb-0">
-                <thead><tr>
-                    <th>Lead</th><th>Origen</th><th>Estado</th>@if($isAdmin)<th>Asesor</th>@endif<th class="text-right">Score</th><th>Ingreso</th><th></th>
-                </tr></thead>
-                <tbody>
-                    @forelse($uncontacted as $lead)
-                        <tr>
-                            <td><strong>{{ $lead->name ?: 'Sin nombre' }}</strong>@if($lead->phone)<div class="small text-muted">{{ $lead->phone }}</div>@endif</td>
-                            <td><span class="badge badge-light">{{ \App\Lead::getSources()[$lead->source] ?? $lead->source }}</span></td>
-                            <td><span class="badge badge-info">{{ \App\Lead::getStatuses()[$lead->status] ?? $lead->status }}</span></td>
-                            @if($isAdmin)<td class="small">{{ optional($lead->user)->name ?: '—' }}</td>@endif
-                            <td class="text-right"><strong>{{ (int) $lead->score }}</strong></td>
-                            <td class="small text-muted">{{ optional($lead->created_at)->format('d/m/Y H:i') }}</td>
-                            <td class="text-right"><a href="{{ route('admin.crm.leads.show', $lead) }}" class="btn btn-xs btn-outline-primary">Atender</a></td>
-                        </tr>
-                    @empty
-                        <tr><td colspan="{{ $isAdmin ? 7 : 6 }}" class="text-center text-muted py-4">Nada sin contactar. 🎉</td></tr>
-                    @endforelse
-                </tbody>
-            </table>
+    {{-- Stat cards --}}
+    <div class="crm-stat-row">
+        <div class="crm-stat-card bd-violet">
+            <div class="crm-stat-icon ic-violet"><i class="fa fa-user-times"></i></div>
+            <div><div class="crm-stat-number">{{ $counts['uncontacted'] }}</div><div class="crm-stat-label">Sin contactar</div></div>
+        </div>
+        <div class="crm-stat-card bd-red">
+            <div class="crm-stat-icon ic-red"><i class="fa fa-exclamation-circle"></i></div>
+            <div><div class="crm-stat-number">{{ $counts['tasks'] }}</div><div class="crm-stat-label">Tareas vencidas</div></div>
+        </div>
+        <div class="crm-stat-card bd-amber">
+            <div class="crm-stat-icon ic-amber"><i class="fa fa-bell"></i></div>
+            <div><div class="crm-stat-number">{{ $counts['reminders'] }}</div><div class="crm-stat-label">Recordatorios vencidos</div></div>
         </div>
     </div>
 
-    <div class="row">
+    {{-- Leads sin contactar --}}
+    <div class="crm-section">
+        <div class="crm-section-header">
+            <h5><i class="fa fa-user-plus"></i> Leads sin contactar</h5>
+            <span class="hint">ordenados por score</span>
+        </div>
+        <div class="crm-section-body">
+            <div class="crm-table-wrap">
+                <table class="crm-table">
+                    <thead><tr>
+                        <th>Lead</th><th>Origen</th><th>Estado</th>@if($isAdmin)<th>Asesor</th>@endif<th class="num">Score</th><th>Ingreso</th><th></th>
+                    </tr></thead>
+                    <tbody>
+                        @forelse($uncontacted as $lead)
+                            <tr>
+                                <td>
+                                    <div style="font-weight:600;">{{ $lead->name ?: 'Sin nombre' }}</div>
+                                    @if($lead->phone)<div class="muted">{{ $lead->phone }}</div>@endif
+                                </td>
+                                <td><span class="crm-badge slate">{{ \App\Lead::getSources()[$lead->source] ?? $lead->source }}</span></td>
+                                <td><span class="crm-badge blue">{{ \App\Lead::getStatuses()[$lead->status] ?? $lead->status }}</span></td>
+                                @if($isAdmin)<td class="muted">{{ optional($lead->user)->name ?: '—' }}</td>@endif
+                                <td class="num"><strong>{{ (int) $lead->score }}</strong></td>
+                                <td class="muted">{{ optional($lead->created_at)->format('d/m/Y H:i') }}</td>
+                                <td class="num"><a href="{{ route('admin.crm.leads.show', $lead) }}" class="action-btn primary xs">Atender</a></td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="{{ $isAdmin ? 7 : 6 }}"><div class="empty-state"><i class="fa fa-thumbs-up" style="color:#22c55e;"></i>Nada sin contactar</div></td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="crm-two-col">
         {{-- Tareas vencidas --}}
-        <div class="col-lg-6">
-            <div class="card mb-4">
-                <div class="card-header"><strong>Tareas vencidas</strong></div>
-                <div class="card-body p-0">
-                    <table class="table table-sm table-hover mb-0">
-                        <tbody>
-                            @forelse($overdueTasks as $task)
-                                <tr>
-                                    <td>
-                                        <div><strong>{{ $task->title }}</strong></div>
-                                        <div class="small text-muted">
-                                            {{ optional($task->lead)->name }} ·
-                                            venció {{ optional($task->due_at)->format('d/m/Y H:i') }}
-                                            @if($isAdmin && $task->assignee) · {{ $task->assignee->name }}@endif
-                                        </div>
-                                    </td>
-                                    <td class="text-right align-middle">
-                                        @if($task->lead)<a href="{{ route('admin.crm.leads.show', $task->lead) }}" class="btn btn-xs btn-outline-danger">Ver</a>@endif
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr><td class="text-center text-muted py-4">Sin tareas vencidas.</td></tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
+        <div class="crm-section">
+            <div class="crm-section-header"><h5><i class="fa fa-exclamation-triangle"></i> Tareas vencidas</h5></div>
+            <div class="crm-section-body">
+                @forelse($overdueTasks as $task)
+                    <div class="crm-row-item">
+                        <div class="crm-row-icon ic-red"><i class="fa fa-check-square-o"></i></div>
+                        <div class="crm-row-main">
+                            <div class="crm-row-title">{{ $task->title }}</div>
+                            <div class="crm-row-sub">
+                                {{ optional($task->lead)->name }} · venció {{ optional($task->due_at)->format('d/m/Y H:i') }}
+                                @if($isAdmin && $task->assignee) · {{ $task->assignee->name }}@endif
+                            </div>
+                        </div>
+                        <div class="crm-row-right">
+                            @if($task->lead)<a href="{{ route('admin.crm.leads.show', $task->lead) }}" class="action-btn danger xs">Ver</a>@endif
+                        </div>
+                    </div>
+                @empty
+                    <div class="empty-state"><i class="fa fa-check-circle" style="color:#22c55e;"></i>Sin tareas vencidas</div>
+                @endforelse
             </div>
         </div>
 
         {{-- Recordatorios vencidos --}}
-        <div class="col-lg-6">
-            <div class="card mb-4">
-                <div class="card-header"><strong>Recordatorios vencidos</strong></div>
-                <div class="card-body p-0">
-                    <table class="table table-sm table-hover mb-0">
-                        <tbody>
-                            @forelse($dueReminders as $rem)
-                                <tr>
-                                    <td>
-                                        <div><strong>{{ $rem->title }}</strong></div>
-                                        <div class="small text-muted">
-                                            {{ $rem->related_item_name }} ·
-                                            {{ optional($rem->remind_at)->format('d/m/Y H:i') }}
-                                            @if($isAdmin && $rem->user) · {{ $rem->user->name }}@endif
-                                        </div>
-                                    </td>
-                                    <td class="text-right align-middle">
-                                        @if($rem->remindable instanceof \App\Lead)
-                                            <a href="{{ route('admin.crm.leads.show', $rem->remindable) }}" class="btn btn-xs btn-outline-warning">Ver</a>
-                                        @else
-                                            <a href="{{ route('admin.crm.reminders.index') }}" class="btn btn-xs btn-outline-warning">Ver</a>
-                                        @endif
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr><td class="text-center text-muted py-4">Sin recordatorios vencidos.</td></tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
+        <div class="crm-section">
+            <div class="crm-section-header"><h5><i class="fa fa-bell"></i> Recordatorios vencidos</h5></div>
+            <div class="crm-section-body">
+                @forelse($dueReminders as $rem)
+                    <div class="crm-row-item">
+                        <div class="crm-row-icon ic-amber"><i class="fa fa-bell"></i></div>
+                        <div class="crm-row-main">
+                            <div class="crm-row-title">{{ $rem->title }}</div>
+                            <div class="crm-row-sub">
+                                {{ $rem->related_item_name }} · {{ optional($rem->remind_at)->format('d/m/Y H:i') }}
+                                @if($isAdmin && $rem->user) · {{ $rem->user->name }}@endif
+                            </div>
+                        </div>
+                        <div class="crm-row-right">
+                            @if($rem->remindable instanceof \App\Lead)
+                                <a href="{{ route('admin.crm.leads.show', $rem->remindable) }}" class="action-btn warning xs">Ver</a>
+                            @else
+                                <a href="{{ route('admin.crm.reminders.index') }}" class="action-btn warning xs">Ver</a>
+                            @endif
+                        </div>
+                    </div>
+                @empty
+                    <div class="empty-state"><i class="fa fa-bell-slash-o" style="color:#22c55e;"></i>Sin recordatorios vencidos</div>
+                @endforelse
             </div>
         </div>
     </div>
