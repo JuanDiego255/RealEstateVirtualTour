@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\LeadTask;
+use App\Services\CompanyMailer;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -28,7 +29,7 @@ class LeadTaskDueNotification extends Notification
     public function toMail($notifiable): MailMessage
     {
         $t = $this->task;
-        return (new MailMessage)
+        $mail = (new MailMessage)
             ->subject('Tarea pendiente: ' . $t->title)
             ->greeting('Hola ' . $notifiable->name)
             ->line('Tenés una tarea que vence.')
@@ -36,6 +37,8 @@ class LeadTaskDueNotification extends Notification
             ->line('**Vence:** ' . optional($t->due_at)->format('d/m/Y H:i'))
             ->line($t->lead ? '**Lead:** ' . $t->lead->name : '')
             ->action('Ver tarea', url('/admin/crm/leads/' . $t->lead_id));
+
+        return CompanyMailer::applyTo($mail, $notifiable->company_id);
     }
 
     public function toArray($notifiable): array

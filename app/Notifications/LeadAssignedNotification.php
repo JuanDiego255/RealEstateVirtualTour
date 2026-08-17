@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Lead;
+use App\Services\CompanyMailer;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -28,7 +29,7 @@ class LeadAssignedNotification extends Notification
     public function toMail($notifiable): MailMessage
     {
         $l = $this->lead;
-        return (new MailMessage)
+        $mail = (new MailMessage)
             ->subject('Nuevo lead asignado: ' . ($l->name ?: 'Sin nombre'))
             ->greeting('Hola ' . $notifiable->name)
             ->line('Te asignaron un lead.')
@@ -37,6 +38,8 @@ class LeadAssignedNotification extends Notification
             ->line($l->phone ? '**Teléfono:** ' . $l->phone : '')
             ->action('Ver lead', url('/admin/crm/leads/' . $l->id))
             ->line('Contactalo pronto para no perder la oportunidad.');
+
+        return CompanyMailer::applyTo($mail, $notifiable->company_id);
     }
 
     public function toArray($notifiable): array

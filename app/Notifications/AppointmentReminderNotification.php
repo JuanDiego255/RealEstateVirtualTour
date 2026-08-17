@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Appointment;
+use App\Services\CompanyMailer;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -28,7 +29,7 @@ class AppointmentReminderNotification extends Notification
     public function toMail($notifiable): MailMessage
     {
         $a = $this->appointment;
-        return (new MailMessage)
+        $mail = (new MailMessage)
             ->subject('Cita próxima: ' . $a->title)
             ->greeting('Hola ' . $notifiable->name)
             ->line('Tenés una cita próxima.')
@@ -37,6 +38,8 @@ class AppointmentReminderNotification extends Notification
             ->line('**Cliente:** ' . ($a->client_display_name ?: 'Sin cliente'))
             ->line($a->location ? '**Lugar:** ' . $a->location : '')
             ->action('Ver agenda', url('/admin/crm/appointments'));
+
+        return CompanyMailer::applyTo($mail, $notifiable->company_id);
     }
 
     public function toArray($notifiable): array

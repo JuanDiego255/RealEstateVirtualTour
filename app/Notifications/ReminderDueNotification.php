@@ -4,6 +4,7 @@ namespace App\Notifications;
 
 use App\Reminder;
 use App\Lead;
+use App\Services\CompanyMailer;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -37,8 +38,9 @@ class ReminderDueNotification extends Notification
             $mail->line('**Relacionado con:** ' . $this->reminder->related_item_name);
         }
         $mail->line('**Programado para:** ' . optional($this->reminder->remind_at)->format('d/m/Y H:i'));
+        $mail->action('Ver recordatorios', $this->targetUrl());
 
-        return $mail->action('Ver recordatorios', $this->targetUrl());
+        return CompanyMailer::applyTo($mail, $notifiable->company_id);
     }
 
     public function toArray($notifiable): array

@@ -177,6 +177,27 @@ pero nada los despachaba. Ahora sí:
 
 Con esto queda cerrado el bloque de automatización base del CRM.
 
+### ✅ Correo SMTP por empresa
+Cada empresa define **con qué cuenta salen sus correos** (clave de aplicaciones
+de terceros — app password de Gmail/Outlook).
+
+- **`CompanyMailSetting`** — host/puerto/seguridad/usuario y contraseña
+  **encriptada** (cast `encrypted`, `$hidden`). `from_name`/`from_address` propios.
+- **`CompanyMailer`** — registra el mailer en runtime (`mail.mailers.company_{id}`)
+  y lo selecciona en cada notificación (`applyTo`). Si la empresa no configuró
+  SMTP, los correos caen al mailer por defecto (`.env`) sin romperse.
+- **UI** en `/admin/mail-settings` (admin de empresa): formulario con presets
+  Gmail/Outlook, la contraseña solo se reemplaza si se envía una nueva, y botón
+  de **correo de prueba** que guarda el resultado (OK/error).
+- Las cuatro notificaciones del CRM (lead asignado, tarea, recordatorio, cita)
+  ahora salen por la cuenta de la empresa dueña.
+
+### ✅ Bandeja "sin atender"
+- **`/admin/crm/inbox`** (`LeadInboxController`) — bandeja de trabajo: leads sin
+  contactar (ordenados por score), tareas vencidas y recordatorios vencidos, con
+  contadores. El agente ve lo suyo; el administrador ve lo de toda la empresa.
+- Enlace en el menú CRM → "Sin atender".
+
 ## Reglas de oro (se mantienen del origen)
 - El bot **nunca inventa** precios, existencias ni datos: solo lo que devuelven
   las herramientas o el prompt.

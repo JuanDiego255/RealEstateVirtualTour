@@ -130,6 +130,13 @@
                             </li>
                         @endif
 
+                        {{-- Configuración de correo (SMTP) — solo administradores --}}
+                        @if ($u->isAdmin())
+                            <li class="{{ Request::routeIs('admin.mail.settings.*') ? 'active' : '' }}">
+                                <a href="{{ route('admin.mail.settings.edit') }}"><i class="fa fa-envelope"></i><span>Correo (SMTP)</span></a>
+                            </li>
+                        @endif
+
                         {{-- Kiosko:
                              super_admin y company_admin: siempre visible
                              agent: visible si tiene permiso y suscripción activa --}}
@@ -164,6 +171,11 @@
                                                 <span class="badge badge-warning">{{ $pendingAlerts }}</span>
                                             @endif
                                         </a>
+                                    </li>
+
+                                    {{-- Bandeja: sin atender --}}
+                                    <li class="{{ Request::routeIs('admin.crm.inbox') ? 'active' : '' }}">
+                                        <a href="{{ route('admin.crm.inbox') }}"><i class="fa fa-inbox"></i> Sin atender</a>
                                     </li>
 
                                     {{-- Gestión: Leads, Pipeline, Agenda, Reportes --}}

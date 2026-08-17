@@ -313,6 +313,11 @@ Route::group(['middleware' => 'auth'], function () {
         ->middleware(['subscription'])
         ->name('admin.crm.dashboard');
 
+    // --- BANDEJA: leads sin atender + pendientes del asesor ---
+    Route::get('/admin/crm/inbox', [\App\Http\Controllers\Admin\LeadInboxController::class, 'index'])
+        ->middleware(['subscription'])
+        ->name('admin.crm.inbox');
+
     // --- LEADS (CRM) ---
     Route::group(['prefix' => 'admin/crm/leads', 'middleware' => ['subscription']], function () {
         Route::get('/', [LeadController::class, 'index'])->name('admin.crm.leads.index');
@@ -795,6 +800,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/admin/whatsapp/{chat}/reply', [\App\Http\Controllers\Admin\WhatsappChatController::class, 'reply'])->name('admin.whatsapp.reply');
     Route::post('/admin/whatsapp/{chat}/pause', [\App\Http\Controllers\Admin\WhatsappChatController::class, 'pause'])->name('admin.whatsapp.pause');
     Route::post('/admin/whatsapp/{chat}/resume', [\App\Http\Controllers\Admin\WhatsappChatController::class, 'resume'])->name('admin.whatsapp.resume');
+
+    // Configuración de correo SMTP por empresa (qué cuenta envía los correos)
+    Route::get('/admin/mail-settings', [\App\Http\Controllers\Admin\CompanyMailSettingController::class, 'edit'])->name('admin.mail.settings.edit');
+    Route::put('/admin/mail-settings', [\App\Http\Controllers\Admin\CompanyMailSettingController::class, 'update'])->name('admin.mail.settings.update');
+    Route::post('/admin/mail-settings/test', [\App\Http\Controllers\Admin\CompanyMailSettingController::class, 'test'])->name('admin.mail.settings.test');
 
     // Bot de WhatsApp: configuración del negocio (tono, reglas, cierre, relevo, promos)
     Route::get('/admin/whatsapp-config', [\App\Http\Controllers\Admin\WhatsappBotSettingController::class, 'edit'])->name('admin.whatsapp.settings.edit');
