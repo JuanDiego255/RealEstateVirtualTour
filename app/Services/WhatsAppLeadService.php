@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Lead;
-use App\User;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 
@@ -37,7 +36,7 @@ class WhatsAppLeadService
             return $existing;
         }
 
-        $agent = static::defaultAgent($companyId);
+        $agent = LeadAssignmentService::pickAgent($companyId);
         if (!$agent) {
             Log::channel('whatsapp')->warning('No hay asesor asignable para el lead de WhatsApp', ['company_id' => $companyId]);
             return null;
@@ -83,17 +82,6 @@ class WhatsAppLeadService
         return Lead::byCompany($companyId)
             ->where(fn($q) => $q->where('phone', 'like', "%{$tail}")->orWhere('whatsapp', 'like', "%{$tail}"))
             ->latest('id')
-            ->first();
-    }
-
-    /**
-     * Asesor por defecto para asignar (company_admin y, si no, el de menor id).
-     */
-    public static function defaultAgent(int $companyId): ?User
-    {
-        return User::where('company_id', $companyId)
-            ->orderByRaw("FIELD(role, 'company_admin') DESC")
-            ->orderBy('id')
             ->first();
     }
 }

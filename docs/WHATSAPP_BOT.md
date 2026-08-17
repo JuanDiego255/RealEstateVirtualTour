@@ -165,8 +165,17 @@ pero nada los despachaba. Ahora sí:
 - Ambos por `database` (campana) + `mail` (si hay correo). Aparecen en el
   dropdown de notificaciones existente.
 
-### ⏳ Próximas entregas (automatización CRM)
-- **Etapa 4** — Asignación automática (round-robin / reglas).
+### ✅ Automatización CRM — Etapa 4: asignación automática
+- **`LeadAssignmentService::pickAgent`** — reparte los leads entrantes al asesor
+  **menos cargado** (menos leads abiertos). Es un round-robin justo y **sin estado**
+  (no necesita tabla de "último asignado"), ideal para hosting compartido.
+- Elegibles: agentes activos; si no hay, administradores de empresa activos; en
+  última instancia, cualquier usuario de la empresa.
+- Reemplaza el "todo al company_admin": los leads del bot de WhatsApp y las citas
+  de prueba ahora se distribuyen. Combinado con la Etapa 3, cada asesor recibe el
+  aviso de su lead recién asignado.
+
+Con esto queda cerrado el bloque de automatización base del CRM.
 
 ## Reglas de oro (se mantienen del origen)
 - El bot **nunca inventa** precios, existencias ni datos: solo lo que devuelven

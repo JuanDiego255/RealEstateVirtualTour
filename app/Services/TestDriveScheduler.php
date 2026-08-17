@@ -58,7 +58,7 @@ class TestDriveScheduler
         // Asegura el lead (ya suele existir por la captura de entrada) y usa su
         // asesor dueño para que cita y lead queden con el mismo responsable.
         $lead  = WhatsAppLeadService::captureInbound($this->bot->company_id, $phone, $contactName);
-        $agent = ($lead ? User::find($lead->user_id) : null) ?: WhatsAppLeadService::defaultAgent($this->bot->company_id);
+        $agent = ($lead ? User::find($lead->user_id) : null) ?: LeadAssignmentService::pickAgent($this->bot->company_id);
         if (!$agent) {
             return ['ok' => false, 'appointment_id' => null, 'when' => null, 'needs_human' => true,
                 'error' => 'No hay un asesor asignable; paso el chat a una persona.'];
