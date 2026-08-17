@@ -76,14 +76,22 @@ class WhatsAppBotService
             $finalText = trim(implode("\n", array_map(fn($b) => $b['text'] ?? '', $textParts)));
 
             if (empty($toolUses)) {
-                // Red de seguridad: si el modelo ANUNCIÓ que iba a entregar algo pero
-                // no ejecutó ninguna herramienta de datos, lo empujamos a hacerlo (una vez).
-                if ($this->announcedWithoutDelivering($finalText, $usedTools) && $loop < self::MAX_TOOL_LOOPS - 1) {
+                // Red de seguridad: si el modelo prometió algo (datos o una cita) sin
+                // ejecutar la herramienta correspondiente, lo empujamos a hacerlo (una vez).
+                $nudge = null;
+                if ($loop < self::MAX_TOOL_LOOPS - 1) {
+                    if ($this->announcedWithoutDelivering($finalText, $usedTools)) {
+                        $nudge = 'Entregá AHORA la información que ofreciste usando la herramienta correspondiente '
+                            . '(get_vehicle_detail, search_vehicles o quote_financing) e incluí los datos en tu respuesta. '
+                            . 'No prometas enviarla: mostrala.';
+                    } elseif ($this->confirmedScheduleWithoutTool($finalText, $usedTools)) {
+                        $nudge = 'No des por confirmada la cita sin agendarla: llamá schedule_test_drive AHORA con el vehículo, '
+                            . 'la fecha y hora exactas (ISO 8601) y el nombre. Si falta algún dato, pedilo en vez de confirmar.';
+                    }
+                }
+                if ($nudge !== null) {
                     $messages[] = ['role' => 'assistant', 'content' => $content];
-                    $messages[] = ['role' => 'user', 'content' =>
-                        'Entregá AHORA la información que ofreciste usando la herramienta correspondiente '
-                        . '(get_vehicle_detail, search_vehicles o quote_financing) e incluí los datos en tu respuesta. '
-                        . 'No prometas enviarla: mostrala.'];
+                    $messages[] = ['role' => 'user', 'content' => $nudge];
                     continue;
                 }
                 break; // el modelo devolvió texto: terminamos
@@ -155,8 +163,9 @@ class WhatsAppBotService
             '- ENTREGÁ, NO ANUNCIES: nunca digas que vas a mandar algo y termines (nada de "te paso la ficha", "ahora te doy la cuota", "aquí tienes:"). Si necesitás datos, llamá la herramienta en ESTE mismo turno e incluí el resultado en tu respuesta.',
             '- Si piden la ficha o el detalle de un vehículo, llamá get_vehicle_detail y entregá los datos y las fotos en tu respuesta.',
         ];
-        $hard[] = '- Para agendar una prueba de manejo pedí día, hora y nombre; luego llamá schedule_test_drive.'
-            . ' Nunca confirmes una cita sin ejecutar esa herramienta; la cita queda tentativa hasta que un asesor la confirme.';
+        $hard[] = '- Para agendar una prueba de manejo pedí día, hora y nombre; luego llamá schedule_test_drive OBLIGATORIAMENTE.'
+            . ' Nunca digas "nos vemos", "te espero", "quedó agendada" ni des por confirmada una fecha sin haber ejecutado schedule_test_drive en este mismo turno.'
+            . ' La cita queda tentativa hasta que un asesor la confirme.';
         if (!$bot->allow_financing_quote) {
             $hard[] = '- No cotices cuotas, plazos ni tasas, y NO pidas prima ni plazo. Si preguntan por financiamiento, pedí solo nombre y teléfono y llamá handoff_to_human de una vez.';
         } else {
@@ -207,6 +216,25 @@ class WhatsAppBotService
             . '|dame un momento|un momento y te)/iu';
 
         return (bool) preg_match($announce, $text) || (bool) preg_match('/:\s*$/', $text);
+    }
+
+    /**
+     * ¿El modelo dio por confirmada una cita/prueba sin ejecutar schedule_test_drive?
+     */
+    private function confirmedScheduleWithoutTool(string $text, array $usedTools): bool
+    {
+        if (trim($text) === '' || in_array('schedule_test_drive', $usedTools, true)) {
+            return false;
+        }
+
+        $pattern = '/(nos vemos|te espero|te esperamos'
+            . '|qued[oó] (agendad|reservad|confirmad)'
+            . '|agend[ée]\b'
+            . '|te confirmo la cita'
+            . '|(asesor|equipo)[^.]{0,30}(confirm|coordin)[^.]{0,20}(cita|prueba)'
+            . '|cita (qued|confirmad|reservad|para el|para mañana|para hoy|para las|es el|es mañana))/iu';
+
+        return (bool) preg_match($pattern, $text);
     }
 
     private function currentPromotions(int $companyId): string
