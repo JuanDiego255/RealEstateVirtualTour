@@ -318,6 +318,17 @@ Route::group(['middleware' => 'auth'], function () {
         ->middleware(['subscription'])
         ->name('admin.crm.inbox');
 
+    // --- SECUENCIAS DE SEGUIMIENTO (nurturing) ---
+    Route::group(['prefix' => 'admin/crm/follow-ups', 'middleware' => ['subscription']], function () {
+        Route::get('/', [\App\Http\Controllers\Admin\FollowUpSequenceController::class, 'index'])->name('admin.crm.followups.index');
+        Route::get('/create', [\App\Http\Controllers\Admin\FollowUpSequenceController::class, 'create'])->name('admin.crm.followups.create');
+        Route::post('/', [\App\Http\Controllers\Admin\FollowUpSequenceController::class, 'store'])->name('admin.crm.followups.store');
+        Route::get('/{followup}/edit', [\App\Http\Controllers\Admin\FollowUpSequenceController::class, 'edit'])->name('admin.crm.followups.edit');
+        Route::put('/{followup}', [\App\Http\Controllers\Admin\FollowUpSequenceController::class, 'update'])->name('admin.crm.followups.update');
+        Route::post('/{followup}/toggle', [\App\Http\Controllers\Admin\FollowUpSequenceController::class, 'toggle'])->name('admin.crm.followups.toggle');
+        Route::delete('/{followup}', [\App\Http\Controllers\Admin\FollowUpSequenceController::class, 'destroy'])->name('admin.crm.followups.destroy');
+    });
+
     // --- LEADS (CRM) ---
     Route::group(['prefix' => 'admin/crm/leads', 'middleware' => ['subscription']], function () {
         Route::get('/', [LeadController::class, 'index'])->name('admin.crm.leads.index');

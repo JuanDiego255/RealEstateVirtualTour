@@ -178,6 +178,13 @@
                                         <a href="{{ route('admin.crm.inbox') }}"><i class="fa fa-inbox"></i> Sin atender</a>
                                     </li>
 
+                                    {{-- Secuencias de seguimiento (solo admin) --}}
+                                    @if($u->isAdmin())
+                                        <li class="{{ Request::routeIs('admin.crm.followups.*') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.crm.followups.index') }}"><i class="fa fa-random"></i> Seguimientos</a>
+                                        </li>
+                                    @endif
+
                                     {{-- Gestión: Leads, Pipeline, Agenda, Reportes --}}
                                     <li class="{{ ($crmActive && !Request::routeIs('admin.crm.dashboard') && !Request::routeIs('admin.crm.quotes.*') && !Request::routeIs('admin.crm.reminders.*') && !Request::routeIs('admin.crm.tasks.*') && !Request::routeIs('admin.crm.pipeline-rules.*') && !Request::routeIs('admin.crm.leads.audit')) ? 'active' : '' }}">
                                         <a class="has-arrow" href="javascript:void(0)" aria-expanded="false">

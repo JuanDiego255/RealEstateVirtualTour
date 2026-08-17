@@ -62,6 +62,9 @@ class WhatsAppLeadService
         // Aviso al asesor (no hay usuario "actuando": el bot es automático).
         CrmNotifier::leadAssigned($lead);
 
+        // Inscribe en las secuencias de seguimiento automáticas.
+        FollowUpService::enrollNewLead($lead);
+
         Log::channel('whatsapp')->info('Lead creado desde WhatsApp', [
             'company_id' => $companyId, 'lead_id' => $lead->id, 'phone' => $phone,
         ]);

@@ -32,6 +32,9 @@ class Kernel extends ConsoleKernel
         // ejecuta schedule:run cada minuto; si solo corre una vez al día, igual
         // alcanza a todos los vencidos porque el filtro es "<= ahora".
         $schedule->command('crm:dispatch-reminders')->everyFifteenMinutes()->withoutOverlapping();
+
+        // Secuencias de seguimiento (nurturing): pasos vencidos.
+        $schedule->command('crm:run-followups')->everyFifteenMinutes()->withoutOverlapping();
     }
 
     /**

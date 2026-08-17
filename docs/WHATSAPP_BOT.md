@@ -192,6 +192,25 @@ de terceros — app password de Gmail/Outlook).
 - Las cuatro notificaciones del CRM (lead asignado, tarea, recordatorio, cita)
   ahora salen por la cuenta de la empresa dueña.
 
+### ✅ Secuencias de seguimiento (nurturing)
+Envíos automáticos escalonados para no perder al lead.
+
+- **Modelo**: `FollowUpSequence` (disparo `lead_created`/`manual`, activa,
+  `stop_on_reply`), `FollowUpStep` (demora en horas + canal + plantilla o mensaje
+  propio), `FollowUpEnrollment` (posición, `next_run_at`, estado).
+- **Inscripción automática** al crear el lead (bot de WhatsApp y alta manual):
+  `FollowUpService::enrollNewLead`.
+- **`crm:run-followups`** (cron, cada 15 min) — envía los pasos vencidos y avanza.
+  **Cortes**: lead ganado/perdido, o respondió (si `stop_on_reply`).
+- **Respeta la política de WhatsApp**: fuera de la ventana de 24 h **no** manda
+  texto libre; deja una **tarea al asesor** para contacto manual. Email sale por
+  el SMTP de la empresa. Cada envío queda como actividad en la línea de tiempo.
+- **UI** en `/admin/crm/follow-ups` (admin): CRUD de secuencias con pasos
+  (demora/canal/plantilla/mensaje), activar/desactivar, editar, eliminar.
+
+> Nota: la inscripción `manual` queda modelada para un botón futuro en la ficha
+> del lead; hoy se inscribe automáticamente el disparo `lead_created`.
+
 ### ✅ Bandeja "sin atender"
 - **`/admin/crm/inbox`** (`LeadInboxController`) — bandeja de trabajo: leads sin
   contactar (ordenados por score), tareas vencidas y recordatorios vencidos, con

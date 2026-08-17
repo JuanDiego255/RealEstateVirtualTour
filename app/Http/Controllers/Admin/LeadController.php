@@ -417,6 +417,9 @@ class LeadController extends Controller
         // Avisar al asesor si el lead quedó asignado a otra persona.
         \App\Services\CrmNotifier::leadAssigned($lead, $user->id);
 
+        // Inscribir en secuencias de seguimiento automáticas.
+        \App\Services\FollowUpService::enrollNewLead($lead);
+
         return redirect()->route('admin.crm.leads.show', $lead)
             ->with('success', 'Lead creado correctamente.');
     }
