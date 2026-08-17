@@ -62,8 +62,9 @@
 
                         <div class="crm-form-row">
                             <div class="crm-form-group">
-                                <label class="crm-label">Usuario</label>
+                                <label class="crm-label">Usuario (correo completo)</label>
                                 <input type="text" name="username" class="crm-input" value="{{ old('username', $setting->username) }}" placeholder="tucuenta@gmail.com" autocomplete="off">
+                                <div class="crm-help">La dirección completa (tucuenta@gmail.com), no tu nombre.</div>
                             </div>
                             <div class="crm-form-group">
                                 <label class="crm-label">Clave de aplicación</label>
