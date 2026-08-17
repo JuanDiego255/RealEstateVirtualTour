@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\Log;
 class WhatsAppBotService
 {
     const CHAT_MODEL     = 'claude-haiku-4-5'; // conversar: volumen alto, costo bajo
-    const MAX_TOOL_LOOPS = 3;
+    const MAX_TOOL_LOOPS = 4;
     const HISTORY_LIMIT  = 10;
     const MAX_TOKENS     = 700;
     const ANTHROPIC_URL  = 'https://api.anthropic.com/v1/messages';
@@ -76,6 +76,16 @@ class WhatsAppBotService
             $finalText = trim(implode("\n", array_map(fn($b) => $b['text'] ?? '', $textParts)));
 
             if (empty($toolUses)) {
+                // Red de seguridad: si el modelo ANUNCIÓ que iba a entregar algo pero
+                // no ejecutó ninguna herramienta de datos, lo empujamos a hacerlo (una vez).
+                if ($this->announcedWithoutDelivering($finalText, $usedTools) && $loop < self::MAX_TOOL_LOOPS - 1) {
+                    $messages[] = ['role' => 'assistant', 'content' => $content];
+                    $messages[] = ['role' => 'user', 'content' =>
+                        'Entregá AHORA la información que ofreciste usando la herramienta correspondiente '
+                        . '(get_vehicle_detail, search_vehicles o quote_financing) e incluí los datos en tu respuesta. '
+                        . 'No prometas enviarla: mostrala.'];
+                    continue;
+                }
                 break; // el modelo devolvió texto: terminamos
             }
 
@@ -142,13 +152,15 @@ class WhatsAppBotService
             '- No negociés ni des descuentos: eso lo hace un vendedor.',
             '- Si un vehículo está apartado o vendido, decilo y ofrecé las alternativas que devuelva la herramienta.',
             '- Respondé breve y claro, en el tono del negocio.',
+            '- ENTREGÁ, NO ANUNCIES: nunca digas que vas a mandar algo y termines (nada de "te paso la ficha", "ahora te doy la cuota", "aquí tienes:"). Si necesitás datos, llamá la herramienta en ESTE mismo turno e incluí el resultado en tu respuesta.',
+            '- Si piden la ficha o el detalle de un vehículo, llamá get_vehicle_detail y entregá los datos y las fotos en tu respuesta.',
         ];
         $hard[] = '- Para agendar una prueba de manejo pedí día, hora y nombre; luego llamá schedule_test_drive.'
             . ' Nunca confirmes una cita sin ejecutar esa herramienta; la cita queda tentativa hasta que un asesor la confirme.';
         if (!$bot->allow_financing_quote) {
-            $hard[] = '- Nunca cotices cuotas, plazos ni tasas. Si preguntan por financiamiento, tomá los datos y llamá handoff_to_human.';
+            $hard[] = '- No cotices cuotas, plazos ni tasas, y NO pidas prima ni plazo. Si preguntan por financiamiento, pedí solo nombre y teléfono y llamá handoff_to_human de una vez.';
         } else {
-            $hard[] = '- Para financiamiento podés usar quote_financing con prima y plazo; aclará que la cuota es estimada y está sujeta a aprobación.';
+            $hard[] = '- Para financiamiento llamá quote_financing con vehículo, prima y plazo, y entregá la cuota en el mismo mensaje, aclarando que es estimada y sujeta a aprobación. No digas "te paso la cuota" sin el número.';
         }
         $blocks[] = implode("\n", $hard);
 
@@ -171,6 +183,30 @@ class WhatsAppBotService
             . ' Al agendar, convertí expresiones como "mañana" o "el sábado" a una fecha y hora concretas (formato ISO 8601).';
 
         return implode("\n\n", $blocks);
+    }
+
+    /**
+     * ¿El modelo "anunció" que iba a entregar algo (ficha, cuota, lista) pero no
+     * ejecutó ninguna herramienta de datos? En ese caso hay que empujarlo a
+     * llamar la herramienta en lugar de terminar el turno con una promesa vacía.
+     */
+    private function announcedWithoutDelivering(string $text, array $usedTools): bool
+    {
+        if (trim($text) === '') {
+            return false;
+        }
+        $dataTools = ['search_vehicles', 'get_vehicle_detail', 'quote_financing', 'check_vehicle_status'];
+        if (array_intersect($usedTools, $dataTools)) {
+            return false; // ya entregó datos vía herramienta
+        }
+
+        $announce = '/(te (paso|env[ií]o|comparto|mando|doy|muestro|adjunto)'
+            . '|ahora (s[ií]|te|mismo)\b'
+            . '|ac[aá] (te|van|est|ten[ée]s)'
+            . '|aqu[ií] (te|est|ten[ée]s)'
+            . '|dame un momento|un momento y te)/iu';
+
+        return (bool) preg_match($announce, $text) || (bool) preg_match('/:\s*$/', $text);
     }
 
     private function currentPromotions(int $companyId): string
