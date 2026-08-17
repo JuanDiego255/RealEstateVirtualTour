@@ -41,8 +41,8 @@ class CrmDashboardController extends Controller
             ->orderBy('due_at')
             ->get();
 
-        // Recordatorios pendientes/vencidos
-        $dueReminders = Reminder::with('lead')
+        // Recordatorios pendientes/vencidos (remindable es polimórfico, no 'lead')
+        $dueReminders = Reminder::with('remindable')
             ->byCompany($company)
             ->due()
             ->orderBy('remind_at')

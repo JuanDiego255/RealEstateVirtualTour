@@ -343,9 +343,9 @@
                             <div class="crm-row-main">
                                 <div class="crm-row-title">{{ $reminder->title }}</div>
                                 <div class="crm-row-sub">
-                                    @if($reminder->lead_id)
-                                        <a href="{{ route('admin.crm.leads.show', $reminder->lead_id) }}"
-                                           style="color:#c2ac1f;">{{ $reminder->lead->name ?? '—' }}</a>
+                                    @if($reminder->remindable instanceof \App\Lead)
+                                        <a href="{{ route('admin.crm.leads.show', $reminder->remindable) }}"
+                                           style="color:#c2ac1f;">{{ $reminder->remindable->name ?? '—' }}</a>
                                         &nbsp;·&nbsp;
                                     @endif
                                     <i class="fa fa-clock-o"></i> {{ $reminder->remind_at->format('d/m H:i') }}
