@@ -54,6 +54,20 @@
                         <textarea name="description" class="form-control" rows="3" placeholder="Detalles adicionales...">{{ old('description') }}</textarea>
                     </div>
 
+                    @if(!empty($agents))
+                        <div class="form-group">
+                            <label>Asignar a <span class="text-danger">*</span></label>
+                            <select name="assigned_to" class="form-control" required>
+                                @foreach($agents as $agent)
+                                    <option value="{{ $agent->id }}" {{ (int) old('assigned_to', auth()->id()) === (int) $agent->id ? 'selected' : '' }}>
+                                        {{ $agent->name }}{{ $agent->id === auth()->id() ? ' (yo)' : '' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <small class="form-text text-muted">El correo y la campana del recordatorio irán a esta persona.</small>
+                        </div>
+                    @endif
+
                     <div class="row">
                         <div class="col-md-4">
                             <div class="form-group">

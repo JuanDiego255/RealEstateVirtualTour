@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Reminder;
 use App\Lead;
 use App\Appointment;
+use App\User;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 
@@ -82,7 +83,12 @@ class ReminderController extends Controller
 
         $leads = Lead::byCompany($user->company_id)->active()->orderBy('name')->get();
 
-        return view('admin.crm.reminders.create', compact('relatedItem', 'relatedType', 'leads'));
+        // Un admin puede asignar el recordatorio a cualquier miembro de su empresa.
+        $agents = $user->isAdmin()
+            ? User::where('company_id', $user->company_id)->where('status', User::STATUS_ACTIVE)->orderBy('name')->get()
+            : null;
+
+        return view('admin.crm.reminders.create', compact('relatedItem', 'relatedType', 'leads', 'agents'));
     }
 
     /**
@@ -103,6 +109,7 @@ class ReminderController extends Controller
             'recurrence_ends_at' => 'nullable|date',
             'remindable_type' => 'nullable|string',
             'remindable_id' => 'nullable|integer',
+            'assigned_to' => 'nullable|exists:users,id',
         ]);
 
         $user = auth()->user();
@@ -110,7 +117,7 @@ class ReminderController extends Controller
         $remindAt = Carbon::parse($request->remind_at_date . ' ' . $request->remind_at_time);
 
         $data = [
-            'user_id' => $user->id,
+            'user_id' => $this->resolveTargetUserId($request),
             'company_id' => $user->company_id,
             'title' => $request->title,
             'description' => $request->description,
@@ -286,12 +293,13 @@ class ReminderController extends Controller
             'title' => 'required|string|max:255',
             'remind_at' => 'required|date',
             'priority' => 'nullable|in:low,medium,high,urgent',
+            'assigned_to' => 'nullable|exists:users,id',
         ]);
 
         $user = auth()->user();
 
         Reminder::create([
-            'user_id' => $user->id,
+            'user_id' => $this->resolveTargetUserId($request),
             'company_id' => $user->company_id,
             'title' => $request->title,
             'remind_at' => Carbon::parse($request->remind_at),
@@ -300,6 +308,26 @@ class ReminderController extends Controller
         ]);
 
         return response()->json(['success' => true]);
+    }
+
+    /**
+     * Destinatario del recordatorio: un admin puede asignarlo a un miembro de su
+     * empresa (correo + campana van a esa persona); un agente siempre a sí mismo.
+     */
+    private function resolveTargetUserId(Request $request): int
+    {
+        $user = auth()->user();
+
+        if ($user->isAdmin() && $request->filled('assigned_to')) {
+            $agent = User::where('id', $request->input('assigned_to'))
+                ->where('company_id', $user->company_id)
+                ->first();
+            if ($agent) {
+                return (int) $agent->id;
+            }
+        }
+
+        return (int) $user->id;
     }
 
     /**
