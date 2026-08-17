@@ -13,8 +13,10 @@ class CreateWhatsappBotUsagesTable extends Migration
             $table->unsignedBigInteger('company_id');
             $table->string('phone');
             $table->string('period', 7); // YYYY-MM — la conversación cuenta en el mes que se abrió
-            $table->timestamp('window_started_at');
-            $table->timestamp('window_expires_at');
+            // Nullable a propósito: MySQL en modo estricto no permite dos timestamps
+            // NOT NULL sin default. Siempre se setean en WhatsappBotUsage::touchWindow().
+            $table->timestamp('window_started_at')->nullable();
+            $table->timestamp('window_expires_at')->nullable();
             $table->decimal('anthropic_cost', 12, 6)->default(0);
             $table->decimal('whatsapp_cost', 12, 6)->default(0);
             $table->unsignedInteger('tokens_in')->default(0);
