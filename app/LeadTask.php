@@ -10,12 +10,13 @@ class LeadTask extends Model
     protected $fillable = [
         'company_id', 'lead_id', 'created_by', 'assigned_to',
         'title', 'type', 'priority', 'status',
-        'description', 'due_at', 'completed_at', 'completion_notes',
+        'description', 'due_at', 'completed_at', 'completion_notes', 'due_notified_at',
     ];
 
     protected $casts = [
-        'due_at'       => 'datetime',
-        'completed_at' => 'datetime',
+        'due_at'          => 'datetime',
+        'completed_at'    => 'datetime',
+        'due_notified_at' => 'datetime',
     ];
 
     public static function getTypes(): array

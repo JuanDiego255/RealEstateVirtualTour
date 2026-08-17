@@ -3,8 +3,10 @@
 namespace App\Console\Commands;
 
 use App\Appointment;
+use App\LeadTask;
 use App\Reminder;
 use App\Notifications\AppointmentReminderNotification;
+use App\Notifications\LeadTaskDueNotification;
 use App\Notifications\ReminderDueNotification;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -24,8 +26,9 @@ class DispatchReminders extends Command
     {
         $reminders = $this->dispatchReminders();
         $appointments = $this->dispatchAppointments();
+        $tasks = $this->dispatchTasks();
 
-        $this->info("Recordatorios enviados: {$reminders}. Avisos de cita enviados: {$appointments}.");
+        $this->info("Recordatorios enviados: {$reminders}. Avisos de cita: {$appointments}. Tareas vencidas: {$tasks}.");
         return 0;
     }
 
@@ -70,6 +73,35 @@ class DispatchReminders extends Command
                 }
             }
         });
+        return $sent;
+    }
+
+    private function dispatchTasks(): int
+    {
+        $sent = 0;
+        LeadTask::query()
+            ->whereIn('status', ['pending', 'in_progress'])
+            ->whereNotNull('due_at')
+            ->where('due_at', '<=', now())
+            ->whereNull('due_notified_at')
+            ->whereNotNull('assigned_to')
+            ->with(['assignee', 'lead'])
+            ->chunkById(100, function ($chunk) use (&$sent) {
+                foreach ($chunk as $task) {
+                    if (!$task->assignee) {
+                        $task->update(['due_notified_at' => now()]);
+                        continue;
+                    }
+                    try {
+                        $task->assignee->notify(new LeadTaskDueNotification($task));
+                        $sent++;
+                    } catch (\Throwable $e) {
+                        Log::error('No se pudo enviar aviso de tarea', ['task_id' => $task->id, 'error' => $e->getMessage()]);
+                    } finally {
+                        $task->update(['due_notified_at' => now()]);
+                    }
+                }
+            });
         return $sent;
     }
 }

@@ -60,6 +60,9 @@ class WhatsAppLeadService
             'description' => 'Lead generado automáticamente desde el bot de WhatsApp.',
         ]);
 
+        // Aviso al asesor (no hay usuario "actuando": el bot es automático).
+        CrmNotifier::leadAssigned($lead);
+
         Log::channel('whatsapp')->info('Lead creado desde WhatsApp', [
             'company_id' => $companyId, 'lead_id' => $lead->id, 'phone' => $phone,
         ]);

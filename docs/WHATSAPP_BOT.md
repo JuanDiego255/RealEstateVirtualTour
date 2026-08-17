@@ -154,8 +154,18 @@ pero nada los despachaba. Ahora sí:
 
 > Requiere que el cron ejecute `php artisan schedule:run` (idealmente cada minuto).
 
+### ✅ Automatización CRM — Etapa 3: notificaciones a asesores
+- **`LeadAssignedNotification`** — al asignar un lead (manual en `store`,
+  reasignación en `quickAgent`, o automático desde el bot de WhatsApp) se avisa al
+  asesor dueño, salvo que sea él mismo quien hizo la acción. Disparo unificado en
+  **`CrmNotifier::leadAssigned`** (tolerante a fallos de correo).
+- **`LeadTaskDueNotification`** — nueva pasada en `crm:dispatch-reminders` que
+  avisa cuando una tarea llega a su vencimiento. Columna `lead_tasks.due_notified_at`
+  para no repetir el aviso.
+- Ambos por `database` (campana) + `mail` (si hay correo). Aparecen en el
+  dropdown de notificaciones existente.
+
 ### ⏳ Próximas entregas (automatización CRM)
-- **Etapa 3** — Notificaciones a asesores (lead asignado, tarea vence).
 - **Etapa 4** — Asignación automática (round-robin / reglas).
 
 ## Reglas de oro (se mantienen del origen)

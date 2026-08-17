@@ -211,6 +211,9 @@ class LeadController extends Controller
             'activity_at' => now(),
         ]);
 
+        // Avisar al nuevo asesor (si no es quien hizo la reasignación).
+        \App\Services\CrmNotifier::leadAssigned($lead, auth()->id());
+
         return response()->json([
             'success'    => true,
             'agent_name' => $lead->user->name ?? 'Sin asignar',
@@ -410,6 +413,9 @@ class LeadController extends Controller
             'subject' => 'Lead creado',
             'description' => 'Nuevo lead registrado en el sistema.',
         ]);
+
+        // Avisar al asesor si el lead quedó asignado a otra persona.
+        \App\Services\CrmNotifier::leadAssigned($lead, $user->id);
 
         return redirect()->route('admin.crm.leads.show', $lead)
             ->with('success', 'Lead creado correctamente.');
