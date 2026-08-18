@@ -3,13 +3,11 @@
 namespace App\Notifications;
 
 use App\Appointment;
-use App\Services\CompanyMailer;
-use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 /**
- * Aviso de una cita próxima al asesor responsable (según reminder_minutes de la
- * cita). Email + campana.
+ * Aviso de una cita próxima al asesor responsable. Campana por este canal; el
+ * correo se envía aparte en texto plano.
  */
 class AppointmentReminderNotification extends Notification
 {
@@ -19,27 +17,21 @@ class AppointmentReminderNotification extends Notification
 
     public function via($notifiable): array
     {
-        $channels = ['database'];
-        if (!empty($notifiable->email)) {
-            $channels[] = 'mail';
-        }
-        return $channels;
+        return ['database'];
     }
 
-    public function toMail($notifiable): MailMessage
+    public function toPlain($notifiable): array
     {
         $a = $this->appointment;
-        $mail = (new MailMessage)
-            ->subject('Cita próxima: ' . $a->title)
-            ->greeting('Hola ' . $notifiable->name)
-            ->line('Tenés una cita próxima.')
-            ->line('**' . $a->title . '**')
-            ->line('**Cuándo:** ' . optional($a->starts_at)->format('d/m/Y H:i'))
-            ->line('**Cliente:** ' . ($a->client_display_name ?: 'Sin cliente'))
-            ->line($a->location ? '**Lugar:** ' . $a->location : '')
-            ->action('Ver agenda', url('/admin/crm/appointments'));
+        $body = 'Hola ' . $notifiable->name . ",\n\n"
+            . "Tenés una cita próxima.\n\n"
+            . $a->title . "\n"
+            . 'Cuándo: ' . optional($a->starts_at)->format('d/m/Y H:i') . "\n"
+            . 'Cliente: ' . ($a->client_display_name ?: 'Sin cliente') . "\n"
+            . ($a->location ? 'Lugar: ' . $a->location . "\n" : '')
+            . "\nVer agenda: " . url('/admin/crm/appointments');
 
-        return CompanyMailer::applyTo($mail, $notifiable->company_id);
+        return ['subject' => 'Cita próxima: ' . $a->title, 'body' => $body];
     }
 
     public function toArray($notifiable): array

@@ -3,13 +3,11 @@
 namespace App\Notifications;
 
 use App\LeadTask;
-use App\Services\CompanyMailer;
-use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 /**
- * Aviso al asesor cuando una tarea del CRM llega a su fecha de vencimiento.
- * Email + campana.
+ * Aviso al asesor cuando una tarea del CRM vence. Campana por este canal; el
+ * correo se envía aparte en texto plano.
  */
 class LeadTaskDueNotification extends Notification
 {
@@ -19,26 +17,20 @@ class LeadTaskDueNotification extends Notification
 
     public function via($notifiable): array
     {
-        $channels = ['database'];
-        if (!empty($notifiable->email)) {
-            $channels[] = 'mail';
-        }
-        return $channels;
+        return ['database'];
     }
 
-    public function toMail($notifiable): MailMessage
+    public function toPlain($notifiable): array
     {
         $t = $this->task;
-        $mail = (new MailMessage)
-            ->subject('Tarea pendiente: ' . $t->title)
-            ->greeting('Hola ' . $notifiable->name)
-            ->line('Tenés una tarea que vence.')
-            ->line('**' . $t->title . '**')
-            ->line('**Vence:** ' . optional($t->due_at)->format('d/m/Y H:i'))
-            ->line($t->lead ? '**Lead:** ' . $t->lead->name : '')
-            ->action('Ver tarea', url('/admin/crm/leads/' . $t->lead_id));
+        $body = 'Hola ' . $notifiable->name . ",\n\n"
+            . "Tenés una tarea que vence.\n\n"
+            . $t->title . "\n"
+            . 'Vence: ' . optional($t->due_at)->format('d/m/Y H:i') . "\n"
+            . ($t->lead ? 'Lead: ' . $t->lead->name . "\n" : '')
+            . "\nVer tarea: " . url('/admin/crm/leads/' . $t->lead_id);
 
-        return CompanyMailer::applyTo($mail, $notifiable->company_id);
+        return ['subject' => 'Tarea pendiente: ' . $t->title, 'body' => $body];
     }
 
     public function toArray($notifiable): array

@@ -9,6 +9,7 @@ use App\Models\MailLog;
 use App\Notifications\AppointmentReminderNotification;
 use App\Notifications\LeadTaskDueNotification;
 use App\Notifications\ReminderDueNotification;
+use App\Services\CompanyMailer;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -43,7 +44,12 @@ class DispatchReminders extends Command
                     continue;
                 }
                 try {
-                    $reminder->user->notify(new ReminderDueNotification($reminder));
+                    $notification = new ReminderDueNotification($reminder);
+                    $reminder->user->notify($notification); // campana
+                    if ($reminder->email_notification && $reminder->user->email) {
+                        $p = $notification->toPlain($reminder->user);
+                        CompanyMailer::sendPlain($reminder->company_id, $reminder->user->email, $p['subject'], $p['body']);
+                    }
                     $sent++;
                 } catch (\Throwable $e) {
                     Log::error('No se pudo enviar recordatorio', ['reminder_id' => $reminder->id, 'error' => $e->getMessage()]);
@@ -66,7 +72,12 @@ class DispatchReminders extends Command
                     continue;
                 }
                 try {
-                    $appointment->user->notify(new AppointmentReminderNotification($appointment));
+                    $notification = new AppointmentReminderNotification($appointment);
+                    $appointment->user->notify($notification); // campana
+                    if ($appointment->user->email) {
+                        $p = $notification->toPlain($appointment->user);
+                        CompanyMailer::sendPlain($appointment->company_id, $appointment->user->email, $p['subject'], $p['body']);
+                    }
                     $sent++;
                 } catch (\Throwable $e) {
                     Log::error('No se pudo enviar aviso de cita', ['appointment_id' => $appointment->id, 'error' => $e->getMessage()]);
@@ -96,7 +107,12 @@ class DispatchReminders extends Command
                         continue;
                     }
                     try {
-                        $task->assignee->notify(new LeadTaskDueNotification($task));
+                        $notification = new LeadTaskDueNotification($task);
+                        $task->assignee->notify($notification); // campana
+                        if ($task->assignee->email) {
+                            $p = $notification->toPlain($task->assignee);
+                            CompanyMailer::sendPlain($task->company_id, $task->assignee->email, $p['subject'], $p['body']);
+                        }
                         $sent++;
                     } catch (\Throwable $e) {
                         Log::error('No se pudo enviar aviso de tarea', ['task_id' => $task->id, 'error' => $e->getMessage()]);

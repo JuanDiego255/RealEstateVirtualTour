@@ -26,12 +26,21 @@ class CrmNotifier
 
         try {
             $agent = User::find($agentId);
-            $agent?->notify(new LeadAssignedNotification($lead));
+            if (!$agent) {
+                return;
+            }
+            $notification = new LeadAssignedNotification($lead);
+            $agent->notify($notification); // campana
+            if ($agent->email) {
+                $p = $notification->toPlain($agent);
+                CompanyMailer::sendPlain($lead->company_id, $agent->email, $p['subject'], $p['body']);
+            }
         } catch (\Throwable $e) {
             Log::error('No se pudo notificar la asignación de lead', [
                 'lead_id' => $lead->id,
                 'error'   => $e->getMessage(),
             ]);
+            \App\Models\MailLog::recordFailed($lead->company_id, optional(User::find($agentId))->email, 'Nuevo lead asignado', $e->getMessage(), 'lead_assigned');
         }
     }
 }

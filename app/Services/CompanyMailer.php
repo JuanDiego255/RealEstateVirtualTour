@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\CompanyMailSetting;
 use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Support\Facades\Mail;
 
 /**
  * Enruta los correos por la cuenta SMTP de cada empresa. Registra el mailer en
@@ -55,6 +56,24 @@ class CompanyMailer
             return null;
         }
         return [$setting->from_address, $setting->from_name];
+    }
+
+    /**
+     * Envía un correo de TEXTO PLANO por la cuenta de la empresa (o el mailer por
+     * defecto si no tiene). Texto plano = mejor entregabilidad en hosting
+     * compartido (evita filtros de correo saliente que descartan HTML).
+     */
+    public static function sendPlain(?int $companyId, string $toEmail, string $subject, string $body): void
+    {
+        $mailer = self::mailerName($companyId) ?: config('mail.default');
+        $from   = self::from($companyId);
+
+        Mail::mailer($mailer)->raw($body, function ($m) use ($toEmail, $subject, $from) {
+            $m->to($toEmail)->subject($subject);
+            if ($from) {
+                $m->from($from[0], $from[1]);
+            }
+        });
     }
 
     /**
