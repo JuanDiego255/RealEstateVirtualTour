@@ -28,7 +28,15 @@ class CompanyMailSettingController extends Controller
         $companyId = $this->guardCompany();
         $setting = CompanyMailSetting::firstOrNew(['company_id' => $companyId]);
 
-        return view('admin.mail.settings', compact('setting'));
+        $logs = \App\Models\MailLog::available()
+            ? \App\Models\MailLog::forCompany($companyId)->latest()->limit(50)->get()
+            : collect();
+
+        $lastError = \App\Models\MailLog::available()
+            ? \App\Models\MailLog::forCompany($companyId)->where('status', \App\Models\MailLog::STATUS_FAILED)->latest()->first()
+            : null;
+
+        return view('admin.mail.settings', compact('setting', 'logs', 'lastError'));
     }
 
     public function update(Request $request)
@@ -100,6 +108,7 @@ class CompanyMailSettingController extends Controller
             return back()->with('success', 'Correo de prueba enviado a ' . $to . '. Revisá la bandeja.');
         } catch (\Throwable $e) {
             $setting->update(['last_test_at' => now(), 'last_test_ok' => false, 'last_test_error' => $e->getMessage()]);
+            \App\Models\MailLog::recordFailed($companyId, $to, 'Prueba de correo — CRM', $e->getMessage(), 'test');
 
             return back()->with('error', 'Falló el envío de prueba: ' . $e->getMessage());
         }

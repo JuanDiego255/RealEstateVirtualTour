@@ -189,12 +189,17 @@ class FollowUpService
         $mailer  = CompanyMailer::mailerName($lead->company_id) ?: config('mail.default');
         $from    = CompanyMailer::from($lead->company_id);
 
-        Mail::mailer($mailer)->raw($body, function ($m) use ($lead, $subject, $from) {
-            $m->to($lead->email)->subject($subject);
-            if ($from) {
-                $m->from($from[0], $from[1]);
-            }
-        });
+        try {
+            Mail::mailer($mailer)->raw($body, function ($m) use ($lead, $subject, $from) {
+                $m->to($lead->email)->subject($subject);
+                if ($from) {
+                    $m->from($from[0], $from[1]);
+                }
+            });
+        } catch (\Throwable $e) {
+            \App\Models\MailLog::recordFailed($lead->company_id, $lead->email, $subject, $e->getMessage(), 'followup');
+            throw $e;
+        }
 
         $lead->logActivity('email', ['subject' => 'Seguimiento automático', 'description' => \Illuminate\Support\Str::limit($body, 200)]);
     }

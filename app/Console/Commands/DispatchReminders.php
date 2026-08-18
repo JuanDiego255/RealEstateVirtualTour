@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Appointment;
 use App\LeadTask;
 use App\Reminder;
+use App\Models\MailLog;
 use App\Notifications\AppointmentReminderNotification;
 use App\Notifications\LeadTaskDueNotification;
 use App\Notifications\ReminderDueNotification;
@@ -46,6 +47,7 @@ class DispatchReminders extends Command
                     $sent++;
                 } catch (\Throwable $e) {
                     Log::error('No se pudo enviar recordatorio', ['reminder_id' => $reminder->id, 'error' => $e->getMessage()]);
+                    MailLog::recordFailed($reminder->company_id, $reminder->user->email ?? null, 'Recordatorio: ' . $reminder->title, $e->getMessage(), 'reminder');
                 } finally {
                     $reminder->markNotificationSent();
                 }
@@ -68,6 +70,7 @@ class DispatchReminders extends Command
                     $sent++;
                 } catch (\Throwable $e) {
                     Log::error('No se pudo enviar aviso de cita', ['appointment_id' => $appointment->id, 'error' => $e->getMessage()]);
+                    MailLog::recordFailed($appointment->company_id, $appointment->user->email ?? null, 'Cita próxima: ' . $appointment->title, $e->getMessage(), 'appointment');
                 } finally {
                     $appointment->update(['reminder_sent' => true]);
                 }
@@ -97,6 +100,7 @@ class DispatchReminders extends Command
                         $sent++;
                     } catch (\Throwable $e) {
                         Log::error('No se pudo enviar aviso de tarea', ['task_id' => $task->id, 'error' => $e->getMessage()]);
+                        MailLog::recordFailed($task->company_id, $task->assignee->email ?? null, 'Tarea pendiente: ' . $task->title, $e->getMessage(), 'task');
                     } finally {
                         $task->update(['due_notified_at' => now()]);
                     }

@@ -15,6 +15,14 @@
     @if(session('error'))<div class="crm-alert danger">{{ session('error') }}</div>@endif
     @if($errors->any())<div class="crm-alert danger"><ul style="margin:0; padding-left:18px;">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul></div>@endif
 
+    @if(!empty($lastError))
+        <div class="crm-alert danger">
+            <strong><i class="fa fa-exclamation-triangle"></i> Último error de envío</strong>
+            ({{ $lastError->created_at->format('d/m/Y H:i') }}@if($lastError->to_email) · a {{ $lastError->to_email }}@endif):
+            <div style="margin-top:4px; font-size:12px;">{{ \Illuminate\Support\Str::limit($lastError->error, 300) }}</div>
+        </div>
+    @endif
+
     <div class="crm-two-col">
         <div>
             <form method="POST" action="{{ route('admin.mail.settings.update') }}">
@@ -117,6 +125,42 @@
                         <div class="crm-help" style="margin-top:8px;">Guardá los cambios antes de probar.</div>
                     </form>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Correos enviados por esta configuración --}}
+    <div class="crm-section">
+        <div class="crm-section-header">
+            <h5><i class="fa fa-paper-plane-o"></i> Correos enviados</h5>
+            <span class="hint">últimos 50 salientes de esta cuenta</span>
+        </div>
+        <div class="crm-section-body">
+            <div class="crm-table-wrap">
+                <table class="crm-table">
+                    <thead><tr>
+                        <th>Fecha</th><th>Para</th><th>Asunto</th><th>Origen</th><th>Estado</th>
+                    </tr></thead>
+                    <tbody>
+                        @forelse($logs as $log)
+                            <tr>
+                                <td class="muted">{{ $log->created_at->format('d/m/Y H:i') }}</td>
+                                <td>{{ $log->to_email ?: '—' }}@if($log->to_name)<div class="muted">{{ $log->to_name }}</div>@endif</td>
+                                <td>{{ $log->subject ?: '—' }}</td>
+                                <td class="muted">{{ $log->context ?: '—' }}</td>
+                                <td>
+                                    @if($log->status === 'sent')
+                                        <span class="crm-badge green">Enviado</span>
+                                    @else
+                                        <span class="crm-badge red" title="{{ $log->error }}">Falló</span>
+                                    @endif
+                                </td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="5"><div class="empty-state"><i class="fa fa-envelope-o"></i>Todavía no se registraron correos.</div></td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
