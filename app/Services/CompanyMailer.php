@@ -65,15 +65,24 @@ class CompanyMailer
      */
     public static function sendPlain(?int $companyId, string $toEmail, string $subject, string $body): void
     {
-        $mailer = self::mailerName($companyId) ?: config('mail.default');
-        $from   = self::from($companyId);
+        $mailerName = self::mailerName($companyId) ?: config('mail.default');
+        $from       = self::from($companyId);
 
-        Mail::mailer($mailer)->raw($body, function ($m) use ($toEmail, $subject, $from) {
+        $mailer = Mail::mailer($mailerName);
+        $mailer->raw($body, function ($m) use ($toEmail, $subject, $from) {
             $m->to($toEmail)->subject($subject);
             if ($from) {
                 $m->from($from[0], $from[1]);
             }
         });
+
+        // En CLI, SwiftMailer no lanza excepción si el SMTP rechaza al destinatario:
+        // deja los "failedRecipients" y sigue. Lo detectamos para no marcar como
+        // enviado algo que en realidad no salió.
+        $failures = method_exists($mailer, 'failures') ? ($mailer->failures() ?: []) : [];
+        if (!empty($failures)) {
+            throw new \RuntimeException('El servidor SMTP no aceptó al destinatario: ' . implode(', ', $failures));
+        }
     }
 
     /**
