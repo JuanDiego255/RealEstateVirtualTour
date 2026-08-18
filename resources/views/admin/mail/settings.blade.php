@@ -139,12 +139,13 @@
             <div class="crm-table-wrap">
                 <table class="crm-table">
                     <thead><tr>
-                        <th>Fecha</th><th>Para</th><th>Asunto</th><th>Origen</th><th>Estado</th>
+                        <th>Fecha</th><th>De</th><th>Para</th><th>Asunto</th><th>Origen</th><th>Estado</th>
                     </tr></thead>
                     <tbody>
                         @forelse($logs as $log)
                             <tr>
                                 <td class="muted">{{ $log->created_at->format('d/m/Y H:i') }}</td>
+                                <td class="muted">{{ $log->from_email ?: '—' }}</td>
                                 <td>{{ $log->to_email ?: '—' }}@if($log->to_name)<div class="muted">{{ $log->to_name }}</div>@endif</td>
                                 <td>{{ $log->subject ?: '—' }}</td>
                                 <td class="muted">{{ $log->context ?: '—' }}</td>
@@ -157,7 +158,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="5"><div class="empty-state"><i class="fa fa-envelope-o"></i>Todavía no se registraron correos.</div></td></tr>
+                            <tr><td colspan="6"><div class="empty-state"><i class="fa fa-envelope-o"></i>Todavía no se registraron correos.</div></td></tr>
                         @endforelse
                     </tbody>
                 </table>
