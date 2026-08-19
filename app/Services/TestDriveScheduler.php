@@ -67,11 +67,15 @@ class TestDriveScheduler
         ]);
 
         if ($lead) {
-            $lead->logActivity('note', [
-                'subject'     => 'Prueba de manejo solicitada',
-                'description' => 'Vía WhatsApp' . ($when ? ' para el ' . $when->format('d/m/Y H:i') : '') . '. Pendiente de confirmar por un asesor.',
-                'vehicle_id'  => $vehicle->id,
-            ]);
+            try {
+                $lead->logActivity('note', [
+                    'subject'     => 'Prueba de manejo solicitada',
+                    'description' => 'Vía WhatsApp' . ($when ? ' para el ' . $when->format('d/m/Y H:i') : '') . '. Pendiente de confirmar por un asesor.',
+                    'vehicle_id'  => $vehicle->id,
+                ]);
+            } catch (\Throwable $e) {
+                Log::channel('whatsapp')->warning('No se pudo registrar actividad de propuesta', ['error' => $e->getMessage()]);
+            }
         }
 
         Log::channel('whatsapp')->info('Propuesta de prueba de manejo creada', [
@@ -154,13 +158,17 @@ class TestDriveScheduler
         ]);
 
         if ($lead) {
-            $lead->logActivity('meeting', [
-                'subject'     => 'Prueba de manejo confirmada',
-                'description' => 'Cita para el ' . $when->format('d/m/Y H:i') . '.',
-                'vehicle_id'  => $proposal->vehicle_id,
-            ]);
-            if (in_array($lead->status, [Lead::STATUS_NEW, Lead::STATUS_CONTACTED], true)) {
-                $lead->changeStatus(Lead::STATUS_QUALIFIED, 'Prueba de manejo confirmada.');
+            try {
+                $lead->logActivity('meeting', [
+                    'subject'     => 'Prueba de manejo confirmada',
+                    'description' => 'Cita para el ' . $when->format('d/m/Y H:i') . '.',
+                    'vehicle_id'  => $proposal->vehicle_id,
+                ]);
+                if (in_array($lead->status, [Lead::STATUS_NEW, Lead::STATUS_CONTACTED], true)) {
+                    $lead->changeStatus(Lead::STATUS_QUALIFIED, 'Prueba de manejo confirmada.');
+                }
+            } catch (\Throwable $e) {
+                Log::channel('whatsapp')->warning('No se pudo registrar actividad de confirmación', ['error' => $e->getMessage()]);
             }
         }
 
