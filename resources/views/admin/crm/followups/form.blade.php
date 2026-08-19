@@ -101,7 +101,7 @@
         </div>
         <div class="crm-form-group" style="margin-bottom:0;">
             <label class="crm-label">Mensaje (si no usás plantilla)</label>
-            <textarea name="steps[__IDX__][body]" rows="2" class="crm-textarea" placeholder="Hola {{ '{{nombre}}' }}, ¿seguís interesado?"></textarea>
+            <textarea name="steps[__IDX__][body]" rows="2" class="crm-textarea" placeholder="Hola @{{nombre}}, ¿seguís interesado?"></textarea>
         </div>
         <div style="text-align:right; margin-top:8px;">
             <button type="button" class="action-btn danger xs" onclick="this.closest('.step-row').remove()"><i class="fa fa-trash"></i> Quitar paso</button>

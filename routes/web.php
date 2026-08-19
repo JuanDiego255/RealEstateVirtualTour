@@ -811,6 +811,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/admin/whatsapp/{chat}/reply', [\App\Http\Controllers\Admin\WhatsappChatController::class, 'reply'])->name('admin.whatsapp.reply');
     Route::post('/admin/whatsapp/{chat}/pause', [\App\Http\Controllers\Admin\WhatsappChatController::class, 'pause'])->name('admin.whatsapp.pause');
     Route::post('/admin/whatsapp/{chat}/resume', [\App\Http\Controllers\Admin\WhatsappChatController::class, 'resume'])->name('admin.whatsapp.resume');
+    // Propuestas de prueba de manejo (confirmar/descartar desde el chat)
+    Route::post('/admin/whatsapp/proposals/{proposal}/confirm', [\App\Http\Controllers\Admin\WhatsappChatController::class, 'confirmProposal'])->name('admin.whatsapp.proposals.confirm');
+    Route::post('/admin/whatsapp/proposals/{proposal}/dismiss', [\App\Http\Controllers\Admin\WhatsappChatController::class, 'dismissProposal'])->name('admin.whatsapp.proposals.dismiss');
 
     // Configuración de correo SMTP por empresa (qué cuenta envía los correos)
     Route::get('/admin/mail-settings', [\App\Http\Controllers\Admin\CompanyMailSettingController::class, 'edit'])->name('admin.mail.settings.edit');

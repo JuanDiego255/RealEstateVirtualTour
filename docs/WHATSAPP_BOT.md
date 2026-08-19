@@ -91,8 +91,18 @@ en `/admin/whatsapp-config`, submenú "WhatsApp → Configuración".
 - **Promociones** — `WhatsappBotPromotion` (activa + rango de fechas); el bot solo
   cita las **vigentes**, inyectadas en el prompt.
 
-### ✅ Entrega 4 (Etapa 7)
-Prueba de manejo agendable desde el bot, reutilizando la agenda existente.
+### ✅ Entrega 4 (Etapa 7) — con confirmación humana
+Prueba de manejo con revisión de un asesor antes de agendar.
+
+> **Actualización:** el bot ya NO crea la cita directamente (era poco confiable:
+> a veces "narraba" la confirmación sin ejecutar bien la herramienta). Ahora
+> `schedule_test_drive` deja una **propuesta** (`TestDriveProposal`); en el panel
+> de chat, debajo del cuadro de respuesta, el asesor ve la propuesta con la
+> fecha/hora editable y, al **Confirmar**, se crea la cita real
+> (`TestDriveScheduler::confirmProposal`) que aparece en el calendario. También
+> puede **Descartar**. Migración: `whatsapp_test_drive_proposals`.
+
+Detalle original (reutiliza la agenda existente):
 
 - **`schedule_test_drive`** — nueva herramienta del bot. Pide día/hora/nombre y
   crea una cita **tentativa** en la agenda del negocio (`App\Appointment`,

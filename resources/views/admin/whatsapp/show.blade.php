@@ -60,6 +60,41 @@
         </div>
         <small class="text-muted">Al enviar, tomás el control: el bot deja de responder este chat hasta que lo devuelvas.</small>
     </form>
+
+    @if(!empty($proposals) && $proposals->count())
+        <div class="mt-4">
+            <h6 class="mb-2"><i class="fa fa-calendar-check-o text-primary"></i> Pruebas de manejo por confirmar</h6>
+            @foreach($proposals as $p)
+                @php
+                    $pWhen = $p->proposed_at ?: \Carbon\Carbon::tomorrow()->setTime(15, 0);
+                @endphp
+                <div class="card border-primary mb-2">
+                    <div class="card-body py-2">
+                        <div class="mb-2">
+                            <strong>{{ $p->vehicleTitle() }}</strong>
+                            <span class="text-muted">· {{ $p->client_name }} · {{ $p->phone }}</span>
+                            @if($p->notes)<div class="small text-muted">Notas: {{ $p->notes }}</div>@endif
+                            @if(!$p->proposed_at)<div class="small text-warning">El cliente no dio fecha clara — ajustala abajo.</div>@endif
+                        </div>
+                        <form method="POST" action="{{ route('admin.whatsapp.proposals.confirm', $p) }}" class="form-inline">
+                            @csrf
+                            <label class="small mr-1">Fecha</label>
+                            <input type="date" name="date" class="form-control form-control-sm mr-2" value="{{ $pWhen->format('Y-m-d') }}" required>
+                            <label class="small mr-1">Hora</label>
+                            <input type="time" name="time" class="form-control form-control-sm mr-2" value="{{ $pWhen->format('H:i') }}" required>
+                            <label class="small mr-1">Min</label>
+                            <input type="number" name="duration_minutes" class="form-control form-control-sm mr-2" style="width:80px" value="{{ $p->duration_minutes ?: 45 }}" min="15" max="180">
+                            <button class="btn btn-sm btn-primary mr-2"><i class="fa fa-check"></i> Confirmar</button>
+                        </form>
+                        <form method="POST" action="{{ route('admin.whatsapp.proposals.dismiss', $p) }}" class="mt-1" onsubmit="return confirm('¿Descartar esta propuesta?')">
+                            @csrf
+                            <button class="btn btn-sm btn-link text-danger p-0">Descartar</button>
+                        </form>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+    @endif
 </div>
 
 @push('script')

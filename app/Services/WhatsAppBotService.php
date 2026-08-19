@@ -299,7 +299,7 @@ class WhatsAppBotService
 
         $tools[] = [
             'name'        => 'schedule_test_drive',
-            'description' => 'Agenda una prueba de manejo (tentativa) para un vehículo. La confirma un asesor.',
+            'description' => 'Registra una solicitud de prueba de manejo (vehículo, fecha/hora y nombre) para que un asesor la confirme. No agenda en firme.',
             'input_schema' => [
                 'type' => 'object',
                 'properties' => [
@@ -359,12 +359,14 @@ class WhatsAppBotService
                 return ['ok' => true, 'message' => 'Un momento, te paso con una persona del equipo.'];
 
             case 'schedule_test_drive':
-                $res = (new TestDriveScheduler($bot))->schedule($input, $chat->phone, $chat->contact_name);
-                if (!$res['ok'] && $res['needs_human']) {
+                $res = (new TestDriveScheduler($bot))->propose($input, $chat->phone, $chat->contact_name, $chat->id);
+                if (!$res['ok'] && !empty($res['needs_human'])) {
                     $handoffReason = $res['error'];
                 }
                 return $res['ok']
-                    ? ['ok' => true, 'when' => $res['when'], 'message' => 'Prueba agendada de forma tentativa; un asesor la confirma.']
+                    ? ['ok' => true, 'when' => $res['when'],
+                        'message' => 'Solicitud registrada' . (!empty($res['when']) ? ' para ' . $res['when'] : '')
+                            . '. Confirmá al cliente que un asesor le confirma la cita en breve; NO afirmes que ya quedó agendada.']
                     : ['ok' => false, 'error' => $res['error']];
 
             case 'quote_financing':

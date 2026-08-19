@@ -69,9 +69,15 @@ class WhatsappChatController extends Controller
             ->limit(200)
             ->get();
 
+        // Propuestas de prueba de manejo pendientes de confirmar.
+        $proposals = \App\Models\TestDriveProposal::available()
+            ? \App\Models\TestDriveProposal::with('vehicle')
+                ->where('chat_id', $chat->id)->pending()->latest()->get()
+            : collect();
+
         $chat->update(['last_seen_at' => now()]);
 
-        return view('admin.whatsapp.show', compact('chat', 'messages'));
+        return view('admin.whatsapp.show', compact('chat', 'messages', 'proposals'));
     }
 
     /**
@@ -151,5 +157,49 @@ class WhatsappChatController extends Controller
         $this->authorizeChat($user, $chat);
         $chat->resumeBot();
         return back()->with('success', 'El bot volverá a responder este chat.');
+    }
+
+    /**
+     * Confirmar una propuesta de prueba de manejo: crea la cita real en la agenda.
+     */
+    public function confirmProposal(Request $request, \App\Models\TestDriveProposal $proposal)
+    {
+        $user = $this->guard();
+        if (!$user->isSuperAdmin() && $proposal->company_id !== $user->company_id) {
+            abort(403);
+        }
+
+        $data = $request->validate([
+            'date'             => 'required|date',
+            'time'             => 'required',
+            'duration_minutes' => 'nullable|integer|min:15|max:180',
+        ]);
+
+        $when = \Carbon\Carbon::parse($data['date'] . ' ' . $data['time']);
+        if ($when->isPast()) {
+            return back()->with('error', 'La fecha y hora deben ser a futuro.');
+        }
+        $duration = (int) ($data['duration_minutes'] ?? $proposal->duration_minutes ?: 45);
+
+        $res = \App\Services\TestDriveScheduler::confirmProposal($proposal, $when, $duration);
+        if (!$res['ok']) {
+            return back()->with('error', $res['error']);
+        }
+
+        return back()->with('success', 'Cita creada y agregada al calendario.');
+    }
+
+    /**
+     * Descartar una propuesta de prueba de manejo.
+     */
+    public function dismissProposal(\App\Models\TestDriveProposal $proposal)
+    {
+        $user = $this->guard();
+        if (!$user->isSuperAdmin() && $proposal->company_id !== $user->company_id) {
+            abort(403);
+        }
+        $proposal->update(['status' => \App\Models\TestDriveProposal::STATUS_DISMISSED]);
+
+        return back()->with('success', 'Propuesta descartada.');
     }
 }
