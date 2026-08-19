@@ -53,7 +53,7 @@ class WhatsAppBotService
         $tools    = $this->buildTools($bot);
 
         $handoffReason = null;
-        $imagesToSend  = [];
+        $mediaToSend   = []; // cada item: ['url' => ..., 'caption' => ?string]
         $usedTools     = [];
         $finalText     = '';
 
@@ -103,7 +103,7 @@ class WhatsAppBotService
             $toolResults = [];
             foreach ($toolUses as $tu) {
                 $usedTools[] = $tu['name'] ?? '';
-                $result = $this->executeTool($tu['name'] ?? '', $tu['input'] ?? [], $search, $bot, $chat, $handoffReason, $imagesToSend);
+                $result = $this->executeTool($tu['name'] ?? '', $tu['input'] ?? [], $search, $bot, $chat, $handoffReason, $mediaToSend);
                 $toolResults[] = [
                     'type'        => 'tool_result',
                     'tool_use_id' => $tu['id'] ?? '',
@@ -129,7 +129,7 @@ class WhatsAppBotService
             $handoffReason = $handoffReason ?: 'Respuesta vacía del modelo.';
         }
 
-        $this->sendReply($bot, $chat, $finalText, $imagesToSend);
+        $this->sendReply($bot, $chat, $finalText, $mediaToSend);
 
         if ($handoffReason) {
             $chat->pauseBot($handoffReason);
@@ -161,7 +161,8 @@ class WhatsAppBotService
             '- Si un vehículo está apartado o vendido, decilo y ofrecé las alternativas que devuelva la herramienta.',
             '- Respondé breve y claro, en el tono del negocio.',
             '- ENTREGÁ, NO ANUNCIES: nunca digas que vas a mandar algo y termines (nada de "te paso la ficha", "ahora te doy la cuota", "aquí tienes:"). Si necesitás datos, llamá la herramienta en ESTE mismo turno e incluí el resultado en tu respuesta.',
-            '- Si piden la ficha o el detalle de un vehículo, llamá get_vehicle_detail y entregá los datos y las fotos en tu respuesta.',
+            '- Si piden la ficha o el detalle de un vehículo, llamá get_vehicle_detail y entregá los datos. Las fotos se envían solas: nunca pegues links de imágenes.',
+            '- En listados, las fotos de cada vehículo con su descripción se envían automáticamente; tu texto debe ser una intro breve, sin repetir todo ni pegar links.',
         ];
         $hard[] = '- Para agendar una prueba de manejo pedí día, hora y nombre; luego llamá schedule_test_drive OBLIGATORIAMENTE.'
             . ' Nunca digas "nos vemos", "te espero", "quedó agendada" ni des por confirmada una fecha sin haber ejecutado schedule_test_drive en este mismo turno.'
@@ -336,20 +337,33 @@ class WhatsAppBotService
 
     /* ── Ejecución de herramientas ── */
 
-    private function executeTool(string $name, array $input, VehicleSearchService $search, CompanyWhatsappBot $bot, WhatsappChat $chat, ?string &$handoffReason, array &$imagesToSend)
+    private function executeTool(string $name, array $input, VehicleSearchService $search, CompanyWhatsappBot $bot, WhatsappChat $chat, ?string &$handoffReason, array &$mediaToSend)
     {
         switch ($name) {
             case 'search_vehicles':
-                return ['results' => $search->search($input, $bot->max_vehicles_per_reply ?: 3)];
+                $results = $search->search($input, $bot->max_vehicles_per_reply ?: 3);
+                // Cada vehículo se envía como foto + descripción breve al pie.
+                foreach ($results as $v) {
+                    if (!empty($v['main_image'])) {
+                        $mediaToSend[] = ['url' => $v['main_image'], 'caption' => $this->listingCaption($v)];
+                    }
+                }
+                return [
+                    'results' => array_map(fn($v) => $this->stripImageUrls($v), $results),
+                    'note'    => 'Las fotos de cada vehículo con su descripción YA se envían al cliente. En tu respuesta hacé solo una introducción breve y ofrecé ayuda; no repitas los detalles ni pegues links de imágenes.',
+                ];
 
             case 'get_vehicle_detail':
                 $detail = $search->detail((int) ($input['id'] ?? 0));
-                if ($detail && !empty($detail['images'])) {
-                    foreach (array_slice($detail['images'], 0, 3) as $img) {
-                        $imagesToSend[] = $img;
-                    }
+                if (!$detail) {
+                    return ['error' => 'No encontré ese vehículo.'];
                 }
-                return $detail ?: ['error' => 'No encontré ese vehículo.'];
+                $imgs = $detail['images'] ?? [];
+                foreach (array_values(array_slice($imgs, 0, 3)) as $i => $img) {
+                    $mediaToSend[] = ['url' => $img, 'caption' => $i === 0 ? $this->detailCaption($detail) : null];
+                }
+                return $this->stripImageUrls($detail)
+                    + ['note' => 'Ya envío la(s) foto(s) del vehículo al cliente; no pegues links de imágenes en tu respuesta.'];
 
             case 'check_vehicle_status':
                 return $search->status((int) ($input['id'] ?? 0));
@@ -375,6 +389,43 @@ class WhatsAppBotService
             default:
                 return ['error' => 'Herramienta desconocida.'];
         }
+    }
+
+    /**
+     * Descripción breve al pie de la foto en un listado.
+     */
+    private function listingCaption(array $v): string
+    {
+        $lines = [trim(($v['title'] ?? 'Vehículo') . (!empty($v['price']) ? ' — ' . $v['price'] : ''))];
+        $specs = array_filter([
+            !empty($v['mileage_km']) ? $v['mileage_km'] . ' km' : null,
+            $v['transmission'] ?? null,
+            $v['fuel_type'] ?? null,
+        ]);
+        if ($specs) {
+            $lines[] = implode(' · ', $specs);
+        }
+        if (!empty($v['status'])) {
+            $lines[] = 'Estado: ' . ucfirst($v['status']);
+        }
+        return implode("\n", $lines);
+    }
+
+    /**
+     * Pie de foto para el detalle de un vehículo (breve; el texto lo da el bot).
+     */
+    private function detailCaption(array $v): string
+    {
+        return trim(($v['title'] ?? 'Vehículo') . (!empty($v['price']) ? ' — ' . $v['price'] : ''));
+    }
+
+    /**
+     * Quita las URLs de imágenes de lo que ve el modelo (para que no pegue links).
+     */
+    private function stripImageUrls(array $v): array
+    {
+        unset($v['main_image'], $v['images']);
+        return $v;
     }
 
     private function quoteFinancing(VehicleSearchService $search, array $input): array
@@ -470,7 +521,10 @@ class WhatsAppBotService
         return $messages;
     }
 
-    private function sendReply(CompanyWhatsappBot $bot, WhatsappChat $chat, string $text, array $images): void
+    /**
+     * @param  array  $media  Items ['url' => string, 'caption' => ?string]
+     */
+    private function sendReply(CompanyWhatsappBot $bot, WhatsappChat $chat, string $text, array $media): void
     {
         $cloud = app(WhatsAppCloudService::class);
         $result = $cloud->sendText($bot, $chat->phone, $text);
@@ -486,8 +540,29 @@ class WhatsAppBotService
             'wam_id'       => $result['wam_id'] ?? null,
         ]);
 
-        foreach (array_slice(array_unique($images), 0, 3) as $img) {
-            $cloud->sendImage($bot, $chat->phone, $img);
+        // Fotos con su descripción al pie, deduplicadas por URL.
+        $seen = [];
+        foreach ($media as $item) {
+            $url = is_array($item) ? ($item['url'] ?? null) : $item;
+            if (!$url || in_array($url, $seen, true)) {
+                continue;
+            }
+            $seen[] = $url;
+            if (count($seen) > 12) {
+                break; // tope de seguridad contra acumulación desmedida
+            }
+            $caption = is_array($item) ? ($item['caption'] ?? null) : null;
+            $cloud->sendImage($bot, $chat->phone, $url, $caption);
+
+            WhatsappConversation::create([
+                'company_id'   => $bot->company_id,
+                'phone'        => $chat->phone,
+                'contact_name' => $chat->contact_name,
+                'direction'    => WhatsappConversation::DIRECTION_OUTBOUND,
+                'message'      => $caption ?: '[imagen]',
+                'message_type' => 'image',
+                'is_human'     => false,
+            ]);
         }
 
         $chat->update(['last_message_at' => now()]);
