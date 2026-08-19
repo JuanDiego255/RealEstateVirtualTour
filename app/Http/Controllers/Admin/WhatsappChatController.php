@@ -198,8 +198,8 @@ class WhatsappChatController extends Controller
         if (!$user->isSuperAdmin() && $proposal->company_id !== $user->company_id) {
             abort(403);
         }
-        $proposal->update(['status' => \App\Models\TestDriveProposal::STATUS_DISMISSED]);
+        \App\Services\TestDriveScheduler::dismissProposal($proposal);
 
-        return back()->with('success', 'Propuesta descartada.');
+        return back()->with('success', 'Propuesta descartada y cita tentativa cancelada.');
     }
 }
