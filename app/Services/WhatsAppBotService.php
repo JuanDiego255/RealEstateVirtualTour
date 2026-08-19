@@ -548,8 +548,8 @@ class WhatsAppBotService
                 continue;
             }
             $seen[] = $url;
-            if (count($seen) > 6) {
-                break; // tope de seguridad
+            if (count($seen) > 12) {
+                break; // tope de seguridad contra acumulación desmedida
             }
             $caption = is_array($item) ? ($item['caption'] ?? null) : null;
             $cloud->sendImage($bot, $chat->phone, $url, $caption);
