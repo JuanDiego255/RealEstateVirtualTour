@@ -227,6 +227,23 @@ Envíos automáticos escalonados para no perder al lead.
   contadores. El agente ve lo suyo; el administrador ve lo de toda la empresa.
 - Enlace en el menú CRM → "Sin atender".
 
+### ✅ Memoria del bot por chat (adaptado del e-commerce)
+El bot recuerda qué vehículos le mostró a cada cliente (ventana de 24 h) y resuelve
+referencias como "el rojo", "el del 2021", "el segundo".
+
+- **Pie de foto = memoria** — cada foto lleva `*Título*`, precio, **Cód. #id**,
+  **color** y specs, y se guarda como mensaje del historial (el modelo relee sus pies).
+- **Bloque de memoria** (2º bloque de `system`, **no cacheado**): "VEHÍCULOS QUE YA
+  LE MOSTRASTE" con id + color + año + precio + ⭐ si le interesó, más la regla de
+  usar el id en vez de re-buscar.
+- **Marca "elegido"** — al pedir la ficha (`get_vehicle_detail`) el vehículo queda
+  marcado y se setea el interés del lead (`leads.vehicle_id`).
+- **Responder a un mensaje citado** — si el cliente responde a una foto puntual
+  ("me encanta este"), el webhook resuelve el `context.id` → vehículo y el bot
+  responde en contexto de ESE vehículo.
+
+Sin migración: usa `whatsapp_conversations.metadata` (ya existía) y `wam_id`.
+
 ## Reglas de oro (se mantienen del origen)
 - El bot **nunca inventa** precios, existencias ni datos: solo lo que devuelven
   las herramientas o el prompt.

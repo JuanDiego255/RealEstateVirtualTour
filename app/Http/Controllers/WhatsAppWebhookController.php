@@ -132,6 +132,16 @@ class WhatsAppWebhookController extends Controller
         $type = $message['type'] ?? 'text';
         $text = $this->extractText($message, $type);
 
+        // ¿El cliente respondió CITANDO un mensaje nuestro? Resolvemos a qué vehículo.
+        $replyToWamId     = $message['context']['id'] ?? null;
+        $replyToVehicleId = null;
+        if ($replyToWamId) {
+            $quoted = WhatsappConversation::where('company_id', $bot->company_id)
+                ->where('wam_id', $replyToWamId)->first(['metadata']);
+            $replyToVehicleId = $quoted->metadata['vehicle_id']
+                ?? ($quoted->metadata['vehicles'][0]['id'] ?? null);
+        }
+
         WhatsappConversation::create([
             'company_id'        => $bot->company_id,
             'phone'             => $from,
@@ -142,7 +152,11 @@ class WhatsAppWebhookController extends Controller
             'is_human'          => false,
             'wam_id'            => $wamId,
             'window_started_at' => now(),
-            'metadata'          => ['raw' => $message],
+            'metadata'          => array_filter([
+                'raw'                 => $message,
+                'reply_to_wam_id'     => $replyToWamId,
+                'reply_to_vehicle_id' => $replyToVehicleId,
+            ], fn($v) => $v !== null),
         ]);
 
         $chat = WhatsappChat::updateOrCreate(

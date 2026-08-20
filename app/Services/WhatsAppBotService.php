@@ -49,16 +49,18 @@ class WhatsAppBotService
         $search   = new VehicleSearchService($bot->company_id);
 
         $system   = $this->buildSystemPrompt($bot, $settings);
+        $memory   = $this->buildMemory($bot->company_id, $chat->phone); // 2º bloque, no cacheado
         $messages = $this->buildHistory($bot->company_id, $chat->phone);
         $tools    = $this->buildTools($bot);
 
         $handoffReason = null;
-        $mediaToSend   = []; // cada item: ['url' => ..., 'caption' => ?string]
+        $mediaToSend   = []; // cada item: ['url' => ..., 'caption' => ?string, 'vehicle_id' => ?int]
+        $shownVehicles = []; // id => datos distintivos de los vehículos mostrados este turno
         $usedTools     = [];
         $finalText     = '';
 
         for ($loop = 0; $loop < self::MAX_TOOL_LOOPS; $loop++) {
-            $resp = $this->callAnthropic($ai->api_key, $system, $messages, $tools);
+            $resp = $this->callAnthropic($ai->api_key, $system, $memory, $messages, $tools);
             if ($resp === null) {
                 break;
             }
@@ -103,7 +105,7 @@ class WhatsAppBotService
             $toolResults = [];
             foreach ($toolUses as $tu) {
                 $usedTools[] = $tu['name'] ?? '';
-                $result = $this->executeTool($tu['name'] ?? '', $tu['input'] ?? [], $search, $bot, $chat, $handoffReason, $mediaToSend);
+                $result = $this->executeTool($tu['name'] ?? '', $tu['input'] ?? [], $search, $bot, $chat, $handoffReason, $mediaToSend, $shownVehicles);
                 $toolResults[] = [
                     'type'        => 'tool_result',
                     'tool_use_id' => $tu['id'] ?? '',
@@ -129,7 +131,7 @@ class WhatsAppBotService
             $handoffReason = $handoffReason ?: 'Respuesta vacía del modelo.';
         }
 
-        $this->sendReply($bot, $chat, $finalText, $mediaToSend);
+        $this->sendReply($bot, $chat, $finalText, $mediaToSend, $shownVehicles);
 
         if ($handoffReason) {
             $chat->pauseBot($handoffReason);
@@ -163,6 +165,7 @@ class WhatsAppBotService
             '- ENTREGÁ, NO ANUNCIES: nunca digas que vas a mandar algo y termines (nada de "te paso la ficha", "ahora te doy la cuota", "aquí tienes:"). Si necesitás datos, llamá la herramienta en ESTE mismo turno e incluí el resultado en tu respuesta.',
             '- Si piden la ficha o el detalle de un vehículo, llamá get_vehicle_detail y entregá los datos. Las fotos se envían solas: nunca pegues links de imágenes.',
             '- En listados, las fotos de cada vehículo con su descripción se envían automáticamente; tu texto debe ser una intro breve, sin repetir todo ni pegar links.',
+            '- Recordá lo que ya mostraste: si el cliente dice "el rojo", "el segundo", "el del 2021" o responde citando una foto, se refiere a un vehículo que ya le mostraste (está en la memoria). Usá su id con get_vehicle_detail; no busques de cero ni digas que no lo encontrás. Si dos se parecen, diferencialos por color, año o marca.',
         ];
         $hard[] = '- Para agendar una prueba de manejo pedí día, hora y nombre; luego llamá schedule_test_drive OBLIGATORIAMENTE.'
             . ' Nunca digas "nos vemos", "te espero", "quedó agendada" ni des por confirmada una fecha sin haber ejecutado schedule_test_drive en este mismo turno.'
@@ -337,15 +340,16 @@ class WhatsAppBotService
 
     /* ── Ejecución de herramientas ── */
 
-    private function executeTool(string $name, array $input, VehicleSearchService $search, CompanyWhatsappBot $bot, WhatsappChat $chat, ?string &$handoffReason, array &$mediaToSend)
+    private function executeTool(string $name, array $input, VehicleSearchService $search, CompanyWhatsappBot $bot, WhatsappChat $chat, ?string &$handoffReason, array &$mediaToSend, array &$shownVehicles)
     {
         switch ($name) {
             case 'search_vehicles':
                 $results = $search->search($input, $bot->max_vehicles_per_reply ?: 3);
                 // Cada vehículo se envía como foto + descripción breve al pie.
                 foreach ($results as $v) {
+                    $this->rememberVehicle($shownVehicles, $v, false);
                     if (!empty($v['main_image'])) {
-                        $mediaToSend[] = ['url' => $v['main_image'], 'caption' => $this->listingCaption($v)];
+                        $mediaToSend[] = ['url' => $v['main_image'], 'caption' => $this->listingCaption($v), 'vehicle_id' => $v['id'] ?? null];
                     }
                 }
                 return [
@@ -358,9 +362,12 @@ class WhatsAppBotService
                 if (!$detail) {
                     return ['error' => 'No encontré ese vehículo.'];
                 }
+                // El cliente pidió su ficha: queda marcado como el que le interesa.
+                $this->rememberVehicle($shownVehicles, $detail, true);
+                $this->markLeadInterest($chat, (int) $detail['id']);
                 $imgs = $detail['images'] ?? [];
                 foreach (array_values(array_slice($imgs, 0, 3)) as $i => $img) {
-                    $mediaToSend[] = ['url' => $img, 'caption' => $i === 0 ? $this->detailCaption($detail) : null];
+                    $mediaToSend[] = ['url' => $img, 'caption' => $i === 0 ? $this->detailCaption($detail) : null, 'vehicle_id' => $detail['id'] ?? null];
                 }
                 return $this->stripImageUrls($detail)
                     + ['note' => 'Ya envío la(s) foto(s) del vehículo al cliente; no pegues links de imágenes en tu respuesta.'];
@@ -392,12 +399,15 @@ class WhatsAppBotService
     }
 
     /**
-     * Descripción breve al pie de la foto en un listado.
+     * Descripción breve al pie de la foto en un listado. El pie ES la memoria:
+     * incluye color, specs y código para poder resolver "el rojo", "el segundo".
      */
     private function listingCaption(array $v): string
     {
-        $lines = [trim(($v['title'] ?? 'Vehículo') . (!empty($v['price']) ? ' — ' . $v['price'] : ''))];
+        $lines = ['*' . trim($v['title'] ?? 'Vehículo') . '*'];
+        $lines[] = trim((!empty($v['price']) ? $v['price'] . ' · ' : '') . 'Cód. #' . ($v['id'] ?? ''));
         $specs = array_filter([
+            !empty($v['color']) ? 'Color: ' . $v['color'] : null,
             !empty($v['mileage_km']) ? $v['mileage_km'] . ' km' : null,
             $v['transmission'] ?? null,
             $v['fuel_type'] ?? null,
@@ -408,7 +418,7 @@ class WhatsAppBotService
         if (!empty($v['status'])) {
             $lines[] = 'Estado: ' . ucfirst($v['status']);
         }
-        return implode("\n", $lines);
+        return mb_substr(implode("\n", $lines), 0, 1024);
     }
 
     /**
@@ -416,7 +426,118 @@ class WhatsAppBotService
      */
     private function detailCaption(array $v): string
     {
-        return trim(($v['title'] ?? 'Vehículo') . (!empty($v['price']) ? ' — ' . $v['price'] : ''));
+        $line = '*' . trim($v['title'] ?? 'Vehículo') . '*'
+            . (!empty($v['price']) ? "\n" . $v['price'] : '')
+            . (!empty($v['color']) ? ' · ' . $v['color'] : '')
+            . "\nCód. #" . ($v['id'] ?? '');
+        return mb_substr($line, 0, 1024);
+    }
+
+    /**
+     * Guarda un vehículo mostrado (con sus datos distintivos). Una vez marcado
+     * como "elegido", no se desmarca.
+     */
+    private function rememberVehicle(array &$shown, array $v, bool $elegido): void
+    {
+        if (empty($v['id'])) {
+            return;
+        }
+        $id = (int) $v['id'];
+        $shown[$id] = [
+            'id'      => $id,
+            'title'   => $v['title'] ?? trim(($v['brand'] ?? '') . ' ' . ($v['model'] ?? '')),
+            'brand'   => $v['brand'] ?? null,
+            'year'    => $v['year'] ?? null,
+            'color'   => $v['color'] ?? null,
+            'price'   => $v['price'] ?? null,
+            'status'  => $v['status'] ?? null,
+            'elegido' => $elegido || !empty($shown[$id]['elegido']),
+        ];
+    }
+
+    /**
+     * Marca el vehículo de interés del lead (para el CRM y el panel).
+     */
+    private function markLeadInterest(WhatsappChat $chat, int $vehicleId): void
+    {
+        try {
+            $leadId = $chat->lead_id;
+            if (!$leadId) {
+                $leadId = optional(WhatsAppLeadService::findByPhone($chat->company_id, $chat->phone))->id;
+            }
+            if ($leadId && $vehicleId) {
+                \App\Lead::where('id', $leadId)->update(['vehicle_id' => $vehicleId]);
+            }
+        } catch (\Throwable $e) {
+            Log::channel('whatsapp')->warning('No se pudo marcar interés del lead', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Segundo bloque de system (no cacheado): qué vehículos ya se le mostraron al
+     * cliente y a cuál respondió citándolo. Es lo que resuelve "el rojo".
+     */
+    private function buildMemory(int $companyId, string $phone): string
+    {
+        $shown = [];
+        try {
+            $rows = WhatsappConversation::forCompany($companyId)->forPhone($phone)
+                ->where('direction', WhatsappConversation::DIRECTION_OUTBOUND)
+                ->whereNotNull('metadata')
+                ->where('created_at', '>=', now()->subDay())
+                ->orderByDesc('id')->limit(12)->get(['metadata']);
+            foreach ($rows as $row) {
+                foreach (($row->metadata['vehicles'] ?? []) as $v) {
+                    if (empty($v['id']) || isset($shown[$v['id']])) {
+                        continue;
+                    }
+                    $shown[$v['id']] = $v;
+                    if (count($shown) >= 12) {
+                        break 2;
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            return '';
+        }
+
+        // Contexto de respuesta citada (el cliente respondió a una foto puntual).
+        $replyLine = '';
+        try {
+            $lastIn = WhatsappConversation::forCompany($companyId)->forPhone($phone)
+                ->where('direction', WhatsappConversation::DIRECTION_INBOUND)
+                ->orderByDesc('id')->first(['metadata']);
+            $rid = $lastIn->metadata['reply_to_vehicle_id'] ?? null;
+            if ($rid) {
+                $name = $shown[$rid]['title'] ?? ('vehículo id ' . $rid);
+                $replyLine = "EL ÚLTIMO MENSAJE DEL CLIENTE RESPONDE/CITA al vehículo id {$rid} ({$name}). "
+                    . "Interpretá su mensaje sobre ESE vehículo; usá get_vehicle_detail o check_vehicle_status con id {$rid} si hace falta.\n\n";
+            }
+        } catch (\Throwable $e) {
+            // sin contexto de reply, seguimos
+        }
+
+        if (!$shown && $replyLine === '') {
+            return '';
+        }
+
+        $lines = array_map(function ($v) {
+            $bits = array_filter([
+                $v['title'] ?? null,
+                !empty($v['color']) ? 'color ' . $v['color'] : null,
+                !empty($v['year']) ? (string) $v['year'] : null,
+                $v['price'] ?? null,
+                !empty($v['elegido']) ? '⭐ le interesó' : null,
+            ]);
+            return '- id ' . $v['id'] . ' · ' . implode(' · ', $bits);
+        }, array_values($shown));
+
+        return $replyLine
+            . "VEHÍCULOS QUE YA LE MOSTRASTE A ESTE CLIENTE\n"
+            . implode("\n", $lines)
+            . "\n\nSi el cliente se refiere a uno de estos (\"el rojo\", \"el del 2021\", \"el segundo\", \"el KIA\"), es uno de la lista: "
+            . "usá su id directamente con get_vehicle_detail o check_vehicle_status. No busques de cero ni digas que no lo encontrás, "
+            . "porque vos mismo se lo mostraste. Si dos se parecen, diferencialos por color, año o marca, nunca solo por el precio.";
     }
 
     /**
@@ -460,9 +581,16 @@ class WhatsAppBotService
 
     /* ── Anthropic ── */
 
-    private function callAnthropic(string $apiKey, string $system, array $messages, array $tools): ?array
+    private function callAnthropic(string $apiKey, string $system, string $memory, array $messages, array $tools): ?array
     {
         try {
+            // Dos bloques de system: el prompt estable (cacheado) y la memoria de
+            // la conversación (liviana y variable → NO cacheada, no invalida el caché).
+            $systemBlocks = array_values(array_filter([
+                ['type' => 'text', 'text' => $system, 'cache_control' => ['type' => 'ephemeral']],
+                $memory !== '' ? ['type' => 'text', 'text' => $memory] : null,
+            ]));
+
             $response = Http::withHeaders([
                 'x-api-key'         => $apiKey,
                 'anthropic-version' => '2023-06-01',
@@ -470,9 +598,7 @@ class WhatsAppBotService
             ])->timeout(40)->post(self::ANTHROPIC_URL, [
                 'model'      => self::CHAT_MODEL,
                 'max_tokens' => self::MAX_TOKENS,
-                'system'     => [
-                    ['type' => 'text', 'text' => $system, 'cache_control' => ['type' => 'ephemeral']],
-                ],
+                'system'     => $systemBlocks,
                 'tools'      => $tools,
                 'messages'   => $messages,
             ]);
@@ -522,13 +648,15 @@ class WhatsAppBotService
     }
 
     /**
-     * @param  array  $media  Items ['url' => string, 'caption' => ?string]
+     * @param  array  $media  Items ['url'=>string, 'caption'=>?string, 'vehicle_id'=>?int]
+     * @param  array  $shownVehicles  id => datos, para guardar en la metadata del texto (memoria)
      */
-    private function sendReply(CompanyWhatsappBot $bot, WhatsappChat $chat, string $text, array $media): void
+    private function sendReply(CompanyWhatsappBot $bot, WhatsappChat $chat, string $text, array $media, array $shownVehicles = []): void
     {
         $cloud = app(WhatsAppCloudService::class);
         $result = $cloud->sendText($bot, $chat->phone, $text);
 
+        // El texto guarda en su metadata los vehículos mostrados (bloque de ids).
         WhatsappConversation::create([
             'company_id'   => $bot->company_id,
             'phone'        => $chat->phone,
@@ -538,9 +666,11 @@ class WhatsAppBotService
             'message_type' => 'text',
             'is_human'     => false,
             'wam_id'       => $result['wam_id'] ?? null,
+            'metadata'     => !empty($shownVehicles) ? ['vehicles' => array_values($shownVehicles)] : null,
         ]);
 
-        // Fotos con su descripción al pie, deduplicadas por URL.
+        // Fotos con su descripción al pie, deduplicadas por URL. Cada imagen guarda
+        // su wam_id y vehicle_id → así un "responder" del cliente resuelve el vehículo.
         $seen = [];
         foreach ($media as $item) {
             $url = is_array($item) ? ($item['url'] ?? null) : $item;
@@ -551,8 +681,9 @@ class WhatsAppBotService
             if (count($seen) > 12) {
                 break; // tope de seguridad contra acumulación desmedida
             }
-            $caption = is_array($item) ? ($item['caption'] ?? null) : null;
-            $cloud->sendImage($bot, $chat->phone, $url, $caption);
+            $caption   = is_array($item) ? ($item['caption'] ?? null) : null;
+            $vehicleId = is_array($item) ? ($item['vehicle_id'] ?? null) : null;
+            $imgRes    = $cloud->sendImage($bot, $chat->phone, $url, $caption);
 
             WhatsappConversation::create([
                 'company_id'   => $bot->company_id,
@@ -562,6 +693,8 @@ class WhatsAppBotService
                 'message'      => $caption ?: '[imagen]',
                 'message_type' => 'image',
                 'is_human'     => false,
+                'wam_id'       => $imgRes['wam_id'] ?? null,
+                'metadata'     => $vehicleId ? ['vehicle_id' => (int) $vehicleId, 'elegido' => !empty($shownVehicles[$vehicleId]['elegido'])] : null,
             ]);
         }
 

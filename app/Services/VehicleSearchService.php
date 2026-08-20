@@ -157,6 +157,7 @@ class VehicleSearchService
             'mileage_km'   => $v->mileage_km,
             'transmission' => $v->transmission,
             'fuel_type'    => $v->fuel_type,
+            'color'        => $v->color,
             'status'       => self::STATUS_MAP[$v->status] ?? 'disponible',
             'location'     => $v->location,
             'main_image'   => $v->image ? route('file', $v->image) : null,
